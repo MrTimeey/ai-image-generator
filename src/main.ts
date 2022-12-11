@@ -1,10 +1,10 @@
 import config from './common/appConfig';
 import express from 'express';
 import cors from 'cors';
+import openAi from './routes/openAi';
 /*import apiDoc from './routes/apiDoc';
 import swaggerUi from 'swagger-ui-express';
 import swaggerDocument from '../api-doc/openapi.json';*/
-import openAi from './routes/openAi';
 
 const app: express.Application = express();
 
