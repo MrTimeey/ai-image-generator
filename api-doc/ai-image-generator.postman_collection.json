@@ -1,0 +1,40 @@
+{
+	"info": {
+		"_postman_id": "a96daece-f782-42d0-8922-bb8011a34995",
+		"name": "ai-image-generator",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "12265403"
+	},
+	"item": [
+		{
+			"name": "Generate Images",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"description\": \"a dinosaur on a computer drinking coffee, digital art\",\r\n    \"amount\": 1,\r\n    \"size\": \"LARGE\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/api/openai/generate-image",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"openai",
+						"generate-image"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

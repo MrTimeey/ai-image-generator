@@ -1,3 +1,3 @@
-# typescript node express starter
+# ai-image-generator
 
 Create `.env` from `.env.example`
