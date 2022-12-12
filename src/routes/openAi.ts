@@ -11,9 +11,15 @@ const validSizeProp = (size: string | undefined): boolean => {
     return Object.keys(ImageSize).includes(size);
 };
 
+const validAmountProp = (amount: number | undefined): boolean => {
+    if (!amount) return true;
+    if (!Number.isInteger(amount)) return false;
+    return amount >= 1 && amount <= 10;
+};
+
 openAi.post('/generate-image', async (req, res) => {
     const { description, size, amount } = req.body as GenerateImagesRequest;
-    if (!description || !validSizeProp(size)) {
+    if (!description || !validSizeProp(size) || !validAmountProp(amount)) {
         res.status(400).send({ success: false });
         return;
     }

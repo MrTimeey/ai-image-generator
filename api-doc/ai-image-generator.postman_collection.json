@@ -13,7 +13,7 @@
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n    \"description\": \"a friendly-looking dinosaur wearing a hoodie while holding a coffee, digital art\",\r\n    \"amount\": 1,\r\n    \"size\": \"SMALL\"\r\n}",
+					"raw": "{\r\n    \"description\": \"a friendly-looking dinosaur wearing a hoodie while running on a treadmill, digital art\",\r\n    \"amount\": 1,\r\n    \"size\": \"SMALL\"\r\n}",
 					"options": {
 						"raw": {
 							"language": "json"
