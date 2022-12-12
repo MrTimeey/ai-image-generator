@@ -2,6 +2,7 @@ export type ApplicationConfig = {
     port: number;
     apiKey: string;
     organization: string;
+    baseFolder: string;
 };
 
 export enum ImageSize {
@@ -10,14 +11,29 @@ export enum ImageSize {
     LARGE = '1024x1024',
 }
 
+export type ImageUrl = {
+    id: string;
+    url: string;
+};
+
 export type GeneratedImages = {
     createdAt: string;
     description: string;
-    urls: string[];
+    urls: ImageUrl[];
 };
 
 export type GenerateImagesRequest = {
     description: string;
     amount?: number;
     size?: 'SMALL' | 'MEDIUM' | 'LARGE';
+};
+
+export type ImageDataStore = {
+    entries: number;
+    data: {
+        id: string;
+        url: string;
+        createdAt: string;
+        description: string;
+    }[];
 };

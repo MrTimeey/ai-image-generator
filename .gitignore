@@ -16,6 +16,7 @@ coverage
 .env
 
 .helm
+/generated
 
 /cypress/videos/
 /cypress/screenshots/

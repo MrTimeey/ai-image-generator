@@ -1,6 +1,7 @@
 import { Configuration, OpenAIApi } from 'openai';
 import appConfig from '../common/appConfig';
 import { GeneratedImages, ImageSize } from '../types';
+import { v4 as uuidv4 } from 'uuid';
 import { currentTimestamp, formatTimestamp } from '../common/timeUtils';
 
 const configuration = new Configuration({
@@ -17,7 +18,11 @@ export const generateImages = async (prompt: string, numberOfImages = 1, size: I
             size: size,
         });
         const created = formatTimestamp(response.data.created);
-        const images = response.data.data.map((e) => e.url ?? 'not_found').filter((e) => e !== 'not_found') ?? [];
+        const images =
+            response.data.data
+                .map((e) => e.url ?? 'not_found')
+                .filter((e) => e !== 'not_found')
+                .map((u) => ({ id: uuidv4(), url: u })) ?? [];
         return {
             createdAt: created,
             description: prompt,
