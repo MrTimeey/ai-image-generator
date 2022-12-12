@@ -1,6 +1,7 @@
 export type ApplicationConfig = {
     port: number;
     apiKey: string;
+    saveImagesEnabled: boolean;
     organization: string;
     baseFolder: string;
 };

@@ -2,6 +2,7 @@ import express from 'express';
 import { generateImages } from '../controller/openAiController';
 import { GeneratedImages, GenerateImagesRequest, ImageSize } from '../types';
 import { downloadImage, persistImage } from '../common/fileUtils';
+import appConfig from '../common/appConfig';
 
 const openAi: express.Router = express.Router();
 
@@ -22,10 +23,12 @@ openAi.post('/generate-image', async (req, res) => {
         res.status(500).send({ success: false });
         return;
     }
-    images.urls.forEach((image) => {
-        persistImage(image, images.createdAt, images.description);
-        downloadImage(image, images.createdAt);
-    });
+    if (appConfig.saveImagesEnabled) {
+        images.urls.forEach((image) => {
+            persistImage(image, images.createdAt, images.description);
+            downloadImage(image, images.createdAt);
+        });
+    }
     res.status(200).send({ createdAt: images.createdAt, urls: images.urls });
 });
 
