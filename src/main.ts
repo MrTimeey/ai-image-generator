@@ -2,6 +2,7 @@ import config from './common/appConfig';
 import express from 'express';
 import cors from 'cors';
 import openAi from './routes/openAi';
+import * as path from 'path';
 /*import apiDoc from './routes/apiDoc';
 import swaggerUi from 'swagger-ui-express';
 import swaggerDocument from '../api-doc/openapi.json';*/
@@ -17,6 +18,8 @@ apiRouter.use('/openai', openAi);
 app.use('/api', apiRouter);
 /*app.use('/swagger', swaggerUi.serve, swaggerUi.setup(swaggerDocument, { explorer: false }));
 app.use('/doc', apiDoc);*/
+
+app.use(express.static(path.join(__dirname, 'static')));
 
 app.listen(config.port, () => {
     console.log(`it's alive on http://localhost:${config.port}`);
