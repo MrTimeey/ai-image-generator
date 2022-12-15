@@ -12,6 +12,7 @@ OpenAI provides an amount of free tier to get in touch with the api, so you don'
 Create `.env` from `.env.example`.
 
 ## Execution
+There are different ways to start the application. After start up it will be available on http://localhost:8080. 
 
 ### Dev-Mode
 ```shell
