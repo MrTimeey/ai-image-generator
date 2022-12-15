@@ -1,45 +1,221 @@
 {
   "openapi": "3.0.1",
   "info": {
-    "title": "node-typescript-express-starter",
+    "title": "AI Image Generator",
     "description": "",
     "contact": {
       "name": "GitHub",
-      "url": "https://github.com/MrTimeey/node-typescript-express-starter"
+      "url": "https://github.com/MrTimeey/ai-image-generator"
     },
     "license": {
       "name": "Licensed Under MIT",
-      "url": "https://github.com/MrTimeey/node-typescript-express-starter/blob/main/LICENSE"
+      "url": "https://github.com/MrTimeey/ai-image-generator/blob/main/LICENSE"
     },
     "version": "1.0.0"
   },
   "servers": [
     {
-      "url": "http://localhost:8080/"
+      "url": "http://localhost:8080"
+    }
+  ],
+  "tags": [
+    {
+      "name": "API"
+    },
+    {
+      "name": "UI"
+    },
+    {
+      "name": "Docs"
     }
   ],
   "paths": {
-    "/api/hello": {
-      "get": {
-        "summary": "Returns greeting message",
-        "description": "Simple hello message",
+    "/api/openai/generate-images": {
+      "post": {
+        "tags": [
+          "API"
+        ],
+        "summary": "Generates image",
+        "description": "Generates the image based on provided input parameters",
+        "requestBody": {
+          "description": "The word to add",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateImageRequest"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
-            "description": "A simple message",
+            "description": "Information of the generated image",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GeneratedImage"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/": {
+      "get": {
+        "tags": [
+          "UI"
+        ],
+        "summary": "Returns the UI",
+        "description": "Serves static HTML to call the API",
+        "responses": {
+          "200": {
+            "description": "A simple form to execute calls against the API",
+            "content": {
+              "text/html": {}
+            }
+          }
+        }
+      }
+    },
+    "/swagger": {
+      "get": {
+        "tags": [
+          "Docs"
+        ],
+        "summary": "Returns the Swagger UI",
+        "description": "Serves static Swagger UI",
+        "responses": {
+          "200": {
+            "description": "The Swagger UI",
+            "content": {
+              "text/html": {}
+            }
+          }
+        }
+      }
+    },
+    "/api/doc": {
+      "get": {
+        "tags": [
+          "Docs"
+        ],
+        "summary": "Returns the list of all provided api-doc resources",
+        "responses": {
+          "200": {
+            "description": "A list of all provided api-doc resources",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "msg": {
-                      "type": "string",
-                      "description": "Simple message",
-                      "example": "Hello World"
+                    "providedFiles": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "example": "/openapi.json"
+                      }
                     }
                   }
                 }
+
               }
             }
+          }
+        }
+
+      }
+    },
+    "/api/doc/openapi.json": {
+      "get": {
+        "tags": [
+          "Docs"
+        ],
+        "summary": "Returns the openapi.json",
+        "responses": {
+          "200": {
+            "description": "The openapi.json which is the base for this document",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      }
+    },
+    "/ai-image-generator.postman_collection.json": {
+      "get": {
+        "tags": [
+          "Docs"
+        ],
+        "summary": "Returns the Postman collection",
+        "responses": {
+          "200": {
+            "description": "The Postman collection for the project",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "GenerateImageRequest": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string",
+            "description": "The description of the image",
+            "example": "A friendly-looking dinosaur wearing a hoodie while running on a treadmill, digital art",
+            "required": true
+          },
+          "amount": {
+            "type": "integer",
+            "description": "The amount of image variations ",
+            "example": 1,
+            "minimum": 1,
+            "maximum": 10,
+            "default": 1,
+            "required": false
+          },
+          "size": {
+            "type": "string",
+            "enum": [ "SMALL", "MEDIUM", "LARGE"],
+            "description": "The size of the generated image. Possible options: 'SMALL' (256x256), 'MEDIUM' (512x512), 'LARGE' (1024x1024)",
+            "required": false,
+            "default": "SMALL",
+            "example": "SMALL"
+          }
+        }
+      },
+      "GeneratedImage": {
+        "type": "object",
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "description": "The timestamp of the image creation",
+            "example": "15-12-2022_11-57-34"
+          },
+          "urls": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImageUrl"
+            }
+          }
+        }
+      },
+      "ImageUrl": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "UUID",
+            "example": "31b353eb-74c7-4f16-b411-5a3367afb518"
+          },
+          "url": {
+            "type": "string",
+            "description": "The url to the generated image"
           }
         }
       }

@@ -23,7 +23,7 @@ async function generateImageRequest(prompt, size, amount) {
     try {
         showSpinner();
 
-        const response = await fetch('/api/openai/generate-image', {
+        const response = await fetch('/api/openai/generate-images', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

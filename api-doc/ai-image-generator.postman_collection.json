@@ -7,6 +7,73 @@
 	},
 	"item": [
 		{
+			"name": "docs",
+			"item": [
+				{
+					"name": "Get api-docs",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8080/api/doc",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"api",
+								"doc"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get openapi.json",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8080/api/doc/openapi.json",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"api",
+								"doc",
+								"openapi.json"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Postman collection",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8080/api/doc/ai-image-generator.postman_collection.json",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"api",
+								"doc",
+								"ai-image-generator.postman_collection.json"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
 			"name": "Generate Images",
 			"request": {
 				"method": "POST",
@@ -21,7 +88,7 @@
 					}
 				},
 				"url": {
-					"raw": "http://localhost:8080/api/openai/generate-image",
+					"raw": "http://localhost:8080/api/openai/generate-images",
 					"protocol": "http",
 					"host": [
 						"localhost"
@@ -30,7 +97,7 @@
 					"path": [
 						"api",
 						"openai",
-						"generate-image"
+						"generate-images"
 					]
 				}
 			},

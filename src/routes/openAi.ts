@@ -17,7 +17,7 @@ const validAmountProp = (amount: number | undefined): boolean => {
     return amount >= 1 && amount <= 10;
 };
 
-openAi.post('/generate-image', async (req, res) => {
+openAi.post('/generate-images', async (req, res) => {
     const { description, size, amount } = req.body as GenerateImagesRequest;
     if (!description || !validSizeProp(size) || !validAmountProp(amount)) {
         res.status(400).send({ success: false });
