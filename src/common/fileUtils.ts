@@ -3,6 +3,9 @@ import fs from 'fs';
 import { ImageUrl } from '../types';
 import { getDataStore, saveDataStore } from './dataStore';
 import appConfig from './appConfig';
+import { randomUUID } from 'crypto';
+
+const tempDir = './temp';
 
 export const createFolder = (name: string) => {
     if (!fs.existsSync(name)) {
@@ -10,7 +13,7 @@ export const createFolder = (name: string) => {
     }
 };
 
-export const persistImage = (image: ImageUrl, createdAt: string, description: string): void => {
+export const persistImage = (image: ImageUrl, createdAt: string, description = ''): void => {
     const dataStore = getDataStore();
     dataStore.data.push({
         createdAt: createdAt,
@@ -36,4 +39,25 @@ export const downloadImage = (image: ImageUrl, createdAt: string): void => {
                     .on('error', (e: unknown) => reject(e));
             })
     );
+};
+
+export const createTempImage = (base64String: string): string => {
+    createFolder('./temp');
+    const regex = /data:image\/(.*?);base64,/;
+    let fileEnding = 'png';
+    if (regex.test(base64String)) {
+        const matchedString = base64String.match(regex) ?? [];
+        fileEnding = matchedString.length > 0 ? matchedString[1] : 'png';
+        base64String = base64String.replace(regex, '');
+    }
+    const buffer = Buffer.from(base64String, 'base64');
+    const targetPath = `${tempDir}/${randomUUID()}.${fileEnding}`;
+    fs.writeFileSync(targetPath, buffer);
+    return targetPath;
+};
+
+export const deleteTempFolder = () => {
+    if (fs.existsSync(tempDir)) {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+    }
 };

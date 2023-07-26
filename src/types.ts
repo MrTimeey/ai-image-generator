@@ -17,17 +17,29 @@ export type ImageUrl = {
     url: string;
 };
 
-export type GeneratedImages = {
+export interface GeneratedImages extends BaseImages {
     createdAt: string;
     description: string;
     urls: ImageUrl[];
-};
+}
 
-export type GenerateImagesRequest = {
+export interface BaseImages {
+    createdAt: string;
+    urls: ImageUrl[];
+}
+
+export interface GenerateImagesRequest extends BaseImageRequest {
     description: string;
+}
+export interface GenerateAlternativesRequest extends BaseImageRequest {
+    baseImage: string;
+    originalImageName: string;
+}
+
+export interface BaseImageRequest {
     amount?: number;
     size?: 'SMALL' | 'MEDIUM' | 'LARGE';
-};
+}
 
 export type ImageDataStore = {
     entries: number;

@@ -7,7 +7,7 @@ function onSubmit(e) {
     document.getElementsByClassName('image-container')[0].replaceChildren();
     document.getElementsByClassName('image-container')[0].appendChild(msgElement);
 
-    const baseImagePath = document.querySelector('#baseImage').value;
+    let baseImagePath = document.querySelector('#baseImage').value;
     const baseImage = document.querySelector('#hiddenBaseImage');
     const size = document.querySelector('#size').value;
     const amount = document.querySelector('#amount').value;
@@ -16,12 +16,15 @@ function onSubmit(e) {
         alert('Please choose an image');
         return;
     }
-    console.log('TOM', baseImagePath, baseImage);
-
-    generateImageAlternatives(baseImage.src, size, amount);
+    const regex = /fakepath\\(.*?\.(\bpng\b|\bjpeg\b))/;
+    if (regex.test(baseImagePath)) {
+        const matched = baseImagePath.match(regex) ?? [];
+        baseImagePath = matched.length > 0 ? matched[1] : baseImagePath;
+    }
+    generateImageAlternatives(baseImage.src, baseImagePath, size, amount);
 }
 
-async function generateImageAlternatives(image, size, amount) {
+async function generateImageAlternatives(image, baseImageName, size, amount) {
     try {
         showSpinner();
 
@@ -32,6 +35,7 @@ async function generateImageAlternatives(image, size, amount) {
             },
             body: JSON.stringify({
                 baseImage: image,
+                originalImageName: baseImageName,
                 amount: parseInt(amount),
                 size: size.toUpperCase(),
             }),

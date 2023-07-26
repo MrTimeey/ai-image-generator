@@ -10,7 +10,7 @@ import swaggerDocument from '../api-doc/openapi.json';
 const app: express.Application = express();
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
 
 const apiRouter: express.Router = express.Router();
 apiRouter.use('/openai', openAi);
