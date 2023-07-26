@@ -3,6 +3,5 @@
   "semi": true,
   "tabWidth": 4,
   "singleQuote": true,
-  "printWidth": 200,
-  "endOfLine": "lf"
+  "printWidth": 200
 }

@@ -14,7 +14,7 @@
   <link rel="stylesheet" href="css/style.css" />
   <link rel="stylesheet" href="css/spinner.css" />
 
-  <script src="js/main.js" defer></script>
+  <script src="js/alternative.js" defer></script>
 </head>
 <body>
 <header>
@@ -33,7 +33,6 @@
         <li>
           <a href="/swagger" target="_blank">SwaggerUI</a>
         </li>
-
       </ul>
     </div>
   </div>
@@ -41,9 +40,14 @@
 <main>
   <section class="showcase">
     <form id="image-form">
-      <h1>Describe An Image</h1>
+      <h1>Generate Alternatives</h1>
+      <img id="hiddenBaseImage" src="#" alt="your image" style="display: none"/>
       <div class="form-control">
-        <input type="text" id="prompt" placeholder="Enter Text" />
+        <input type="file"
+               id="baseImage"
+               name="baseImage"
+               accept="image/png, image/jpeg"
+               onchange="readURL(this);">
       </div>
       <!-- size -->
       <div class="form-control">
