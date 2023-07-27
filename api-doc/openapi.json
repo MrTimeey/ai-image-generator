@@ -38,11 +38,42 @@
         "summary": "Generates image",
         "description": "Generates the image based on provided input parameters",
         "requestBody": {
-          "description": "The word to add",
+          "description": "The generation request",
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/GenerateImageRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Information of the generated image",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GeneratedImage"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/openai/generate-alternative-images": {
+      "post": {
+        "tags": [
+          "API"
+        ],
+        "summary": "Generates alternative image",
+        "description": "Generates alternatives based on provided image",
+        "requestBody": {
+          "description": "The alternative generation request",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateAlternativesRequest"
               }
             }
           }
@@ -168,6 +199,34 @@
             "type": "string",
             "description": "The description of the image",
             "example": "A friendly-looking dinosaur wearing a hoodie while running on a treadmill, digital art",
+            "required": true
+          },
+          "amount": {
+            "type": "integer",
+            "description": "The amount of image variations ",
+            "example": 1,
+            "minimum": 1,
+            "maximum": 10,
+            "default": 1,
+            "required": false
+          },
+          "size": {
+            "type": "string",
+            "enum": [ "SMALL", "MEDIUM", "LARGE"],
+            "description": "The size of the generated image. Possible options: 'SMALL' (256x256), 'MEDIUM' (512x512), 'LARGE' (1024x1024)",
+            "required": false,
+            "default": "SMALL",
+            "example": "SMALL"
+          }
+        }
+      },
+      "GenerateAlternativesRequest": {
+        "type": "object",
+        "properties": {
+          "baseImage": {
+            "type": "string",
+            "description": "The content of an image tag",
+            "example": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAwAAAABCAIAAABlidhuAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAAEnQAABJ0Ad5mH3gAAAARSURBVBhXY/z//z8DfsDAAABo4QL/OfELpAAAAABJRU5ErkJggg==",
             "required": true
           },
           "amount": {

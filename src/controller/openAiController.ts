@@ -13,7 +13,6 @@ const openai = new OpenAIApi(configuration);
 export const alternativeImages = async (image: File, numberOfImages = 1, size: ImageSize = ImageSize.SMALL): Promise<BaseImages> => {
     try {
         const response = await openai.createImageVariation(image, numberOfImages, size);
-        console.log('TIM', response.data);
         const created = formatTimestamp(response.data.created);
         const images =
             response.data.data

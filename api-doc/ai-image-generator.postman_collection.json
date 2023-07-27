@@ -102,6 +102,36 @@
 				}
 			},
 			"response": []
+		},
+		{
+			"name": "Generate Alternative Images",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"baseImage\": \"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAwAAAABCAIAAABlidhuAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAAEnQAABJ0Ad5mH3gAAAARSURBVBhXY/z//z8DfsDAAABo4QL/OfELpAAAAABJRU5ErkJggg==\",\r\n    \"amount\": 1,\r\n    \"size\": \"SMALL\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/api/openai/generate-alternative-images",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"openai",
+						"generate-alternative-images"
+					]
+				}
+			},
+			"response": []
 		}
 	]
 }

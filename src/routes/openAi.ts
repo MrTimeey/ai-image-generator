@@ -58,7 +58,7 @@ openAi.post('/generate-alternative-images', async (req, res) => {
     }
     if (appConfig.saveImagesEnabled) {
         images.urls.forEach((image) => {
-            persistImage(image, images.createdAt, originalImageName);
+            persistImage(image, images.createdAt, `Alternative for: ${originalImageName}`);
             downloadImage(image, images.createdAt);
         });
     }
