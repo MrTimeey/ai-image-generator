@@ -15,6 +15,7 @@ export enum ImageSize {
 export type ImageUrl = {
     id: string;
     url: string;
+    fileName: string;
 };
 
 export interface GeneratedImages extends BaseImages {
@@ -46,6 +47,7 @@ export type ImageDataStore = {
     data: {
         id: string;
         url: string;
+        fileName?: string;
         createdAt: string;
         description: string;
     }[];

@@ -1,9 +1,9 @@
 import express from 'express';
 import { generateImages, alternativeImages } from '../controller/openAiController';
 import { BaseImages, GenerateAlternativesRequest, GeneratedImages, GenerateImagesRequest, ImageSize } from '../types';
-import { createTempImage, deleteTempFolder, downloadImage, persistImage } from "../common/fileUtils";
+import { createTempImage, deleteTempFolder, downloadImage, persistImage } from '../common/fileUtils';
 import appConfig from '../common/appConfig';
-import fs from "fs";
+import fs from 'fs';
 
 const openAi: express.Router = express.Router();
 
@@ -37,10 +37,10 @@ openAi.post('/generate-images', async (req, res) => {
     if (appConfig.saveImagesEnabled) {
         images.urls.forEach((image) => {
             persistImage(image, images.createdAt, images.description);
-            downloadImage(image, images.createdAt);
+            downloadImage(image);
         });
     }
-    res.status(200).send({ createdAt: images.createdAt, urls: images.urls });
+    res.status(200).send({ createdAt: images.createdAt, images: images.urls });
 });
 
 openAi.post('/generate-alternative-images', async (req, res) => {
@@ -59,10 +59,10 @@ openAi.post('/generate-alternative-images', async (req, res) => {
     if (appConfig.saveImagesEnabled) {
         images.urls.forEach((image) => {
             persistImage(image, images.createdAt, `Alternative for: ${originalImageName}`);
-            downloadImage(image, images.createdAt);
+            downloadImage(image);
         });
     }
-    res.status(200).send({ createdAt: images.createdAt, urls: images.urls });
+    res.status(200).send({ createdAt: images.createdAt, images: images.urls });
 });
 
 export default openAi;

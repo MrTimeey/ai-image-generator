@@ -10,5 +10,5 @@ export function formatTimestamp(unixTimestamp: number): string {
 }
 
 const formatDate = (date: Date): string => {
-    return moment(date).format('DD-MM-YYYY_HH-mm-ss');
+    return moment(date).format('YYYY-MM-DD_HH-mm');
 };

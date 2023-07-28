@@ -49,7 +49,7 @@ async function generateImageAlternatives(image, baseImageName, size, amount) {
         const data = await response.json();
 
         let imagesContainer = document.getElementsByClassName('image-container')[0];
-        data.urls.forEach((imageUrl) => {
+        data.images.forEach((imageUrl) => {
             let imageElement = document.createElement('img');
             imageElement.src = imageUrl.url;
             imagesContainer.appendChild(imageElement);

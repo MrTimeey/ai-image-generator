@@ -253,8 +253,8 @@
         "properties": {
           "createdAt": {
             "type": "string",
-            "description": "The timestamp of the image creation",
-            "example": "15-12-2022_11-57-34"
+            "description": "The timestamp of the image creation - Format: YYYY-MM-DD_HH-mm",
+            "example": "2022-12-15_11-57"
           },
           "urls": {
             "type": "array",
@@ -275,6 +275,11 @@
           "url": {
             "type": "string",
             "description": "The url to the generated image"
+          },
+          "fileName": {
+            "type": "string",
+            "description": "The name of the saved image file",
+            "example": "2022-12-15_11-57_31b353eb-74c7-4f16-b411-5a3367afb518.png"
           }
         }
       }

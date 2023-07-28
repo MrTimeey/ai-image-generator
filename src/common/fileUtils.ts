@@ -13,19 +13,24 @@ export const createFolder = (name: string) => {
     }
 };
 
+export const getFileName = (id: string, createdAt: string) => {
+    return `${createdAt}_${id}.png`;
+};
+
 export const persistImage = (image: ImageUrl, createdAt: string, description = ''): void => {
     const dataStore = getDataStore();
     dataStore.data.push({
         createdAt: createdAt,
         id: image.id,
         url: image.url,
+        fileName: image.fileName,
         description: description,
     });
     dataStore.entries++;
     saveDataStore(dataStore);
 };
 
-export const downloadImage = (image: ImageUrl, createdAt: string): void => {
+export const downloadImage = (image: ImageUrl): void => {
     createFolder(appConfig.baseFolder);
     axios({
         url: image.url,
@@ -34,7 +39,7 @@ export const downloadImage = (image: ImageUrl, createdAt: string): void => {
         (response) =>
             new Promise<void>((resolve, reject) => {
                 response.data
-                    .pipe(fs.createWriteStream(`${appConfig.baseFolder}/${createdAt}_${image.id}.png`))
+                    .pipe(fs.createWriteStream(`${appConfig.baseFolder}/${image.fileName}`))
                     .on('finish', () => resolve())
                     .on('error', (e: unknown) => reject(e));
             })

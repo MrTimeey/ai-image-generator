@@ -43,9 +43,9 @@ async function generateImageRequest(prompt, size, amount) {
         const data = await response.json();
 
         let imagesContainer = document.getElementsByClassName('image-container')[0];
-        data.urls.forEach((imageUrl) => {
+        data.images.forEach((imageResponse) => {
             let imageElement = document.createElement('img');
-            imageElement.src = imageUrl.url;
+            imageElement.src = imageResponse.url;
             imagesContainer.appendChild(imageElement);
         });
     } catch (error) {

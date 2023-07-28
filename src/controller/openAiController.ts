@@ -3,6 +3,7 @@ import appConfig from '../common/appConfig';
 import { BaseImages, GeneratedImages, ImageSize } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { currentTimestamp, formatTimestamp } from '../common/timeUtils';
+import { getFileName } from "../common/fileUtils";
 
 const configuration = new Configuration({
     organization: appConfig.organization,
@@ -18,7 +19,10 @@ export const alternativeImages = async (image: File, numberOfImages = 1, size: I
             response.data.data
                 .map((e) => e.url ?? 'not_found')
                 .filter((e) => e !== 'not_found')
-                .map((u) => ({ id: uuidv4(), url: u })) ?? [];
+                .map((u) => {
+                    const id = uuidv4();
+                    return { id: id, url: u, fileName: getFileName(id, created) };
+                }) ?? [];
         return {
             createdAt: created,
             urls: images,
@@ -45,7 +49,10 @@ export const generateImages = async (prompt: string, numberOfImages = 1, size: I
             response.data.data
                 .map((e) => e.url ?? 'not_found')
                 .filter((e) => e !== 'not_found')
-                .map((u) => ({ id: uuidv4(), url: u })) ?? [];
+                .map((u) => {
+                    const id = uuidv4();
+                    return { id: id, url: u, fileName: getFileName(id, created) };
+                }) ?? [];
         return {
             createdAt: created,
             description: prompt,
