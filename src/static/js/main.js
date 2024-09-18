@@ -9,6 +9,7 @@ function onSubmit(e) {
 
     const prompt = document.querySelector('#prompt').value;
     const size = document.querySelector('#size').value;
+    const quality = document.querySelector('#quality').value;
     const model = document.querySelector('#model').value;
     const amount = document.querySelector('#amount').value;
 
@@ -17,10 +18,10 @@ function onSubmit(e) {
         return;
     }
 
-    generateImageRequest(prompt, model, size, amount);
+    generateImageRequest(prompt, model, size, amount, quality);
 }
 
-async function generateImageRequest(prompt, model, size, amount) {
+async function generateImageRequest(prompt, model, size, amount, quality) {
     try {
         showSpinner();
 
@@ -34,6 +35,7 @@ async function generateImageRequest(prompt, model, size, amount) {
                 languageModel: model,
                 amount: parseInt(amount),
                 size: size.toUpperCase(),
+                quality: quality.toUpperCase(),
             }),
         });
 
@@ -68,6 +70,8 @@ function removeSpinner() {
 function changePossibleValues() {
     const selectedLanguageModel = languageModelValues.value;
     if (selectedLanguageModel === 'DALL_E_TWO') {
+        addOptionValue('#quality', 'Standard', 'STANDARD', true);
+        removeOptionValue('#quality', 'HD');
         addOptionValue('#amount', '1', '1', true);
         addOptionValue('#amount', '2', '2');
         addOptionValue('#amount', '3', '3');
@@ -78,6 +82,8 @@ function changePossibleValues() {
         removeOptionValue('#size', 'large_wide');
         removeOptionValue('#size', 'large_horizontal');
     } else {
+        addOptionValue('#quality', 'Standard', 'STANDARD', true);
+        addOptionValue('#quality', 'HD', 'HD');
         addOptionValue('#amount', '1', '1', true);
         removeOptionValue('#amount', '2');
         removeOptionValue('#amount', '3');

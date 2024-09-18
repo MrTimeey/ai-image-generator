@@ -44,29 +44,39 @@
                     <div class="form-control">
                         <input type="text" id="prompt" placeholder="Enter Text" />
                     </div>
-                    <!-- Select language model -->
-                    <div class="form-control">
-                        <select name="model" id="model">
-                            <option value="DALL_E_TWO" selected>DALL·E 2</option>
-                            <option value="DALL_E_THREE">DALL·E 3</option>
-                        </select>
+                    <div class="options">
+                        <!-- Select language model -->
+                        <div class="form-control">
+                            <select name="model" id="model">
+                                <option value="DALL_E_TWO" selected>DALL·E 2</option>
+                                <option value="DALL_E_THREE">DALL·E 3</option>
+                            </select>
+                        </div>
+                        <!-- size -->
+                        <div class="form-control">
+                            <select name="size" id="size">
+                                <option value="small" selected>Small</option>
+                                <option value="medium">Medium</option>
+                                <option value="large">Large</option>
+                            </select>
+                        </div>
                     </div>
-                    <!-- size -->
-                    <div class="form-control">
-                        <select name="size" id="size">
-                            <option value="small" selected>Small</option>
-                            <option value="medium">Medium</option>
-                            <option value="large">Large</option>
-                        </select>
-                    </div>
-                    <!-- amount -->
-                    <div class="form-control">
-                        <select name="amount" id="amount">
-                            <option value="1" selected>1</option>
-                            <option value="2">2</option>
-                            <option value="3">3</option>
-                            <option value="4">4</option>
-                        </select>
+                    <div class="options">
+                        <!-- amount -->
+                        <div class="form-control">
+                            <select name="amount" id="amount">
+                                <option value="1" selected>1</option>
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                                <option value="4">4</option>
+                            </select>
+                        </div>
+                        <!-- Select quality -->
+                        <div class="form-control">
+                            <select name="quality" id="quality">
+                                <option value="STANDARD" selected>Standard</option>
+                            </select>
+                        </div>
                     </div>
                     <button type="submit" class="btn">Generate</button>
                 </form>

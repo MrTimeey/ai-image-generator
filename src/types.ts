@@ -19,6 +19,11 @@ export enum LanguageModel {
     DALL_E_THREE = 'dall-e-3',
 }
 
+export enum ImageQuality {
+    STANDARD = 'standard',
+    HD = 'hd',
+}
+
 export type ImageUrl = {
     id: string;
     url: string;
@@ -48,6 +53,7 @@ export interface BaseImageRequest {
     amount?: number;
     languageModel?: 'DALL_E_TWO' | 'DALL_E_THREE';
     size?: 'SMALL' | 'MEDIUM' | 'LARGE';
+    quality?: 'STANDARD' | 'HD';
 }
 
 export type ImageDataStore = {

@@ -72,6 +72,15 @@ body {
     width: 100%;
 }
 
+.showcase form .options {
+    display: flex;
+    align-items: center;
+    justify-content: space-evenly;
+    flex-flow: wrap;
+    height: 100%;
+    width: 70%;
+}
+
 .showcase form input,
 form select {
     font-size: 20px;

@@ -1,6 +1,14 @@
 import express from 'express';
 import { alternativeImages, generateImages } from '../controller/openAiController';
-import { BaseImages, GenerateAlternativesRequest, GeneratedImages, GenerateImagesRequest, ImageSize, LanguageModel } from '../types';
+import {
+    BaseImages,
+    GenerateAlternativesRequest,
+    GeneratedImages,
+    GenerateImagesRequest,
+    ImageQuality,
+    ImageSize,
+    LanguageModel,
+} from '../types';
 import { createTempImage, deleteTempFolder, downloadImage, persistImage } from '../common/fileUtils';
 import appConfig from '../common/appConfig';
 import fs from 'fs';
@@ -30,16 +38,21 @@ const getTypedLanguageModel = (languageModel: 'DALL_E_TWO' | 'DALL_E_THREE' | un
     return languageModel && Object.keys(LanguageModel) ? LanguageModel[languageModel] : LanguageModel.DALL_E_TWO;
 };
 
+const getTypedQuality = (quality: 'STANDARD' | 'HD' | undefined) => {
+    return quality && Object.keys(quality) ? ImageQuality[quality] : ImageQuality.STANDARD;
+};
+
 openAi.post('/generate-images', async (req, res) => {
-    const { description, languageModel, size, amount } = req.body as GenerateImagesRequest;
+    const { description, languageModel, quality, size, amount } = req.body as GenerateImagesRequest;
     const typedLanguageModel = getTypedLanguageModel(languageModel);
+    const typedQuality = getTypedQuality(quality);
     if (!description || !validSizeProp(typedLanguageModel, size) || !validAmountProp(typedLanguageModel, amount)) {
         res.status(400).send({ success: false });
         return;
     }
     const typedImageSize = getTypedImageSize(size);
 
-    const images: GeneratedImages = await generateImages(description, typedLanguageModel, amount, typedImageSize);
+    const images: GeneratedImages = await generateImages(description, typedLanguageModel, amount, typedImageSize, typedQuality);
     if (images.urls.length === 0) {
         res.status(500).send({ success: false });
         return;

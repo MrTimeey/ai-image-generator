@@ -1,6 +1,6 @@
 import { ClientOptions, OpenAI } from 'openai';
 import appConfig from '../common/appConfig';
-import { BaseImages, GeneratedImages, ImageSize, LanguageModel } from '../types';
+import { BaseImages, GeneratedImages, ImageQuality, ImageSize, LanguageModel } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { currentTimestamp } from '../common/timeUtils';
 import { getFileName } from '../common/fileUtils';
@@ -58,13 +58,20 @@ export const alternativeImages = async (image: File, numberOfImages = 1, languag
     return { createdAt: currentTimestamp(), urls: [] };
 };
 
-export const generateImages = async (prompt: string, languageModel: LanguageModel = LanguageModel.DALL_E_TWO, numberOfImages = 1, size: ImageSize = ImageSize.SMALL): Promise<GeneratedImages> => {
+export const generateImages = async (
+    prompt: string,
+    languageModel: LanguageModel = LanguageModel.DALL_E_TWO,
+    numberOfImages = 1,
+    size: ImageSize = ImageSize.SMALL,
+    quality: ImageQuality = ImageQuality.STANDARD
+): Promise<GeneratedImages> => {
     try {
         const response = await openai.images.generate({
             model: languageModel,
             prompt: prompt,
             n: numberOfImages,
             size: size,
+            quality: quality,
         });
         const created = currentTimestamp();
         const images =
