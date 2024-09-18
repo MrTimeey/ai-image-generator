@@ -9,6 +9,7 @@ function onSubmit(e) {
 
     let baseImagePath = document.querySelector('#baseImage').value;
     const baseImage = document.querySelector('#hiddenBaseImage');
+    const model = document.querySelector('#model').value;
     const size = document.querySelector('#size').value;
     const amount = document.querySelector('#amount').value;
 
@@ -21,10 +22,10 @@ function onSubmit(e) {
         const matched = baseImagePath.match(regex) ?? [];
         baseImagePath = matched.length > 0 ? matched[1] : baseImagePath;
     }
-    generateImageAlternatives(baseImage.src, baseImagePath, size, amount);
+    generateImageAlternatives(baseImage.src, baseImagePath, model, size, amount);
 }
 
-async function generateImageAlternatives(image, baseImageName, size, amount) {
+async function generateImageAlternatives(image, baseImageName, model, size, amount) {
     try {
         showSpinner();
 
@@ -37,6 +38,7 @@ async function generateImageAlternatives(image, baseImageName, size, amount) {
                 baseImage: image,
                 originalImageName: baseImageName,
                 amount: parseInt(amount),
+                languageModel: model,
                 size: size.toUpperCase(),
             }),
         });

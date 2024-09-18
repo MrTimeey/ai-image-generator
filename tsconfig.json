@@ -1,23 +1,21 @@
 {
-  "ts-node": {
+    "ts-node": {
+        "compilerOptions": {
+            "module": "commonjs"
+        }
+    },
     "compilerOptions": {
-      "module": "commonjs"
-    }
-  },
-  "compilerOptions": {
-    "module": "NodeNext",
-    "moduleResolution": "Node",
-    "esModuleInterop": true,
-    "resolveJsonModule": true,
-    "target": "ES2020",
-    "sourceMap": true,
-    "outDir": "./dist",
-    "strict": true,
-    "noUnusedLocals": true,
-    "noImplicitAny": true,
-    "noEmit": true
-  },
-  "include": [
-    "./src/**/*"
-  ],
+        "module": "NodeNext",
+        "moduleResolution": "Node",
+        "esModuleInterop": true,
+        "resolveJsonModule": true,
+        "target": "ES2020",
+        "sourceMap": true,
+        "outDir": "./dist",
+        "strict": true,
+        "noUnusedLocals": true,
+        "noImplicitAny": true,
+        "noEmit": true
+    },
+    "include": ["./src/**/*"]
 }

@@ -10,6 +10,13 @@ export enum ImageSize {
     SMALL = '256x256',
     MEDIUM = '512x512',
     LARGE = '1024x1024',
+    LARGE_VERTICAL = '1024x1792',
+    LARGE_HORIZONTAL = '1792x1024',
+}
+
+export enum LanguageModel {
+    DALL_E_TWO = 'dall-e-2',
+    DALL_E_THREE = 'dall-e-3',
 }
 
 export type ImageUrl = {
@@ -39,6 +46,7 @@ export interface GenerateAlternativesRequest extends BaseImageRequest {
 
 export interface BaseImageRequest {
     amount?: number;
+    languageModel?: 'DALL_E_TWO' | 'DALL_E_THREE';
     size?: 'SMALL' | 'MEDIUM' | 'LARGE';
 }
 
@@ -49,6 +57,7 @@ export type ImageDataStore = {
         url: string;
         fileName?: string;
         createdAt: string;
+        languageModel: LanguageModel;
         description: string;
     }[];
 };

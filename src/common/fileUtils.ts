@@ -1,6 +1,6 @@
 import axios from 'axios';
 import fs from 'fs';
-import { ImageUrl } from '../types';
+import { ImageUrl, LanguageModel } from '../types';
 import { getDataStore, saveDataStore } from './dataStore';
 import appConfig from './appConfig';
 import { randomUUID } from 'crypto';
@@ -17,13 +17,14 @@ export const getFileName = (id: string, createdAt: string) => {
     return `${createdAt}_${id}.png`;
 };
 
-export const persistImage = (image: ImageUrl, createdAt: string, description = ''): void => {
+export const persistImage = (image: ImageUrl, createdAt: string, languageModel: LanguageModel, description = ''): void => {
     const dataStore = getDataStore();
     dataStore.data.push({
         createdAt: createdAt,
         id: image.id,
         url: image.url,
         fileName: image.fileName,
+        languageModel: languageModel,
         description: description,
     });
     dataStore.entries++;
@@ -36,7 +37,7 @@ export const downloadImage = (image: ImageUrl): void => {
         url: image.url,
         responseType: 'stream',
     }).then(
-        (response) =>
+        (response: any) =>
             new Promise<void>((resolve, reject) => {
                 response.data
                     .pipe(fs.createWriteStream(`${appConfig.baseFolder}/${image.fileName}`))

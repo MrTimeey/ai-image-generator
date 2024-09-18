@@ -1,85 +1,85 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Image Generator</title>
-  <!-- Favicon -->
-  <link rel="apple-touch-icon" sizes="180x180" href="/favicon_io/apple-touch-icon.png">
-  <link rel="icon" type="image/png" sizes="32x32" href="/favicon_io/favicon-32x32.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="/favicon_io/favicon-16x16.png">
-  <link rel="manifest" href="/favicon_io/site.webmanifest">
+    <head>
+        <meta charset="UTF-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>AI Image Generator</title>
+        <!-- Favicon -->
+        <link rel="apple-touch-icon" sizes="180x180" href="/favicon_io/apple-touch-icon.png" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon_io/favicon-32x32.png" />
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon_io/favicon-16x16.png" />
+        <link rel="manifest" href="/favicon_io/site.webmanifest" />
 
-  <link rel="stylesheet" href="css/style.css" />
-  <link rel="stylesheet" href="css/spinner.css" />
+        <link rel="stylesheet" href="css/style.css" />
+        <link rel="stylesheet" href="css/spinner.css" />
 
-  <script src="js/alternative.js" defer></script>
-</head>
-<body>
-<header>
-  <div class="navbar">
-    <div class="logo">
-      <h2>AI Image Generator</h2>
-    </div>
-    <div class="nav-links">
-      <ul>
-        <li>
-          <a href="/index.html">Generator</a>
-        </li>
-        <li>
-          <a href="/alternative.html">Alternative</a>
-        </li>
-        <li>
-          <a href="/swagger" target="_blank">SwaggerUI</a>
-        </li>
-        <li>
-          <a href="https://beta.openai.com/docs" target="_blank">OpenAI API Docs</a>
-        </li>
-      </ul>
-    </div>
-  </div>
-</header>
-<main>
-  <section class="showcase">
-    <form id="image-form">
-      <h1>Generate Alternatives</h1>
-      <img id="hiddenBaseImage" src="#" alt="your image" style="display: none"/>
-      <div class="form-control">
-        <input type="file"
-               id="baseImage"
-               name="baseImage"
-               accept="image/png, image/jpeg"
-               onchange="readURL(this);">
-      </div>
-      <!-- size -->
-      <div class="form-control">
-        <select name="size" id="size">
-          <option value="small" selected>Small</option>
-          <option value="medium">Medium</option>
-          <option value="large">Large</option>
-        </select>
-      </div>
-      <!-- amount -->
-      <div class="form-control">
-        <select name="amount" id="amount">
-          <option value="1" selected>1</option>
-          <option value="2">2</option>
-          <option value="3">3</option>
-          <option value="4">4</option>
-        </select>
-      </div>
-      <button type="submit" class="btn">Generate</button>
-    </form>
-  </section>
+        <script src="js/alternative.js" defer></script>
+    </head>
+    <body>
+        <header>
+            <div class="navbar">
+                <div class="logo">
+                    <h2>AI Image Generator</h2>
+                </div>
+                <div class="nav-links">
+                    <ul>
+                        <li>
+                            <a href="/index.html">Generator</a>
+                        </li>
+                        <li>
+                            <a href="/alternative.html">Alternative</a>
+                        </li>
+                        <li>
+                            <a href="https://beta.openai.com/docs" target="_blank">OpenAI API Docs</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </header>
+        <main>
+            <section class="showcase">
+                <form id="image-form">
+                    <h1>Generate Alternatives</h1>
+                    <img id="hiddenBaseImage" src="#" alt="your image" style="display: none" />
+                    <div class="form-control">
+                        <input type="file" id="baseImage" name="baseImage" accept="image/png, image/jpeg" onchange="readURL(this);" />
+                    </div>
+                    <!-- Select language model -->
+                    <div class="form-control">
+                        <select name="model" id="model">
+                            <option value="DALL_E_TWO" selected>DALL·E 2</option>
+                            <!--<option value="DALL_E_THREE">DALL·E 3</option>-->
+                        </select>
+                    </div>
+                    <!-- size -->
+                    <div class="form-control">
+                        <select name="size" id="size">
+                            <option value="small" selected>Small</option>
+                            <option value="medium">Medium</option>
+                            <option value="large">Large</option>
+                        </select>
+                    </div>
+                    <!-- amount -->
+                    <div class="form-control">
+                        <select name="amount" id="amount">
+                            <option value="1" selected>1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn">Generate</button>
+                </form>
+            </section>
 
-  <section class="image">
-    <div class="image-container">
-      <h2 class="msg"></h2>
-    </div>
-  </section>
-</main>
+            <section class="image">
+                <div class="image-container">
+                    <h2 class="msg"></h2>
+                </div>
+            </section>
+        </main>
 
-<div class="spinner"></div>
-</body>
+        <div class="spinner"></div>
+    </body>
 </html>

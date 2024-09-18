@@ -1,25 +1,46 @@
-import { Configuration, OpenAIApi } from 'openai';
+import { ClientOptions, OpenAI } from 'openai';
 import appConfig from '../common/appConfig';
-import { BaseImages, GeneratedImages, ImageSize } from '../types';
+import { BaseImages, GeneratedImages, ImageSize, LanguageModel } from '../types';
 import { v4 as uuidv4 } from 'uuid';
-import { currentTimestamp, formatTimestamp } from '../common/timeUtils';
-import { getFileName } from "../common/fileUtils";
+import { currentTimestamp } from '../common/timeUtils';
+import { getFileName } from '../common/fileUtils';
 
-const configuration = new Configuration({
+const configuration: ClientOptions = {
     organization: appConfig.organization,
     apiKey: appConfig.apiKey,
-});
-const openai = new OpenAIApi(configuration);
+};
+const openai = new OpenAI(configuration);
 
-export const alternativeImages = async (image: File, numberOfImages = 1, size: ImageSize = ImageSize.SMALL): Promise<BaseImages> => {
+const mapImageSize = (size: string | undefined): ImageSize.SMALL | ImageSize.MEDIUM | ImageSize.LARGE => {
+    switch (size) {
+        case ImageSize.SMALL:
+            return ImageSize.SMALL;
+        case ImageSize.MEDIUM:
+            return ImageSize.MEDIUM;
+        case ImageSize.LARGE:
+            return ImageSize.LARGE;
+        case ImageSize.LARGE_HORIZONTAL:
+        case ImageSize.LARGE_VERTICAL:
+            return ImageSize.LARGE;
+        default:
+            return ImageSize.SMALL;
+    }
+};
+
+export const alternativeImages = async (image: File, numberOfImages = 1, languageModel: LanguageModel = LanguageModel.DALL_E_TWO, size: ImageSize = ImageSize.SMALL): Promise<BaseImages> => {
     try {
-        const response = await openai.createImageVariation(image, numberOfImages, size);
-        const created = formatTimestamp(response.data.created);
+        const response = await openai.images.createVariation({
+            model: languageModel,
+            image,
+            n: numberOfImages,
+            size: mapImageSize(size),
+        });
+        const created = currentTimestamp();
         const images =
-            response.data.data
-                .map((e) => e.url ?? 'not_found')
-                .filter((e) => e !== 'not_found')
-                .map((u) => {
+            response.data
+                .map((e: any) => e.url ?? 'not_found')
+                .filter((e: any) => e !== 'not_found')
+                .map((u: any) => {
                     const id = uuidv4();
                     return { id: id, url: u, fileName: getFileName(id, created) };
                 }) ?? [];
@@ -37,19 +58,20 @@ export const alternativeImages = async (image: File, numberOfImages = 1, size: I
     return { createdAt: currentTimestamp(), urls: [] };
 };
 
-export const generateImages = async (prompt: string, numberOfImages = 1, size: ImageSize = ImageSize.SMALL): Promise<GeneratedImages> => {
+export const generateImages = async (prompt: string, languageModel: LanguageModel = LanguageModel.DALL_E_TWO, numberOfImages = 1, size: ImageSize = ImageSize.SMALL): Promise<GeneratedImages> => {
     try {
-        const response = await openai.createImage({
+        const response = await openai.images.generate({
+            model: languageModel,
             prompt: prompt,
             n: numberOfImages,
             size: size,
         });
-        const created = formatTimestamp(response.data.created);
+        const created = currentTimestamp();
         const images =
-            response.data.data
-                .map((e) => e.url ?? 'not_found')
-                .filter((e) => e !== 'not_found')
-                .map((u) => {
+            response.data
+                .map((e: any) => e.url ?? 'not_found')
+                .filter((e: any) => e !== 'not_found')
+                .map((u: string) => {
                     const id = uuidv4();
                     return { id: id, url: u, fileName: getFileName(id, created) };
                 }) ?? [];

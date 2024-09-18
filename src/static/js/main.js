@@ -9,6 +9,7 @@ function onSubmit(e) {
 
     const prompt = document.querySelector('#prompt').value;
     const size = document.querySelector('#size').value;
+    const model = document.querySelector('#model').value;
     const amount = document.querySelector('#amount').value;
 
     if (prompt === '') {
@@ -16,10 +17,10 @@ function onSubmit(e) {
         return;
     }
 
-    generateImageRequest(prompt, size, amount);
+    generateImageRequest(prompt, model, size, amount);
 }
 
-async function generateImageRequest(prompt, size, amount) {
+async function generateImageRequest(prompt, model, size, amount) {
     try {
         showSpinner();
 
@@ -30,6 +31,7 @@ async function generateImageRequest(prompt, size, amount) {
             },
             body: JSON.stringify({
                 description: prompt,
+                languageModel: model,
                 amount: parseInt(amount),
                 size: size.toUpperCase(),
             }),
@@ -63,4 +65,55 @@ function removeSpinner() {
     document.querySelector('.spinner').classList.remove('show');
 }
 
+function changePossibleValues() {
+    const selectedLanguageModel = languageModelValues.value;
+    if (selectedLanguageModel === 'DALL_E_TWO') {
+        addOptionValue('#amount', '1', '1', true);
+        addOptionValue('#amount', '2', '2');
+        addOptionValue('#amount', '3', '3');
+        addOptionValue('#amount', '4', '4');
+        addOptionValue('#size', 'Small', 'small', true);
+        addOptionValue('#size', 'Medium', 'medium');
+        addOptionValue('#size', 'Large', 'large');
+        removeOptionValue('#size', 'large_wide');
+        removeOptionValue('#size', 'large_horizontal');
+    } else {
+        addOptionValue('#amount', '1', '1', true);
+        removeOptionValue('#amount', '2');
+        removeOptionValue('#amount', '3');
+        removeOptionValue('#amount', '4');
+        removeOptionValue('#size', 'small');
+        removeOptionValue('#size', 'medium');
+        addOptionValue('#size', 'Large', 'large', true);
+        addOptionValue('#size', 'Large Vertical', 'large_vertical');
+        addOptionValue('#size', 'Large Horizontal', 'large_horizontal');
+    }
+}
+
+function addOptionValue(target, text, value, selected = false) {
+    for (const opt of document.querySelector(target).options) {
+        if (opt.value === value) {
+            if (selected) opt.selected = selected;
+            return;
+        }
+    }
+    const option = document.createElement('option');
+    option.value = value;
+    option.innerHTML = text;
+    option.selected = selected;
+
+    document.querySelector(target).appendChild(option);
+}
+
+function removeOptionValue(target, value) {
+    for (const opt of document.querySelector(target).options) {
+        if (opt.value === value) {
+            document.querySelector(target).removeChild(opt);
+        }
+    }
+}
+
 document.querySelector('#image-form').addEventListener('submit', onSubmit);
+
+const languageModelValues = document.querySelector('#model');
+languageModelValues.addEventListener('click', changePossibleValues);
