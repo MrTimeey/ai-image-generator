@@ -79,7 +79,7 @@ function changePossibleValues() {
         addOptionValue('#size', 'Small', 'small', true);
         addOptionValue('#size', 'Medium', 'medium');
         addOptionValue('#size', 'Large', 'large');
-        removeOptionValue('#size', 'large_wide');
+        removeOptionValue('#size', 'large_vertical');
         removeOptionValue('#size', 'large_horizontal');
     } else {
         addOptionValue('#quality', 'Standard', 'STANDARD', true);
