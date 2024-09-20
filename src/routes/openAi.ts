@@ -1,14 +1,6 @@
 import express from 'express';
 import { alternativeImages, generateImages } from '../controller/openAiController';
-import {
-    BaseImages,
-    GenerateAlternativesRequest,
-    GeneratedImages,
-    GenerateImagesRequest,
-    ImageQuality,
-    ImageSize,
-    LanguageModel,
-} from '../types';
+import { BaseImages, GenerateAlternativesRequest, GeneratedImages, GenerateImagesRequest, ImageQuality, ImageSize, LanguageModel } from '../types';
 import { createTempImage, deleteTempFolder, downloadImage, persistImage } from '../common/fileUtils';
 import appConfig from '../common/appConfig';
 import fs from 'fs';
@@ -53,17 +45,17 @@ openAi.post('/generate-images', async (req, res) => {
     const typedImageSize = getTypedImageSize(size);
 
     const images: GeneratedImages = await generateImages(description, typedLanguageModel, amount, typedImageSize, typedQuality);
-    if (images.urls.length === 0) {
+    if (images.images.length === 0) {
         res.status(500).send({ success: false });
         return;
     }
     if (appConfig.saveImagesEnabled) {
-        images.urls.forEach((image) => {
-            persistImage(image, images.createdAt, typedLanguageModel, images.description);
+        images.images.forEach((image) => {
+            persistImage(image, images.createdAt, images.languageModel, images.description);
             downloadImage(image);
         });
     }
-    res.status(200).send({ createdAt: images.createdAt, images: images.urls });
+    res.status(200).send({ createdAt: images.createdAt, images: images.images });
 });
 
 openAi.post('/generate-alternative-images', async (req, res) => {
@@ -80,17 +72,17 @@ openAi.post('/generate-alternative-images', async (req, res) => {
     const input = fs.createReadStream(createTempImage(baseImage)) as any;
     const images: BaseImages = await alternativeImages(input, amount, typedLanguageModel, getTypedImageSize(size));
     deleteTempFolder();
-    if (images.urls.length === 0) {
+    if (images.images.length === 0) {
         res.status(500).send({ success: false });
         return;
     }
     if (appConfig.saveImagesEnabled) {
-        images.urls.forEach((image) => {
-            persistImage(image, images.createdAt, typedLanguageModel, `Alternative for: ${originalImageName}`);
+        images.images.forEach((image) => {
+            persistImage(image, images.createdAt, images.languageModel, `Alternative for: ${originalImageName}`);
             downloadImage(image);
         });
     }
-    res.status(200).send({ createdAt: images.createdAt, images: images.urls });
+    res.status(200).send({ createdAt: images.createdAt, images: images.images });
 });
 
 export default openAi;

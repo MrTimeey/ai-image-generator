@@ -1,6 +1,6 @@
 import axios from 'axios';
 import fs from 'fs';
-import { ImageUrl, LanguageModel } from '../types';
+import { GeneratedImage, LanguageModel } from '../types';
 import { getDataStore, saveDataStore } from './dataStore';
 import appConfig from './appConfig';
 import { randomUUID } from 'crypto';
@@ -13,11 +13,11 @@ export const createFolder = (name: string) => {
     }
 };
 
-export const getFileName = (id: string, createdAt: string) => {
+export const getFileName = (id: string, createdAt: string): string => {
     return `${createdAt}_${id}.png`;
 };
 
-export const persistImage = (image: ImageUrl, createdAt: string, languageModel: LanguageModel, description = ''): void => {
+export const persistImage = (image: GeneratedImage, createdAt: string, languageModel: LanguageModel, description = ''): void => {
     const dataStore = getDataStore();
     dataStore.data.push({
         createdAt: createdAt,
@@ -26,12 +26,13 @@ export const persistImage = (image: ImageUrl, createdAt: string, languageModel: 
         fileName: image.fileName,
         languageModel: languageModel,
         description: description,
+        revisedPrompt: image.revisedPrompt,
     });
     dataStore.entries++;
     saveDataStore(dataStore);
 };
 
-export const downloadImage = (image: ImageUrl): void => {
+export const downloadImage = (image: GeneratedImage): void => {
     createFolder(appConfig.baseFolder);
     axios({
         url: image.url,

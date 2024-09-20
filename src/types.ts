@@ -24,21 +24,23 @@ export enum ImageQuality {
     HD = 'hd',
 }
 
-export type ImageUrl = {
+export type GeneratedImage = {
     id: string;
     url: string;
     fileName: string;
+    revisedPrompt: string;
 };
 
 export interface GeneratedImages extends BaseImages {
     createdAt: string;
     description: string;
-    urls: ImageUrl[];
+    images: GeneratedImage[];
 }
 
 export interface BaseImages {
     createdAt: string;
-    urls: ImageUrl[];
+    languageModel: LanguageModel;
+    images: GeneratedImage[];
 }
 
 export interface GenerateImagesRequest extends BaseImageRequest {
@@ -65,5 +67,6 @@ export type ImageDataStore = {
         createdAt: string;
         languageModel: LanguageModel;
         description: string;
+        revisedPrompt: string;
     }[];
 };

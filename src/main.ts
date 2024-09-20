@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import openAi from './routes/openAi';
 import * as path from 'path';
+import { cleanDataStore } from './common/dataStore';
 
 const app: express.Application = express();
 
@@ -17,5 +18,6 @@ app.use('/api', apiRouter);
 app.use(express.static(path.join(__dirname, 'static')));
 
 app.listen(config.port, () => {
+    cleanDataStore();
     console.log(`it's alive on http://localhost:${config.port}`);
 });

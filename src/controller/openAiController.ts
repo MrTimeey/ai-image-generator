@@ -1,9 +1,10 @@
 import { ClientOptions, OpenAI } from 'openai';
 import appConfig from '../common/appConfig';
-import { BaseImages, GeneratedImages, ImageQuality, ImageSize, LanguageModel } from '../types';
+import { BaseImages, GeneratedImages, ImageQuality, ImageSize, GeneratedImage, LanguageModel } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { currentTimestamp } from '../common/timeUtils';
 import { getFileName } from '../common/fileUtils';
+import Image = OpenAI.Image;
 
 const configuration: ClientOptions = {
     organization: appConfig.organization,
@@ -38,15 +39,16 @@ export const alternativeImages = async (image: File, numberOfImages = 1, languag
         const created = currentTimestamp();
         const images =
             response.data
-                .map((e: any) => e.url ?? 'not_found')
-                .filter((e: any) => e !== 'not_found')
-                .map((u: any) => {
+                .map((i: Image) => ({ ...i, url: i.url ?? 'not_found' }))
+                .filter((i: Image) => i.url !== 'not_found')
+                .map((i: Image) => {
                     const id = uuidv4();
-                    return { id: id, url: u, fileName: getFileName(id, created) };
+                    return { id: id, url: i.url ?? 'not_found', fileName: getFileName(id, created), revisedPrompt: i.revised_prompt ?? '' };
                 }) ?? [];
         return {
+            languageModel,
             createdAt: created,
-            urls: images,
+            images: images,
         };
     } catch (error: any) {
         if (error.response) {
@@ -55,7 +57,7 @@ export const alternativeImages = async (image: File, numberOfImages = 1, languag
             console.log(error.message);
         }
     }
-    return { createdAt: currentTimestamp(), urls: [] };
+    return { createdAt: currentTimestamp(), languageModel, images: [] };
 };
 
 export const generateImages = async (
@@ -74,18 +76,19 @@ export const generateImages = async (
             quality: quality,
         });
         const created = currentTimestamp();
-        const images =
+        const images: GeneratedImage[] =
             response.data
-                .map((e: any) => e.url ?? 'not_found')
-                .filter((e: any) => e !== 'not_found')
-                .map((u: string) => {
+                .map((i: Image) => ({ ...i, url: i.url ?? 'not_found' }))
+                .filter((i: Image) => i.url !== 'not_found')
+                .map((i: Image) => {
                     const id = uuidv4();
-                    return { id: id, url: u, fileName: getFileName(id, created) };
+                    return { id: id, url: i.url ?? 'not_found', fileName: getFileName(id, created), revisedPrompt: i.revised_prompt ?? 'not_found' };
                 }) ?? [];
         return {
             createdAt: created,
+            languageModel,
             description: prompt,
-            urls: images,
+            images: images,
         };
     } catch (error: any) {
         if (error.response) {
@@ -94,5 +97,5 @@ export const generateImages = async (
             console.log(error.message);
         }
     }
-    return { createdAt: currentTimestamp(), description: prompt, urls: [] };
+    return { createdAt: currentTimestamp(), languageModel, description: prompt, images: [] };
 };
