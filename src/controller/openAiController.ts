@@ -1,10 +1,11 @@
 import { ClientOptions, OpenAI } from 'openai';
 import appConfig from '../common/appConfig';
-import { BaseImages, GeneratedImages, ImageQuality, ImageSize, GeneratedImage, LanguageModel } from '../types';
+import { BaseImages, GeneratedImage, GeneratedImages, ImageQuality, ImageSize, LanguageModel } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { currentTimestamp } from '../common/timeUtils';
 import { getFileName } from '../common/fileUtils';
 import Image = OpenAI.Image;
+import { ImageGenerateParams } from 'openai/src/resources/images';
 
 const configuration: ClientOptions = {
     organization: appConfig.organization,
@@ -68,13 +69,17 @@ export const generateImages = async (
     quality: ImageQuality = ImageQuality.STANDARD
 ): Promise<GeneratedImages> => {
     try {
-        const response = await openai.images.generate({
+        const body: ImageGenerateParams = {
             model: languageModel,
             prompt: prompt,
             n: numberOfImages,
             size: size,
             quality: quality,
-        });
+        };
+        if (languageModel === LanguageModel.DALL_E_THREE) {
+            body.style = 'vivid';
+        }
+        const response = await openai.images.generate(body);
         const created = currentTimestamp();
         const images: GeneratedImage[] =
             response.data
