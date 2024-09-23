@@ -2,6 +2,9 @@
 
 Simple project to get in touch with [OpenAI's DALL·E API](https://openai.com/api/) to generate images from text inputs.
 
+<img src='./doc/title-image.jpg' width='500'>
+Mit KI erstellt ∙ 21. September 2024 um 4:19 PM
+
 ## Preconditions
 
 ### Account
@@ -29,9 +32,4 @@ npm run dev
 ```shell
 npm install
 npm run serve
-```
-
-### Docker
-```shell
-docker compose up -d --force-recreate --build
 ```
