@@ -1,53 +1,53 @@
 import express from 'express';
 import fs from 'fs-extra';
 import appConfig from '../common/appConfig';
+import { getDataStore } from '../common/dataStore';
 import sharp from 'sharp';
 import path from 'path';
 
-const thumbnails: express.Router = express.Router();
+const files: express.Router = express.Router();
 
-const thumbnailDir = `${__dirname}/../static/thumbnails`;
 const imageDir = `${appConfig.baseFolder}`;
+const bigThumbnailDir = `${__dirname}/../static/big-thumbnails`;
 
-thumbnails.get('/overview', async (req, res) => {
-    console.log('Test', thumbnailDir);
-    fs.ensureDirSync(thumbnailDir);
-    fs.readdir(imageDir, async (err, files) => {
-        if (err) {
-            console.error(err);
-            return res.status(500).send('Fehler beim Laden der Bilder.');
-        }
+files.get('/download/:imageName', async (req, res) => {
+    const imageName = req.params.imageName;
+    if (!fs.existsSync(`${imageDir}/${imageName}`)) {
+        return res.status(500).send('Fehler beim Laden des Bildes.');
+    }
+    res.download(`${imageDir}/${imageName}`);
+});
 
-        const images = files.filter((file) => /\.(jpg|jpeg|png)$/.test(file));
-
-        for (const image of images) {
-            const thumbnailPath = path.join(thumbnailDir, image);
-            if (!fs.existsSync(thumbnailPath)) {
-                await sharp(path.join(imageDir, image))
-                    .resize(200) // Größe des Thumbnails
-                    .toFile(thumbnailPath);
-            }
-        }
-
-        const mapToImage = (image: string) => `
-                  <div style="display: inline-block; margin: 10px;">
-                    <a href="http://localhost:3000/api/files/${image}"><img src="/thumbnails/${image}" title="${image}" alt="${image}" /></a>
-                  </div>
-                `;
-
-        res.send(`
+files.get('/open/:imageName', async (req, res) => {
+    const imageName = req.params.imageName;
+    const imagePath = `${imageDir}/${imageName}`;
+    if (!fs.existsSync(imagePath)) {
+        return res.status(500).send('Fehler beim Laden des Bildes.');
+    }
+    fs.ensureDirSync(bigThumbnailDir);
+    const thumbnailPath = path.join(bigThumbnailDir, imageName);
+    if (!fs.existsSync(thumbnailPath)) {
+        await sharp(imagePath)
+            .resize(512) // Größe des Thumbnails
+            .toFile(thumbnailPath);
+    }
+    const dataStore = getDataStore();
+    const dataStoreEntry = dataStore.data.find((i) => i.fileName === imageName);
+    res.send(`
           <html>
             <head>
-              <title>Galerie</title>
+              <title>Detail View</title>
             </head>
             <body>
-              <h1>Thumbnail Galerie</h1>
-              <div>
-                ${images.map((image) => mapToImage(image)).join('')}
+              <h1>Detail View</h1>
+              <div style="display: flex; flex-direction: column; width: 80%">
+                <a href="http://localhost:3000/api/files/download/${imageName}"><img style="width: 512px" src="/big-thumbnails/${imageName}" title="${imageName}" alt="${imageName}" /></a>
+                <strong>Prompt: </strong><span>${dataStoreEntry?.description}</span>
+                <strong>Revised Prompt: </strong><span>${dataStoreEntry?.revisedPrompt}</span>
+                <strong>Created: </strong><span>${dataStoreEntry?.createdAt}</span>
               </div>
             </body>
           </html>
         `);
-    });
 });
-export default thumbnails;
+export default files;
