@@ -30,3 +30,8 @@ npm run dev
 npm install
 npm run serve
 ```
+
+### Docker
+```shell
+docker compose up -d --force-recreate --build
+```
