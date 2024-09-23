@@ -1,11 +1,7 @@
 import * as dotenv from 'dotenv';
 import { ApplicationConfig } from '../types';
 
-const config = dotenv.config();
-
-if (config.error) {
-    throw config.error;
-}
+dotenv.config();
 
 if (!process.env.OPEN_AI_API_KEY || !process.env.OPEN_AI_ORG_ID) {
     throw new Error('Missing environments!');
