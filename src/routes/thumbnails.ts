@@ -9,7 +9,7 @@ import { fromFormated } from "../common/timeUtils";
 
 const thumbnails: express.Router = express.Router();
 
-const thumbnailDir = `${__dirname}/../static/thumbnails`;
+export const thumbnailDir = `${__dirname}/../static/thumbnails`;
 const imageDir = `${appConfig.baseFolder}`;
 
 thumbnails.get('/overview', async (req, res) => {

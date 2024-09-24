@@ -9,7 +9,7 @@ import { fromFormated, READ_FORMAT } from '../common/timeUtils';
 const files: express.Router = express.Router();
 
 const imageDir = `${appConfig.baseFolder}`;
-const bigThumbnailDir = `${__dirname}/../static/big-thumbnails`;
+export const bigThumbnailDir = `${__dirname}/../static/big-thumbnails`;
 
 files.get('/download/:imageName', async (req, res) => {
     const imageName = req.params.imageName;

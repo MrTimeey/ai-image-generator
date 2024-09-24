@@ -1,7 +1,9 @@
 import fs from 'fs';
-import { ImageDataStore } from '../types';
+import { DataImage, ImageDataStore } from '../types';
 import appConfig from './appConfig';
 import path from 'node:path';
+import { bigThumbnailDir } from '../routes/files';
+import { thumbnailDir } from '../routes/thumbnails';
 
 const dataStoreName = `data.json`;
 
@@ -23,6 +25,15 @@ export const saveDataStore = (store: ImageDataStore) => {
     fs.writeFileSync(`${appConfig.baseFolder}/${dataStoreName}`, JSON.stringify(store, null, 2), 'utf-8');
 };
 
+type ImageMap = {[key: string]: DataImage}
+
+const clearThumbnails = (dir: string, imageMap: ImageMap) => fs.readdirSync(dir)
+    .filter((file: string) => '.png' === path.extname(file))
+    .filter(f => !imageMap[f])
+    .map(f => path.join(dir, f))
+    .filter(p => fs.existsSync(p))
+    .forEach(p => fs.rmSync(path.join(dir, p)));
+
 export const cleanDataStore = () => {
     const dataStore = getDataStore();
     if (dataStore.entries === 0 || !fs.existsSync(`${appConfig.baseFolder}`)) {
@@ -32,5 +43,13 @@ export const cleanDataStore = () => {
     const filteredFiles = dataStore.data.filter((i) => i.fileName && files.includes(i.fileName));
     dataStore.data = filteredFiles;
     dataStore.entries = filteredFiles.length;
+
     saveDataStore(dataStore);
+
+    const imageMap: ImageMap = filteredFiles.reduce((acc, i) => {
+        if (!i.fileName) return acc;
+        return {...acc, [i.fileName]: i};
+    }, {})
+    clearThumbnails(thumbnailDir, imageMap);
+    clearThumbnails(bigThumbnailDir, imageMap);
 };
