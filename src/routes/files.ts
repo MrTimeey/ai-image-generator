@@ -4,6 +4,7 @@ import appConfig from '../common/appConfig';
 import { getDataStore } from '../common/dataStore';
 import sharp from 'sharp';
 import path from 'path';
+import { fromFormated, READ_FORMAT } from '../common/timeUtils';
 
 const files: express.Router = express.Router();
 
@@ -33,6 +34,7 @@ files.get('/open/:imageName', async (req, res) => {
     }
     const dataStore = getDataStore();
     const dataStoreEntry = dataStore.data.find((i) => i.fileName === imageName);
+    const formattedDate = fromFormated(dataStoreEntry?.createdAt??'')?.format(READ_FORMAT) ?? '';
     res.send(`
           <html>
             <head>
@@ -44,7 +46,7 @@ files.get('/open/:imageName', async (req, res) => {
                 <a href="http://localhost:3000/api/files/download/${imageName}"><img style="width: 512px" src="/big-thumbnails/${imageName}" title="${imageName}" alt="${imageName}" /></a>
                 <strong>Prompt: </strong><span>${dataStoreEntry?.description}</span>
                 <strong>Revised Prompt: </strong><span>${dataStoreEntry?.revisedPrompt}</span>
-                <strong>Created: </strong><span>${dataStoreEntry?.createdAt}</span>
+                <strong>Created: </strong><span>${formattedDate}</span>
               </div>
             </body>
           </html>

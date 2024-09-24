@@ -23,5 +23,6 @@ app.use(express.static(path.join(__dirname, 'static')));
 
 app.listen(config.port, () => {
     cleanDataStore();
+    // clean Thumbnails
     console.log(`it's alive on http://localhost:${config.port}`);
 });

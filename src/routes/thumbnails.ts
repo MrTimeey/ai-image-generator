@@ -3,6 +3,9 @@ import fs from 'fs-extra';
 import appConfig from '../common/appConfig';
 import sharp from 'sharp';
 import path from 'path';
+import { getDataStore } from "../common/dataStore";
+import { DataImage } from "../types";
+import { fromFormated } from "../common/timeUtils";
 
 const thumbnails: express.Router = express.Router();
 
@@ -10,7 +13,6 @@ const thumbnailDir = `${__dirname}/../static/thumbnails`;
 const imageDir = `${appConfig.baseFolder}`;
 
 thumbnails.get('/overview', async (req, res) => {
-    console.log('Test', thumbnailDir);
     fs.ensureDirSync(thumbnailDir);
     fs.readdir(imageDir, async (err, files) => {
         if (err) {
@@ -24,14 +26,23 @@ thumbnails.get('/overview', async (req, res) => {
             const thumbnailPath = path.join(thumbnailDir, image);
             if (!fs.existsSync(thumbnailPath)) {
                 await sharp(path.join(imageDir, image))
-                    .resize(200) // Größe des Thumbnails
+                    .resize(200)
                     .toFile(thumbnailPath);
             }
         }
+        const dataStore = getDataStore();
+        const imageMap: {[key: string]: DataImage} = dataStore.data.reduce((acc, i) => {
+            if (!i.fileName) return acc;
+            return {...acc, [i.fileName]: i};
+        }, {})
+        images.sort(function(x, y) {
+            if (!imageMap[x]?.createdAt || !imageMap[y]?.createdAt) return -1;
+            return fromFormated(imageMap[x].createdAt).isBefore(fromFormated(imageMap[y].createdAt)) ? 0 : 1;
+        })
 
         const mapToImage = (image: string) => `
-                  <div style="display: inline-block; margin: 10px;">
-                    <a href="http://localhost:3000/api/files/open/${image}"><img src="/thumbnails/${image}" title="${image}" alt="${image}" /></a>
+                  <div style="display: inline-block; margin: 10px; width: 200px;">
+                    <a href="http://localhost:3000/api/files/open/${image}"><img src="/thumbnails/${image}" title="${image}" alt="${image}" style="max-height:200px; max-width: 200px" /></a>
                   </div>
                 `;
 

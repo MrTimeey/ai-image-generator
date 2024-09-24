@@ -60,13 +60,15 @@ export interface BaseImageRequest {
 
 export type ImageDataStore = {
     entries: number;
-    data: {
-        id: string;
-        url: string;
-        fileName?: string;
-        createdAt: string;
-        languageModel: LanguageModel;
-        description: string;
-        revisedPrompt: string;
-    }[];
+    data: DataImage[];
 };
+
+export type DataImage = {
+    id: string;
+    url: string;
+    fileName?: string;
+    createdAt: string;
+    languageModel: LanguageModel;
+    description: string;
+    revisedPrompt: string;
+}
