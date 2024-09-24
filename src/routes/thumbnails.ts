@@ -9,7 +9,7 @@ import { fromFormated } from "../common/timeUtils";
 
 const thumbnails: express.Router = express.Router();
 
-export const thumbnailDir = `${__dirname}/../static/protected/thumbnails`;
+export const thumbnailDir = `${__dirname}/../static/thumbnails`;
 const imageDir = `${appConfig.baseFolder}`;
 
 thumbnails.get('/overview', async (req, res) => {
@@ -42,15 +42,20 @@ thumbnails.get('/overview', async (req, res) => {
 
         const mapToImage = (image: string) => `
                   <div style="display: inline-block; margin: 10px; width: 200px;">
-                    <a href="/files/open/${image}"><img src="/protected/thumbnails/${image}" title="${image}" alt="${image}" style="max-height:200px; max-width: 200px" /></a>
+                    <a href="/files/open/${image}"><img src="/thumbnails/${image}" title="${image}" alt="${image}" style="max-height:200px; max-width: 200px" /></a>
                   </div>
                 `;
 
-        const header = fs.readFileSync(`${__dirname}/../static/protected/header.html`, 'utf-8');
+        const header = fs.readFileSync(`${__dirname}/../static/header.html`, 'utf-8');
         res.send(`
           <html>
             <head>
-              <title>Galerie</title>
+              <title>AI Image Generator</title>
+              <!-- Favicon -->
+              <link rel="apple-touch-icon" sizes="180x180" href="/favicon_io/apple-touch-icon.png" />
+              <link rel="icon" type="image/png" sizes="32x32" href="/favicon_io/favicon-32x32.png" />
+              <link rel="icon" type="image/png" sizes="16x16" href="/favicon_io/favicon-16x16.png" />
+              <link rel="manifest" href="/favicon_io/site.webmanifest" />
               <link rel="stylesheet" href="/css/style.css" />
             </head>
             <body>

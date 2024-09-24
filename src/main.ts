@@ -62,7 +62,6 @@ apiRouter.use('/thumbnails', thumbnails);
 app.use('/api', apiRouter);
 app.use('/thumbnails', thumbnails);
 app.use('/files', files);
-app.get('/', (_, res) => res.redirect("/protected/index.html"));
 app.use(express.static(path.join(__dirname, 'static')));
 
 app.listen(config.port, () => {
