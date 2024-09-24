@@ -9,7 +9,7 @@ import { fromFormated, READ_FORMAT } from '../common/timeUtils';
 const files: express.Router = express.Router();
 
 const imageDir = `${appConfig.baseFolder}`;
-export const bigThumbnailDir = `${__dirname}/../static/big-thumbnails`;
+export const bigThumbnailDir = `${__dirname}/../static/protected/big-thumbnails`;
 
 files.get('/download/:imageName', async (req, res) => {
     const imageName = req.params.imageName;
@@ -35,7 +35,7 @@ files.get('/open/:imageName', async (req, res) => {
     const dataStore = getDataStore();
     const dataStoreEntry = dataStore.data.find((i) => i.fileName === imageName);
     const formattedDate = fromFormated(dataStoreEntry?.createdAt??'')?.format(READ_FORMAT) ?? '';
-    const header = fs.readFileSync(`${__dirname}/../static/header.html`, 'utf-8');
+    const header = fs.readFileSync(`${__dirname}/../static/protected/header.html`, 'utf-8');
     res.send(`
           <html>
             <head>
@@ -45,7 +45,7 @@ files.get('/open/:imageName', async (req, res) => {
             <body>
               ${header}
               <div style="display: flex; flex-direction: column; width: 100%; align-items: center">
-                <a href="/files/download/${imageName}"><img style="width: 512px" src="/big-thumbnails/${imageName}" title="${imageName}" alt="${imageName}" /></a>
+                <a href="/files/download/${imageName}"><img style="width: 512px" src="/protected/big-thumbnails/${imageName}" title="${imageName}" alt="${imageName}" /></a>
                 <strong>Prompt: </strong><span class="spanEntry">${dataStoreEntry?.description}</span>
                 <strong>Revised Prompt: </strong><span class="spanEntry">${dataStoreEntry?.revisedPrompt}</span>
                 <strong>File Name: </strong><span class="spanEntry">${dataStoreEntry?.fileName}</span>

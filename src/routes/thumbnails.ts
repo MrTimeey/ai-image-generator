@@ -9,7 +9,7 @@ import { fromFormated } from "../common/timeUtils";
 
 const thumbnails: express.Router = express.Router();
 
-export const thumbnailDir = `${__dirname}/../static/thumbnails`;
+export const thumbnailDir = `${__dirname}/../static/protected/thumbnails`;
 const imageDir = `${appConfig.baseFolder}`;
 
 thumbnails.get('/overview', async (req, res) => {
@@ -42,11 +42,11 @@ thumbnails.get('/overview', async (req, res) => {
 
         const mapToImage = (image: string) => `
                   <div style="display: inline-block; margin: 10px; width: 200px;">
-                    <a href="/files/open/${image}"><img src="/thumbnails/${image}" title="${image}" alt="${image}" style="max-height:200px; max-width: 200px" /></a>
+                    <a href="/files/open/${image}"><img src="/protected/thumbnails/${image}" title="${image}" alt="${image}" style="max-height:200px; max-width: 200px" /></a>
                   </div>
                 `;
 
-        const header = fs.readFileSync(`${__dirname}/../static/header.html`, 'utf-8');
+        const header = fs.readFileSync(`${__dirname}/../static/protected/header.html`, 'utf-8');
         res.send(`
           <html>
             <head>
