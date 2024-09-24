@@ -15,5 +15,5 @@ services:
       - OPEN_AI_API_KEY=${OPEN_AI_API_KEY}
       - OPEN_AI_ORG_ID=${OPEN_AI_ORG_ID}
     volumes:
-      - "/images:/app/images"
+      - "./../ai-images:/app/images"
 

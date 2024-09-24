@@ -44,11 +44,12 @@ files.get('/open/:imageName', async (req, res) => {
             </head>
             <body>
               ${header}
-              <div style="display: flex; flex-direction: column; width: 80%">
+              <div style="display: flex; flex-direction: column; width: 100%; align-items: center">
                 <a href="/files/download/${imageName}"><img style="width: 512px" src="/big-thumbnails/${imageName}" title="${imageName}" alt="${imageName}" /></a>
-                <strong>Prompt: </strong><span>${dataStoreEntry?.description}</span>
-                <strong>Revised Prompt: </strong><span>${dataStoreEntry?.revisedPrompt}</span>
-                <strong>Created: </strong><span>${formattedDate}</span>
+                <strong>Prompt: </strong><span class="spanEntry">${dataStoreEntry?.description}</span>
+                <strong>Revised Prompt: </strong><span class="spanEntry">${dataStoreEntry?.revisedPrompt}</span>
+                <strong>File Name: </strong><span class="spanEntry">${dataStoreEntry?.fileName}</span>
+                <strong>Created: </strong><span class="spanEntry">${formattedDate}</span>
               </div>
             </body>
           </html>
