@@ -46,13 +46,15 @@ thumbnails.get('/overview', async (req, res) => {
                   </div>
                 `;
 
+        const header = fs.readFileSync(`${__dirname}/../static/header.html`, 'utf-8');
         res.send(`
           <html>
             <head>
               <title>Galerie</title>
+              <link rel="stylesheet" href="http://localhost:3000/css/style.css" />
             </head>
             <body>
-              <h1>Thumbnail Galerie</h1>
+              ${header}
               <div>
                 ${images.map((image) => mapToImage(image)).join('')}
               </div>
