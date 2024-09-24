@@ -27,12 +27,15 @@ export const saveDataStore = (store: ImageDataStore) => {
 
 type ImageMap = {[key: string]: DataImage}
 
-const clearThumbnails = (dir: string, imageMap: ImageMap) => fs.readdirSync(dir)
-    .filter((file: string) => '.png' === path.extname(file))
-    .filter(f => !imageMap[f])
-    .map(f => path.join(dir, f))
-    .filter(p => fs.existsSync(p))
-    .forEach(p => fs.rmSync(path.join(dir, p)));
+const clearThumbnails = (dir: string, imageMap: ImageMap) => {
+    if (fs.existsSync(dir)) return;
+    fs.readdirSync(dir)
+        .filter((file: string) => '.png' === path.extname(file))
+        .filter(f => !imageMap[f])
+        .map(f => path.join(dir, f))
+        .filter(p => fs.existsSync(p))
+        .forEach(p => fs.rmSync(path.join(dir, p)));
+}
 
 export const cleanDataStore = () => {
     const dataStore = getDataStore();
