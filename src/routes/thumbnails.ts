@@ -42,7 +42,7 @@ thumbnails.get('/overview', async (req, res) => {
 
         const mapToImage = (image: string) => `
                   <div style="display: inline-block; margin: 10px; width: 200px;">
-                    <a href="http://localhost:3000/api/files/open/${image}"><img src="/thumbnails/${image}" title="${image}" alt="${image}" style="max-height:200px; max-width: 200px" /></a>
+                    <a href="/files/open/${image}"><img src="/thumbnails/${image}" title="${image}" alt="${image}" style="max-height:200px; max-width: 200px" /></a>
                   </div>
                 `;
 
@@ -51,7 +51,7 @@ thumbnails.get('/overview', async (req, res) => {
           <html>
             <head>
               <title>Galerie</title>
-              <link rel="stylesheet" href="http://localhost:3000/css/style.css" />
+              <link rel="stylesheet" href="/css/style.css" />
             </head>
             <body>
               ${header}

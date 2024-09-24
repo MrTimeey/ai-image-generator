@@ -15,9 +15,10 @@ app.use(express.json({ limit: '50mb' }));
 const apiRouter: express.Router = express.Router();
 apiRouter.use('/openai', openAi);
 apiRouter.use('/thumbnails', thumbnails);
-apiRouter.use('/files', files);
-
 app.use('/api', apiRouter);
+app.use('/thumbnails', thumbnails);
+app.use('/files', files);
+
 
 app.use(express.static(path.join(__dirname, 'static')));
 
