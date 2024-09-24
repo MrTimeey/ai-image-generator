@@ -2,8 +2,8 @@
 
 Simple project to get in touch with [OpenAI's DALL·E API](https://openai.com/api/) to generate images from text inputs.
 
-<img src='./doc/title-image.jpg' width='500'>
-Mit KI erstellt ∙ 21. September 2024 um 4:19 PM
+<img src='./doc/title-image.png' width='500'>
+Mit KI erstellt ∙ 18. September 2024 um 3:59 PM
 
 ## Preconditions
 
