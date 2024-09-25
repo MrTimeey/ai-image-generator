@@ -1,34 +1,76 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Image Generator</title>
     <!-- Favicon -->
     <link rel="apple-touch-icon" sizes="180x180" href="/favicon_io/apple-touch-icon.png" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon_io/favicon-32x32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon_io/favicon-16x16.png" />
     <link rel="manifest" href="/favicon_io/site.webmanifest" />
+    <script src="/js/main.js" defer></script>
+    <link href="./css/generated-tailwind.css" rel="stylesheet">
+    <link href="./css/style.css" rel="stylesheet">
 </head>
-<body>
-<h1>Login</h1>
-<form id="login-form">
-    <label for="username">Benutzername:</label>
-    <input type="text" id="username" name="username" required><br><br>
+<body class="bg-gray-100">
 
-    <label for="password">Passwort:</label>
-    <input type="password" id="password" name="password" required><br><br>
+<!-- Header ohne Navigation -->
+<header class="bg-blue-600 text-white">
+    <div class="max-w-6xl mx-auto px-4 py-4">
+        <!-- Logo und Titel -->
+        <div class="text-2xl font-bold">
+            AI Image Generator
+        </div>
+    </div>
+</header>
 
-    <button type="submit">Einloggen</button>
-</form>
+<div id="toast" class="toast"></div>
+
+<!-- Login Block mit Bild -->
+<main class="max-w-lg mx-auto mt-20 bg-white border border-gray-300 shadow-lg rounded-lg flex flex-col md:flex-row items-center">
+
+    <div class="p-6 flex-shrink-0 md:rounded-none rounded-full md:mx-0 mx-auto md:w-48 w-44 md:h-52 h-44 md:mb-0 -mb-10">
+        <img src="/pic/login_image.png" alt="Login image" class="w-full h-full object-cover rounded-full md:rounded-none">
+    </div>
+
+    <!-- Login Formular -->
+    <div class="flex-grow p-6 mt-12 md:mt-0">
+
+        <form id="login-form">
+            <!-- E-Mail Adresse -->
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="username">Username</label>
+                <input id="username" type="text" placeholder="user" required
+                       class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+            </div>
+
+            <!-- Passwort -->
+            <div class="mb-6">
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="password">Password</label>
+                <input id="password" type="password" placeholder="***" required
+                       class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+            </div>
+
+            <!-- Login Button -->
+            <div class="flex items-center justify-between">
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                    Login
+                </button>
+            </div>
+        </form>
+    </div>
+</main>
 
 <script>
     document.getElementById('login-form').addEventListener('submit', async function(e) {
         e.preventDefault();
 
-        const username = document.getElementById('username').value;
-        const password = document.getElementById('password').value;
+        const usernameField = document.getElementById('username');
+        const passwordField = document.getElementById('password');
+
+        const username = usernameField.value;
+        const password = passwordField.value;
 
         const response = await fetch('/login', {
             method: 'POST',
@@ -40,8 +82,12 @@
 
         if (response.ok) {
             window.location.href = '/';
+        } else {
+            showToast('Login fehlgeschlagen!')
+            passwordField.value = ''
         }
     });
 </script>
+
 </body>
 </html>

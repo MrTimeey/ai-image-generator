@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Image Generator</title>
+    <!-- Favicon -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicon_io/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon_io/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon_io/favicon-16x16.png" />
+    <link rel="manifest" href="/favicon_io/site.webmanifest" />
+    <script src="/js/main.js" defer></script>
+    <link href="./css/generated-tailwind.css" rel="stylesheet">
+    <link href="./css/style.css" rel="stylesheet">
+    <style>
+        /* Stile für die Bildanpassung */
+        .thumbnail {
+            width: 200px;
+            height: 200px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .thumbnail img {
+            object-fit: contain;
+            max-width: 100%;
+            max-height: 100%;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+<!-- Spinner Overlay -->
+<div id="spinner-overlay" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center z-50">
+    <div class="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+</div>
+
+<header class="bg-blue-600 text-white">
+    <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+        <!-- Logo und Titel -->
+        <div class="text-2xl font-bold">
+            <a href="/index.html">AI Image Generator</a>
+        </div>
+
+        <!-- Navigation (Desktop) -->
+        <nav class="hidden md:flex space-x-6">
+            <a href="/index.html" class="hover:text-gray-300">Generator</a>
+            <a href="/overview.html" class="hover:text-gray-300">Overview</a>
+            <a href="https://beta.openai.com/docs" target="_blank" class="hover:text-gray-300">API-Dokumentation</a>
+        </nav>
+
+        <!-- Burger Menu Button (Mobile) -->
+        <div class="md:hidden">
+            <button id="burger-btn" class="focus:outline-none">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Navigation (Mobile) -->
+    <nav id="mobile-menu" class="hidden bg-blue-600 md:hidden px-4 py-4">
+        <a href="/index.html" class="block py-2 text-white hover:text-gray-300">Generator</a>
+        <a href="/overview.html" class="block py-2 text-white hover:text-gray-300">Overview</a>
+        <a href="https://beta.openai.com/docs" target="_blank" class="block py-2 text-white hover:text-gray-300">API-Dokumentation</a>
+    </nav>
+</header>
+
+<main class="max-w-6xl mx-auto py-10 px-4">
+    <div id="thumbnail-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 justify-items-center">
+        <div class="dummy-entry thumbnail bg-gray-200">
+        </div>
+        <div class="dummy-entry thumbnail bg-gray-200">
+        </div>
+        <div class="dummy-entry thumbnail bg-gray-200">
+        </div>
+        <div class="dummy-entry thumbnail bg-gray-200">
+        </div>
+        <div class="dummy-entry thumbnail bg-gray-200">
+        </div>
+        <div class="dummy-entry thumbnail bg-gray-200">
+        </div>
+        <div class="dummy-entry thumbnail bg-gray-200">
+        </div>
+        <div class="dummy-entry thumbnail bg-gray-200">
+        </div>
+        <div class="dummy-entry thumbnail bg-gray-200">
+        </div>
+        <div class="dummy-entry thumbnail bg-gray-200">
+        </div>
+    </div>
+</main>
+
+<script>
+    const createImage = (imageName) => {
+        const imageElement = document.createElement('img');
+        imageElement.src = `/thumbnails/${imageName}`;
+        imageElement.title = imageName;
+        imageElement.alt = imageName;
+
+        const anchorElement = document.createElement('a')
+        anchorElement.href = `/detail.html?filename=${imageName}`
+        anchorElement.appendChild(imageElement)
+
+        const divElement = document.createElement('div');
+        divElement.className = 'thumbnail bg-gray-200';
+        divElement.appendChild(anchorElement);
+        return divElement
+    }
+
+    const spinnerOverlay = document.getElementById('spinner-overlay');
+    const thumbnailGrid = document.getElementById('thumbnail-grid');
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        const images = await getAllThumbnails();
+        Array.from(document.getElementsByClassName('dummy-entry')).forEach(e => e.remove())
+        spinnerOverlay.classList.add('hidden')
+        images.map(createImage).forEach(i => thumbnailGrid.appendChild(i))
+    });
+
+
+    const burgerBtn = document.getElementById('burger-btn');
+    const mobileMenu = document.getElementById('mobile-menu');
+
+    burgerBtn.addEventListener('click', () => {
+        mobileMenu.classList.toggle('hidden');
+    });
+</script>
+
+</body>
+</html>

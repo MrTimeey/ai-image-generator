@@ -52,10 +52,6 @@ export interface BaseImages {
 export interface GenerateImagesRequest extends BaseImageRequest {
     description: string;
 }
-export interface GenerateAlternativesRequest extends BaseImageRequest {
-    baseImage: string;
-    originalImageName: string;
-}
 
 export interface BaseImageRequest {
     amount?: number;

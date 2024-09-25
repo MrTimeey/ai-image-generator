@@ -1,9 +1,9 @@
-import axios from 'axios';
 import fs from 'fs';
 import { GeneratedImage, LanguageModel } from '../types';
 import { getDataStore, saveDataStore } from './dataStore';
 import appConfig from './appConfig';
 import { randomUUID } from 'crypto';
+import request from 'sync-request';
 
 const tempDir = './temp';
 
@@ -32,21 +32,19 @@ export const persistImage = (image: GeneratedImage, createdAt: string, languageM
     saveDataStore(dataStore);
 };
 
-export const downloadImage = (image: GeneratedImage): void => {
-    createFolder(appConfig.baseFolder);
-    axios({
-        url: image.url,
-        responseType: 'stream',
-    }).then(
-        (response: any) =>
-            new Promise<void>((resolve, reject) => {
-                response.data
-                    .pipe(fs.createWriteStream(`${appConfig.baseFolder}/${image.fileName}`))
-                    .on('finish', () => resolve())
-                    .on('error', (e: unknown) => reject(e));
-            })
-    );
-};
+export function downloadFile(image: GeneratedImage): void {
+    try {
+        const res = request('GET', image.url);
+        if (res.statusCode === 200) {
+            fs.writeFileSync(`${appConfig.baseFolder}/${image.fileName}`, res.getBody());
+            console.log('Download completed!');
+        } else {
+            console.error(`Failed to get '${image.url}' (${res.statusCode})`);
+        }
+    } catch (error: any) {
+        console.error(`Error downloading file: ${error.message}`);
+    }
+}
 
 export const createTempImage = (base64String: string): string => {
     createFolder('./temp');

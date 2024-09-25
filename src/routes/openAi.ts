@@ -1,9 +1,10 @@
 import express from 'express';
-import { alternativeImages, generateImages } from '../controller/openAiController';
-import { BaseImages, GenerateAlternativesRequest, GeneratedImages, GenerateImagesRequest, ImageQuality, ImageSize, LanguageModel } from '../types';
-import { createTempImage, deleteTempFolder, downloadImage, persistImage } from '../common/fileUtils';
+import { generateImages } from '../controller/openAiController';
+import { GeneratedImages, GenerateImagesRequest, ImageQuality, ImageSize, LanguageModel } from '../types';
+import { downloadFile, persistImage } from '../common/fileUtils';
 import appConfig from '../common/appConfig';
-import fs from 'fs';
+import { createBigThumbnail } from './files';
+import { createThumbnail } from './thumbnails';
 
 const openAi: express.Router = express.Router();
 
@@ -50,37 +51,12 @@ openAi.post('/generate-images', async (req, res) => {
         return;
     }
     if (appConfig.saveImagesEnabled) {
-        images.images.forEach((image) => {
+        for (const image of images.images) {
             persistImage(image, images.createdAt, images.languageModel, images.description);
-            downloadImage(image);
-        });
-    }
-    res.status(200).send({ createdAt: images.createdAt, images: images.images });
-});
-
-openAi.post('/generate-alternative-images', async (req, res) => {
-    const { baseImage, size, languageModel, amount, originalImageName = '' } = req.body as GenerateAlternativesRequest;
-    const typedLanguageModel = getTypedLanguageModel(languageModel);
-    if (typedLanguageModel === LanguageModel.DALL_E_THREE) {
-        res.status(400).send({ success: false });
-        return;
-    }
-    if (!baseImage || !validSizeProp(typedLanguageModel, size) || !validAmountProp(typedLanguageModel, amount)) {
-        res.status(400).send({ success: false });
-        return;
-    }
-    const input = fs.createReadStream(createTempImage(baseImage)) as any;
-    const images: BaseImages = await alternativeImages(input, amount, typedLanguageModel, getTypedImageSize(size));
-    deleteTempFolder();
-    if (images.images.length === 0) {
-        res.status(500).send({ success: false });
-        return;
-    }
-    if (appConfig.saveImagesEnabled) {
-        images.images.forEach((image) => {
-            persistImage(image, images.createdAt, images.languageModel, `Alternative for: ${originalImageName}`);
-            downloadImage(image);
-        });
+            downloadFile(image);
+            await createBigThumbnail(image.fileName);
+            createThumbnail(image.fileName)
+        }
     }
     res.status(200).send({ createdAt: images.createdAt, images: images.images });
 });
