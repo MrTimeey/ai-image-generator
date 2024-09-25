@@ -1,97 +1,238 @@
 <!DOCTYPE html>
-<html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>AI Image Generator</title>
-        <!-- Favicon -->
-        <link rel="apple-touch-icon" sizes="180x180" href="/favicon_io/apple-touch-icon.png" />
-        <link rel="icon" type="image/png" sizes="32x32" href="/favicon_io/favicon-32x32.png" />
-        <link rel="icon" type="image/png" sizes="16x16" href="/favicon_io/favicon-16x16.png" />
-        <link rel="manifest" href="/favicon_io/site.webmanifest" />
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Image Generator</title>
+    <!-- Favicon -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicon_io/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon_io/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon_io/favicon-16x16.png" />
+    <link rel="manifest" href="/favicon_io/site.webmanifest" />
+    <script src="/js/main.js" defer></script>
+    <link href="./css/generated-tailwind.css" rel="stylesheet">
+    <link href="./css/style.css" rel="stylesheet">
+    <style>
+        /* Spinner Animation */
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
 
-        <link rel="stylesheet" href="/css/style.css" />
-        <link rel="stylesheet" href="/css/spinner.css" />
+<!-- Spinner Overlay -->
+<div id="spinner-overlay" class="hidden fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center z-50">
+    <div class="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+</div>
 
-        <script src="/js/main.js" defer></script>
-    </head>
-    <body>
-        <header>
-            <div class="navbar">
-                <div class="logo">
-                    <h2>AI Image Generator</h2>
-                </div>
-                <div class="nav-links">
-                    <ul>
-                        <li>
-                            <a href="/index.html">Generator</a>
-                        </li>
-                        <li>
-                            <a href="/alternative.html">Alternative</a>
-                        </li>
-                        <li>
-                            <a href="/thumbnails/overview">Overview</a>
-                        </li>
-                        <li>
-                            <a href="https://beta.openai.com/docs" target="_blank">OpenAI API Docs</a>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-        </header>
-        <main>
-            <section class="showcase">
-                <form id="image-form">
-                    <h1>Describe An Image</h1>
-                    <div class="form-control">
-                        <input type="text" id="prompt" placeholder="Enter Text" />
-                    </div>
-                    <div class="options">
-                        <!-- Select language model -->
-                        <div class="form-control">
-                            <select name="model" id="model">
-                                <option value="DALL_E_TWO" selected>DALL·E 2</option>
-                                <option value="DALL_E_THREE">DALL·E 3</option>
-                            </select>
-                        </div>
-                        <!-- size -->
-                        <div class="form-control">
-                            <select name="size" id="size">
-                                <option value="small" selected>Small</option>
-                                <option value="medium">Medium</option>
-                                <option value="large">Large</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="options">
-                        <!-- amount -->
-                        <div class="form-control">
-                            <select name="amount" id="amount">
-                                <option value="1" selected>1</option>
-                                <option value="2">2</option>
-                                <option value="3">3</option>
-                                <option value="4">4</option>
-                            </select>
-                        </div>
-                        <!-- Select quality -->
-                        <div class="form-control">
-                            <select name="quality" id="quality">
-                                <option value="STANDARD" selected>Standard</option>
-                            </select>
-                        </div>
-                    </div>
-                    <button type="submit" class="btn">Generate</button>
-                </form>
-            </section>
+<header class="bg-blue-600 text-white">
+    <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+        <div class="text-2xl font-bold">
+            <a href="/index.html">AI Image Generator</a>
+        </div>
 
-            <section class="image">
-                <div class="image-container">
-                    <h2 class="msg"></h2>
-                </div>
-            </section>
-        </main>
+        <!-- Navigation (Desktop) -->
+        <nav class="hidden md:flex space-x-6">
+            <a href="/index.html" class="hover:text-gray-300">Generator</a>
+            <a href="/overview.html" class="hover:text-gray-300">Overview</a>
+            <a href="https://beta.openai.com/docs" target="_blank" class="hover:text-gray-300">API-Dokumentation</a>
+        </nav>
 
-        <div class="spinner"></div>
-    </body>
+        <!-- Burger Menu Button (Mobile) -->
+        <div class="md:hidden">
+            <button id="burger-btn" class="focus:outline-none">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Navigation (Mobile) -->
+    <nav id="mobile-menu" class="hidden bg-blue-600 md:hidden px-4 py-4">
+        <a href="/index.html" class="block py-2 text-white hover:text-gray-300">Generator</a>
+        <a href="/overview.html" class="block py-2 text-white hover:text-gray-300">Overview</a>
+        <a href="https://beta.openai.com/docs" target="_blank" class="block py-2 text-white hover:text-gray-300">API-Dokumentation</a>
+    </nav>
+</header>
+
+<main class="max-w-4xl mx-auto py-10 px-4">
+    <div class="mb-6">
+        <label for="description" class="block text-lg font-medium text-gray-700 mb-2">Describe the picture:</label>
+        <textarea id="description" rows="4" class="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent" placeholder="Describe the picture you want to generate..."></textarea>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div>
+            <label for="model" class="block text-sm font-medium text-gray-700 mb-2">Language Model</label>
+            <select id="model" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent">
+                <option id="language_version_two" value="DALL_E_TWO" selected>DALL·E 2</option>
+                <option id="language_version_three" value="DALL_E_THREE">DALL·E 3</option>
+            </select>
+        </div>
+        <div>
+            <label for="size" class="block text-sm font-medium text-gray-700 mb-2">Size</label>
+            <select id="size" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent">
+                <option class="dalle_two_value default-value" value="small" selected>Small</option>
+                <option class="dalle_two_value" value="medium">Medium</option>
+                <option class="dalle_two_value" value="large">Large</option>
+                <option class="dalle_three_value hidden default-value" value="large">Large</option>
+                <option class="dalle_three_value hidden" value="large_vertical">Large Vertical</option>
+                <option class="dalle_three_value hidden" value="large_horizontal">Large Horizontal</option>
+            </select>
+        </div>
+        <div>
+            <label for="amount" class="block text-sm font-medium text-gray-700 mb-2">Amount</label>
+            <select id="amount" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent">
+                <option class="dalle_two_value default-value" value="1" selected>1</option>
+                <option class="dalle_two_value" value="2">2</option>
+                <option class="dalle_two_value" value="3">3</option>
+                <option class="dalle_two_value" value="4">4</option>
+                <option class="dalle_three_value hidden default-value" value="1">1</option>
+            </select>
+        </div>
+        <div>
+            <label for="quality" class="block text-sm font-medium text-gray-700 mb-2">Quality</label>
+            <select id="quality" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent">
+                <option class="dalle_two_value default-value" value="STANDARD" selected>Standard</option>
+                <option class="dalle_three_value hidden default-value" value="STANDARD">Standard</option>
+                <option class="dalle_three_value hidden" value="HD">HD</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="text-center">
+        <button id="generate-btn" type="submit" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2">Generate</button>
+    </div>
+
+    <!-- Ergebnis-Anzeige -->
+    <div class="mt-10 text-center">
+        <h2 class="text-2xl font-semibold text-gray-700 mb-4">Generated Image:</h2>
+        <div id="preview-container" class="w-full h-64 bg-gray-200 border border-gray-300 flex items-center justify-center">
+            <!-- Platzhalter für das generierte Bild -->
+            <span class="text-gray-500">The image is displayed here</span>
+        </div>
+
+        <div id="image-container" class="hidden w-full flex flex-col items-center justify-center">
+
+        </div>
+
+        <div id="msg-container" class="w-full flex items-center justify-center">
+            <h2 id="msg"></h2>
+        </div>
+
+    </div>
+</main>
+<script>
+    const modelBtn = document.getElementById('model');
+    const imageContainer = document.getElementById('image-container');
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const filename = urlParams.get('filename');
+        if (filename && filename !== '' && document.getElementById('image-container').classList.contains('hidden')) {
+            const images = filename.includes(',') ? filename.split(',') : [filename]
+            spinnerOverlay.classList.remove('hidden')
+            for (const image of images) {
+                const image = await getDetailInformation(filename);
+                if (image.errorMsg) {
+                    document.getElementById('msg').textContent = image.errorMsg
+                } else {
+                    if (document.getElementById('description').textContent === '') {
+                        document.getElementById('description').textContent = image.prompt
+                        const language = image.languageModel === 'DALL_E_TWO' ? 'language_version_two' : 'language_version_three'
+                        document.getElementById(language).selected = true
+                        modelBtn.click();
+                    }
+                    previewContainer.classList.add('hidden');
+                    imageContainer.classList.remove('hidden')
+                    imageContainer.appendChild(createImage(image.filename))
+                }
+            }
+            spinnerOverlay.classList.add('hidden')
+        }
+
+
+    })
+    const burgerBtn = document.getElementById('burger-btn');
+    const mobileMenu = document.getElementById('mobile-menu');
+
+    const msgField = document.getElementById('msg')
+
+    burgerBtn.addEventListener('click', () => {
+        mobileMenu.classList.toggle('hidden');
+    });
+
+    const restoreDefaults = (options) => options.filter(e => e.classList.contains('default-value')).forEach(el => el.selected = true)
+
+
+    modelBtn.addEventListener('click', () => {
+        const selectedLanguageModel = modelBtn.value
+        const versionTwoValues = Array.from(document.getElementsByClassName('dalle_two_value'));
+        const versionThreeValues = Array.from(document.getElementsByClassName('dalle_three_value'));
+        if (selectedLanguageModel === 'DALL_E_TWO') {
+            versionTwoValues.forEach(el => el.classList.remove('hidden'))
+            versionThreeValues.forEach(el => el.classList.add('hidden'))
+            restoreDefaults(versionTwoValues)
+        } else {
+            versionThreeValues.forEach(el => el.classList.remove('hidden'))
+            versionTwoValues.forEach(el => el.classList.add('hidden'))
+            restoreDefaults(versionThreeValues)
+        }
+    })
+    const generateBtn = document.getElementById('generate-btn');
+    const spinnerOverlay = document.getElementById('spinner-overlay');
+    const previewContainer = document.getElementById('preview-container');
+
+    const createImage = (imageName) => {
+        let imageElement = document.createElement('img');
+        imageElement.src = `/big-thumbnails/${imageName}`;
+        imageElement.title = imageName;
+        imageElement.alt = 'Bild';
+        imageElement.className = 'w-full max-w-xs lg:max-w-none'
+
+        const anchorElement = document.createElement('a')
+        anchorElement.classList.add('my-5')
+        anchorElement.href = `/detail.html?filename=${imageName}`
+        anchorElement.appendChild(imageElement)
+
+        return anchorElement
+    }
+
+    function saveUrl(imageNames) {
+        const currentUrl = window.location.href;
+        const url = new URL(currentUrl);
+        const params = new URLSearchParams(url.search);
+        if (imageNames) {
+            params.set('filename', imageNames.join(','));
+        } else {
+            params.delete('filename');
+        }
+        const appendix = params.has('filename') ? `?${params.toString()}` : '';
+        const newUrl = `${url.origin}${url.pathname}${appendix}`;
+        window.history.replaceState(null, '', newUrl);
+    }
+
+    generateBtn.addEventListener('click', async () => {
+        spinnerOverlay.classList.remove('hidden');
+        saveUrl(undefined);
+        msgField.textContent = '';
+        imageContainer.replaceChildren();
+        previewContainer.classList.remove('hidden');
+        const imageNames = await generateImage();
+        if (imageNames.length !== 0) {
+            previewContainer.classList.add('hidden');
+            imageNames
+                .map(createImage)
+                .forEach(i => imageContainer.appendChild(i))
+            saveUrl(imageNames)
+            imageContainer.classList.remove('hidden')
+        }
+        spinnerOverlay.classList.add('hidden');
+    });
+</script>
+
+</body>
 </html>

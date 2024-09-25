@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Image Generator</title>
+    <!-- Favicon -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicon_io/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon_io/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon_io/favicon-16x16.png" />
+    <link rel="manifest" href="/favicon_io/site.webmanifest" />
+    <script src="/js/main.js" defer></script>
+    <link href="./css/generated-tailwind.css" rel="stylesheet">
+    <link href="./css/style.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+
+<!-- Spinner Overlay -->
+<div id="spinner-overlay" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center z-50">
+    <div class="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+</div>
+
+<header class="bg-blue-600 text-white">
+    <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+        <!-- Logo und Titel -->
+        <div class="text-2xl font-bold">
+            <a href="/index.html">AI Image Generator</a>
+        </div>
+
+        <!-- Navigation (Desktop) -->
+        <nav class="hidden md:flex space-x-6">
+            <a href="/index.html" class="hover:text-gray-300">Generator</a>
+            <a href="/overview.html" class="hover:text-gray-300">Overview</a>
+            <a href="https://beta.openai.com/docs" target="_blank" class="hover:text-gray-300">API-Dokumentation</a>
+        </nav>
+
+        <!-- Burger Menu Button (Mobile) -->
+        <div class="md:hidden">
+            <button id="burger-btn" class="focus:outline-none">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Navigation (Mobile) -->
+    <nav id="mobile-menu" class="hidden bg-blue-600 md:hidden px-4 py-4">
+        <a href="/index.html" class="block py-2 text-white hover:text-gray-300">Generator</a>
+        <a href="/overview.html" class="block py-2 text-white hover:text-gray-300">Overview</a>
+        <a href="https://beta.openai.com/docs" target="_blank" class="block py-2 text-white hover:text-gray-300">API-Dokumentation</a>
+    </nav>
+</header>
+
+<!-- Bild Detailansicht -->
+<main class="max-w-4xl mx-auto py-10 px-4 bg-white shadow-lg rounded-lg">
+    <!-- Bildanzeige -->
+    <div class="text-center mb-6">
+        <a id="anchor"><img id="image" src="https://via.placeholder.com/512x512" alt="Generiertes Bild" class="w-512 mx-auto"></a>
+    </div>
+
+    <div id="msg-container" class="hidden w-full flex items-center justify-center">
+        <h2 id="msg"></h2>
+    </div>
+
+    <!-- Bildinformationen -->
+    <div class="space-y-4 text-gray-700">
+        <!-- Prompt -->
+        <div>
+            <h3 class="font-semibold text-lg">Prompt:</h3>
+            <p id="prompt">...</p>
+        </div>
+
+        <!-- Revised Prompt -->
+        <div>
+            <h3 class="font-semibold text-lg">Revised Prompt:</h3>
+            <p id="revised-prompt">...</p>
+        </div>
+
+        <!-- Dateiname -->
+        <div>
+            <h3 class="font-semibold text-lg">Dateiname:</h3>
+            <p id="filename">...</p>
+        </div>
+
+        <!-- Erstellungsdatum -->
+        <div>
+            <h3 class="font-semibold text-lg">Erstellt am:</h3>
+            <p id="created">...</p>
+        </div>
+    </div>
+</main>
+
+<script>
+    const burgerBtn = document.getElementById('burger-btn');
+    const mobileMenu = document.getElementById('mobile-menu');
+    burgerBtn.addEventListener('click', () => {
+        mobileMenu.classList.toggle('hidden');
+    });
+    const spinnerOverlay = document.getElementById('spinner-overlay');
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const filename = urlParams.get('filename');
+        const image = await getDetailInformation(filename);
+        if (image.errorMsg) {
+            document.getElementById('msg-container').classList.remove('hidden')
+            document.getElementById('msg').textContent = image.errorMsg
+        } else {
+            document.getElementById('image').src = `/big-thumbnails/${image.filename}`
+            document.getElementById('prompt').textContent = image.prompt;
+            document.getElementById('revised-prompt').textContent = image.revisedPrompt;
+            document.getElementById('filename').textContent = image.filename;
+            document.getElementById('created').textContent = image.createdAt;
+            document.getElementById('anchor').href = `/api/files/download/${image.filename}`
+        }
+        spinnerOverlay.classList.add('hidden')
+    });
+
+</script>
+
+</body>
+</html>
