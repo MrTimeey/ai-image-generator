@@ -4,6 +4,12 @@ export type ApplicationConfig = {
     saveImagesEnabled: boolean;
     organization: string;
     baseFolder: string;
+    enableAuth: boolean;
+    auth: {
+        jwtSecret: string;
+        user: string;
+        pass: string;
+    };
 };
 
 export enum ImageSize {
