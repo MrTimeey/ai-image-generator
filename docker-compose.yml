@@ -20,4 +20,7 @@ services:
       - AUTH_PASS=${AUTH_PASS}
     volumes:
       - "./../ai-images:/app/images"
+      - "./../ai-images/thumbnails:/app/src/static/thumbnails"
+      - "./../ai-images/big-thumbnails:/app/src/static/big-thumbnails"
+
 
