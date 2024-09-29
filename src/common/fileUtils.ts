@@ -25,7 +25,6 @@ export const persistImage = (image: GeneratedImage, createdAt: string, languageM
 
 export function downloadFile(image: GeneratedImage): void {
     try {
-        console.log('Download start')
         const res = request('GET', image.url);
         if (res.statusCode === 200) {
             fs.writeFileSync(`${appConfig.baseFolder}/${image.fileName}`, res.getBody());
