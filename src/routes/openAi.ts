@@ -55,7 +55,7 @@ openAi.post('/generate-images', async (req, res) => {
             persistImage(image, images.createdAt, images.languageModel, images.description);
             downloadFile(image);
             await createBigThumbnail(image.fileName);
-            createThumbnail(image.fileName)
+            await createThumbnail(image.fileName)
         }
     }
     res.status(200).send({ createdAt: images.createdAt, images: images.images });
