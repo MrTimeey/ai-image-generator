@@ -52,8 +52,11 @@ openAi.post('/generate-images', async (req, res) => {
     }
     if (appConfig.saveImagesEnabled) {
         for (const image of images.images) {
+            console.log(1)
             persistImage(image, images.createdAt, images.languageModel, images.description);
+            console.log(2)
             downloadFile(image);
+            console.log(3)
             await createBigThumbnail(image.fileName);
             await createThumbnail(image.fileName)
         }
