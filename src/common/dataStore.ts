@@ -28,7 +28,7 @@ export const saveDataStore = (store: ImageDataStore) => {
 type ImageMap = {[key: string]: DataImage}
 
 const clearThumbnails = (dir: string, imageMap: ImageMap) => {
-    if (fs.existsSync(dir)) return;
+    if (!fs.existsSync(dir)) return;
     fs.readdirSync(dir)
         .filter((file: string) => '.png' === path.extname(file))
         .filter(f => !imageMap[f])
