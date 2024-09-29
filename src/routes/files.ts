@@ -10,14 +10,13 @@ import { DataImage, LanguageModel } from '../types';
 const files: express.Router = express.Router();
 
 const imageDir = `${appConfig.baseFolder}`;
-export const bigThumbnailDir = `${__dirname}/../static/big-thumbnails`;
+export const bigThumbnailDir = path.join(__dirname, '..', 'static', 'big-thumbnails');
 
 export const createBigThumbnail = async (imageName: string) => {
-    const imagePath = `${imageDir}/${imageName}`;
     fs.ensureDirSync(bigThumbnailDir);
     const thumbnailPath = path.join(bigThumbnailDir, imageName);
     if (!fs.existsSync(thumbnailPath)) {
-        await sharp(imagePath)
+        await sharp(path.join(imageDir, imageName))
             .resize(512) // Größe des Thumbnails
             .toFile(thumbnailPath);
     }
