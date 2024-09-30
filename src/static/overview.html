@@ -32,6 +32,9 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        #confirm-modal {
+            display: none; /* Initially hidden */
+        }
     </style>
 </head>
 <body class="bg-gray-100">
@@ -89,6 +92,13 @@
     </div>
 
     <div id="thumbnail-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 justify-items-center">
+        <div class="dummy-entry thumbnail bg-gray-200 relative group">
+            <div class="hidden group-hover:block absolute top-2 right-2 bg-white rounded-full p-1 cursor-pointer">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </div>
+        </div>
         <div class="dummy-entry thumbnail bg-gray-200">
         </div>
         <div class="dummy-entry thumbnail bg-gray-200">
@@ -112,9 +122,24 @@
     </div>
 </main>
 
+<!-- Bestätigungsdialog -->
+<div id="confirm-modal" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75 z-50">
+    <div class="bg-white rounded-lg p-6 w-96">
+        <h2 class="text-xl font-bold mb-4">Confirmation Required</h2>
+        <p>Are you sure you want to delete this item?</p>
+        <div class="flex justify-end mt-4">
+            <button id="cancel-delete" class="bg-gray-300 text-gray-800 px-4 py-2 rounded mr-2">Cancel</button>
+            <button id="confirm-delete" class="bg-red-600 text-white px-4 py-2 rounded">Delete</button>
+        </div>
+    </div>
+</div>
+
 <script>
     document.getElementById('asc-sort').addEventListener('click', () => window.location.href = '/overview.html?sorting=DESC')
     document.getElementById('desc-sort').addEventListener('click', () => window.location.href = '/overview.html?sorting=ASC')
+    const confirmModal = document.getElementById('confirm-modal');
+    let currentImage = null;
+    let currentThumbnailDiv = null;
 
     const createImage = (imageName) => {
         const imageElement = document.createElement('img');
@@ -122,15 +147,48 @@
         imageElement.title = imageName;
         imageElement.alt = imageName;
 
-        const anchorElement = document.createElement('a')
-        anchorElement.href = `/detail.html?filename=${imageName}`
-        anchorElement.appendChild(imageElement)
+        const anchorElement = document.createElement('a');
+        anchorElement.href = `/detail.html?filename=${imageName}`;
+        anchorElement.appendChild(imageElement);
+
+        const deleteIcon = document.createElement('div');
+        deleteIcon.className = 'hidden group-hover:block absolute top-2 right-2 bg-white rounded-full p-1 cursor-pointer';
+        deleteIcon.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+        `;
+
 
         const divElement = document.createElement('div');
-        divElement.className = 'thumbnail bg-gray-200';
+        divElement.className = 'thumbnail bg-gray-200 relative group'; // 'group' is added here
         divElement.appendChild(anchorElement);
-        return divElement
-    }
+        divElement.appendChild(deleteIcon);
+
+        deleteIcon.addEventListener('click', (event) => {
+            event.stopPropagation();
+            confirmModal.style.display = 'flex'
+            currentImage = imageName;
+            currentThumbnailDiv = divElement
+        });
+        return divElement;
+    };
+
+    document.getElementById('confirm-delete').addEventListener('click', () => {
+        if (currentImage) {
+            deleteImage(currentImage)
+            currentThumbnailDiv.remove();
+            currentImage = null;
+            currentThumbnailDiv = null;
+        }
+        confirmModal.style.display = 'none';
+    });
+
+    document.getElementById('cancel-delete').addEventListener('click', () => {
+        confirmModal.style.display = 'none';
+        currentImage = null;
+        currentThumbnailDiv = null;
+    });
 
     const spinnerOverlay = document.getElementById('spinner-overlay');
     const thumbnailGrid = document.getElementById('thumbnail-grid');
@@ -143,6 +201,7 @@
         const newUrl = `${url.origin}${url.pathname}?${params.toString()}`;
         window.history.replaceState(null, '', newUrl);
     }
+    spinnerOverlay.classList.add('hidden')
 
     document.addEventListener('DOMContentLoaded', async () => {
         const urlParams = new URLSearchParams(window.location.search);

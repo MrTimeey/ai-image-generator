@@ -1,7 +1,7 @@
 import express from 'express';
 import fs from 'fs-extra';
 import appConfig from '../common/appConfig';
-import { getDataStore } from '../common/dataStore';
+import { cleanDataStore, getDataStore } from '../common/dataStore';
 import sharp from 'sharp';
 import path from 'path';
 import { fromFormated, READ_FORMAT } from '../common/timeUtils';
@@ -52,6 +52,17 @@ files.get('/get/:imageName', async (req, res) => {
         createdAt: formattedDate,
         languageModel: getLanguageModel(dataStoreEntry)
     })
+})
+
+files.delete('/:imageName', async (req, res) => {
+    const imageName = req.params.imageName;
+    const imagePath = `${imageDir}/${imageName}`;
+    if (!fs.existsSync(imagePath)) {
+        return res.status(200);
+    }
+    fs.rmSync(imagePath)
+    cleanDataStore()
+    res.status(200)
 })
 
 export default files;

@@ -30,13 +30,27 @@ async function getAllThumbnails(sorting) {
         });
 
         if (!response.ok) {
-            document.querySelector('#msg').textContent = 'That image could not be generated';
+            console.error('That image could not be generated');
             return []
         }
         return await response.json();
     } catch (error) {
-        document.querySelector('#msg').textContent = error;
+        console.error('That image could not be generated', error);
         return [];
+    }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+async function deleteImage(imageName) {
+    try {
+        await fetch(`/api/files/${imageName}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+    } catch (error) {
+        console.error('Failed deletion')
     }
 }
 
