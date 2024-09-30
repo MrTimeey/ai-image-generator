@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Image Generator</title>
+    <!-- Favicon -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/public/favicon_io/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/public/favicon_io/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/public/favicon_io/favicon-16x16.png" />
+    <link rel="manifest" href="/public/favicon_io/site.webmanifest" />
+    <script src="/js/main.js" defer></script>
+    <script src="/public/js/toast.js" defer></script>
+    <link href="/public/css/generated-tailwind.css" rel="stylesheet">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="/public/css/style.css" rel="stylesheet">
+    <style>
+        /* Spinner Animation */
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        /* Für Chrome, Safari und Edge */
+        progress::-webkit-progress-value {
+            background-color: #2563eb; /* Tailwind's blue-600 */
+        }
+
+        /* Für Firefox */
+        progress::-moz-progress-bar {
+            background-color: #2563eb; /* Tailwind's blue-600 */
+        }
+
+        /* Optional: allgemeines Styling des Progress Bar Hintergrundes */
+        progress {
+            background-color: #e5e7eb; /* Tailwind's gray-200 */
+            border-radius: 0.375rem; /* abgerundete Ecken */
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+<!-- Spinner Overlay -->
+<div id="spinner-overlay" class="hidden fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center z-50">
+    <div class="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+</div>
+
+<header class="bg-blue-600 text-white">
+    <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+        <div class="text-2xl font-bold">
+            <a href="/index.html">AI Image Generator</a>
+        </div>
+
+        <!-- Navigation (Desktop) -->
+        <nav class="hidden md:flex space-x-6">
+            <a href="/index.html" class="hover:text-gray-300">Generator</a>
+            <a href="/overview.html?sorting=DESC" class="hover:text-gray-300">Overview</a>
+            <a href="/exchange.html" class="hover:text-gray-300">Exchange</a>
+            <a href="https://beta.openai.com/docs" target="_blank" class="hover:text-gray-300">API-Dokumentation</a>
+        </nav>
+
+        <!-- Burger Menu Button (Mobile) -->
+        <div class="md:hidden">
+            <button id="burger-btn" class="focus:outline-none">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Navigation (Mobile) -->
+    <nav id="mobile-menu" class="hidden bg-blue-600 md:hidden px-4 py-4">
+        <a href="/index.html" class="block py-2 text-white hover:text-gray-300">Generator</a>
+        <a href="/overview.html?sorting=DESC" class="block py-2 text-white hover:text-gray-300">Overview</a>
+        <a href="/exchange.html" class="block py-2 text-white hover:text-gray-300">Exchange</a>
+        <a href="https://beta.openai.com/docs" target="_blank" class="block py-2 text-white hover:text-gray-300">API-Dokumentation</a>
+    </nav>
+</header>
+
+<div id="toast" class="toast"></div>
+
+<main class="max-w-4xl mx-auto mt-10 p-6 bg-white shadow-lg rounded-lg">
+
+    <!-- Backup Abschnitt -->
+    <section class="mb-10 p-6 bg-gray-100 rounded-lg border border-gray-300">
+        <h2 class="text-3xl font-bold text-gray-700 mb-4">Backup</h2>
+        <p class="text-gray-600 mb-6">Hier können Sie alle generierten Dateien als ZIP herunterladen.</p>
+        <button id="download" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Download</button>
+    </section>
+
+    <!-- Restore Abschnitt -->
+    <section class="p-6 bg-gray-100 rounded-lg border border-gray-300">
+        <h2 class="text-3xl font-bold text-gray-700 mb-4">Restore</h2>
+        <p class="text-gray-600 mb-6">Hier können Sie die Daten mithilfe einer ZIP-Datei importieren.</p>
+
+        <!-- File Chooser -->
+        <div class="mb-4">
+            <label class="block text-sm font-bold text-gray-700 mb-2" for="file-upload">Wählen Sie eine ZIP-Datei aus:</label>
+            <input id="file-upload" type="file" accept=".zip" class="border border-gray-300 p-2 w-full" onchange="handleFileSelect(event)">
+        </div>
+
+        <!-- Progress Bar -->
+        <div id="progress-container" class="hidden mb-4">
+            <label class="block text-sm font-bold text-gray-700 mb-2">Upload Fortschritt:</label>
+            <progress id="progress-bar" value="0" max="100" class="w-full h-4"></progress>
+        </div>
+
+        <!-- Import Button (zunächst deaktiviert) -->
+        <button id="import-btn" class="bg-blue-600 text-white font-bold py-2 px-4 rounded opacity-50 cursor-not-allowed" disabled onclick="uploadFile()">
+            Import
+        </button>
+    </section>
+
+</main>
+
+<script>
+    const spinnerOverlay = document.getElementById('spinner-overlay');
+    const downloadBtn = document.getElementById('download')
+    downloadBtn.addEventListener('click', async () => {
+        document.getElementById('progress-container').classList.add('hidden');
+        spinnerOverlay.classList.remove('hidden');
+        const response = await getExportZip()
+        if (response) {
+            const downloadUrl = URL.createObjectURL(response);
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(downloadUrl);
+        }
+        spinnerOverlay.classList.add('hidden');
+    })
+
+    let selectedFile = null;
+
+    function handleFileSelect(event) {
+        document.getElementById('progress-container').classList.add('hidden');
+        const file = event.target.files[0];
+        if (file) {
+            selectedFile = file;
+            document.getElementById('import-btn').classList.remove('opacity-50', 'cursor-not-allowed');
+            document.getElementById('import-btn').disabled = false;
+        } else {
+            showToast("Bitte wählen Sie eine gültige ZIP-Datei aus.");
+        }
+    }
+
+    function uploadFile() {
+        if (selectedFile) {
+            document.getElementById('import-btn').classList.add('opacity-50', 'cursor-not-allowed');
+            document.getElementById('import-btn').disabled = true;
+            document.getElementById('progress-container').classList.remove('hidden');
+            const progressBar = document.getElementById('progress-bar');
+            const xhr = new XMLHttpRequest();
+
+            xhr.upload.addEventListener('progress', function(e) {
+                const value = (e.loaded / e.total) * 100;
+                if (e.lengthComputable) {
+                    progressBar.value = value;
+                }
+                if (value === 100) {
+                    document.getElementById('import-btn').classList.remove('opacity-50', 'cursor-not-allowed');
+                    document.getElementById('import-btn').disabled = false;
+                    spinnerOverlay.classList.remove('hidden')
+                }
+            });
+
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    showToast('Upload erfolgreich!');
+                } else {
+                    showToast('Fehler beim Upload');
+                }
+                spinnerOverlay.classList.add('hidden')
+                document.getElementById('progress-container').classList.add('hidden');
+
+            };
+
+            xhr.onerror = function() {
+                showToast('Upload fehlgeschlagen.');
+            };
+
+            xhr.open('POST', '/api/exchange/upload', true);
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+
+            xhr.send(formData);
+        }
+    }
+</script>
+
+</body>
+</html>

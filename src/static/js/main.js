@@ -54,6 +54,22 @@ async function deleteImage(imageName) {
     }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+async function getExportZip() {
+    try {
+        const response = await fetch(`/api/exchange/all`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+        return await response.blob()
+    } catch (error) {
+        console.error('Failed download all')
+        return undefined
+    }
+}
+
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function generateImage() {
