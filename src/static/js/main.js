@@ -20,9 +20,9 @@ async function getDetailInformation(imageName) {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-async function getAllThumbnails() {
+async function getAllThumbnails(sorting) {
     try {
-        const response = await fetch('/api/thumbnails/all', {
+        const response = await fetch(`/api/thumbnails/all?sorting=${sorting}`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',

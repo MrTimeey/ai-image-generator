@@ -51,7 +51,7 @@
         <!-- Navigation (Desktop) -->
         <nav class="hidden md:flex space-x-6">
             <a href="/index.html" class="hover:text-gray-300">Generator</a>
-            <a href="/overview.html" class="hover:text-gray-300">Overview</a>
+            <a href="/overview.html?sorting=DESC" class="hover:text-gray-300">Overview</a>
             <a href="https://beta.openai.com/docs" target="_blank" class="hover:text-gray-300">API-Dokumentation</a>
         </nav>
 
@@ -68,12 +68,26 @@
     <!-- Navigation (Mobile) -->
     <nav id="mobile-menu" class="hidden bg-blue-600 md:hidden px-4 py-4">
         <a href="/index.html" class="block py-2 text-white hover:text-gray-300">Generator</a>
-        <a href="/overview.html" class="block py-2 text-white hover:text-gray-300">Overview</a>
+        <a href="/overview.html?sorting=DESC" class="block py-2 text-white hover:text-gray-300">Overview</a>
         <a href="https://beta.openai.com/docs" target="_blank" class="block py-2 text-white hover:text-gray-300">API-Dokumentation</a>
     </nav>
 </header>
 
-<main class="max-w-6xl mx-auto py-10 px-4">
+<main class="max-w-6xl mx-auto py-10 px-4 relative">
+
+    <div id="asc-sort" class="hidden absolute top-0 right-0 mt-2 mr-4 flex items-center space-x-1 text-blue-500 cursor-pointer">
+        <span>From Old to New</span>
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M5.293 9.293a1 1 0 011.414 0L10 12.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+        </svg>
+    </div>
+    <div id="desc-sort" class="hidden absolute top-0 right-0 mt-2 mr-4 flex items-center space-x-1 text-blue-500 cursor-pointer">
+        <span>From New to Old</span>
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 20 20" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+        </svg>
+    </div>
+
     <div id="thumbnail-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 justify-items-center">
         <div class="dummy-entry thumbnail bg-gray-200">
         </div>
@@ -99,6 +113,9 @@
 </main>
 
 <script>
+    document.getElementById('asc-sort').addEventListener('click', () => window.location.href = '/overview.html?sorting=DESC')
+    document.getElementById('desc-sort').addEventListener('click', () => window.location.href = '/overview.html?sorting=ASC')
+
     const createImage = (imageName) => {
         const imageElement = document.createElement('img');
         imageElement.src = `/thumbnails/${imageName}`;
@@ -118,8 +135,28 @@
     const spinnerOverlay = document.getElementById('spinner-overlay');
     const thumbnailGrid = document.getElementById('thumbnail-grid');
 
+    function updateUrl(newSorting) {
+        const currentUrl = window.location.href;
+        const url = new URL(currentUrl);
+        const params = new URLSearchParams(url.search);
+        params.set('sorting', newSorting);
+        const newUrl = `${url.origin}${url.pathname}?${params.toString()}`;
+        window.history.replaceState(null, '', newUrl);
+    }
+
     document.addEventListener('DOMContentLoaded', async () => {
-        const images = await getAllThumbnails();
+        const urlParams = new URLSearchParams(window.location.search);
+        let sortingParam = urlParams.get('sorting');
+        if (sortingParam !== 'ASC' && sortingParam !== 'DESC') {
+            updateUrl('DESC')
+            sortingParam = 'DESC'
+        }
+        if (sortingParam === 'ASC') {
+            document.getElementById('asc-sort').classList.remove('hidden');
+        } else {
+            document.getElementById('desc-sort').classList.remove('hidden');
+        }
+        const images = await getAllThumbnails(sortingParam);
         Array.from(document.getElementsByClassName('dummy-entry')).forEach(e => e.remove())
         spinnerOverlay.classList.add('hidden')
         images.map(createImage).forEach(i => thumbnailGrid.appendChild(i))

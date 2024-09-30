@@ -47,6 +47,9 @@ export const cleanDataStore = () => {
     dataStore.data = filteredFiles;
     dataStore.entries = filteredFiles.length;
 
+    const filteredFileNames = dataStore.data.map(i => i.fileName);
+    files.filter(f => !filteredFileNames.includes(f)).forEach(i => fs.rmSync(path.join(appConfig.baseFolder, i)))
+
     saveDataStore(dataStore);
 
     const imageMap: ImageMap = filteredFiles.reduce((acc, i) => {

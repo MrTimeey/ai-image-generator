@@ -2,5 +2,5 @@
     "watch": ["src", "api-doc"],
     "ext": ".ts,.js,.json,.css,.html",
     "ignore": [],
-    "exec": "ts-node ./src/main.ts"
+    "exec": "npx tailwindcss -i src/static/public/css/tailwind.css -o ./src/static/public/css/generated-tailwind.css && ts-node ./src/main.ts"
 }

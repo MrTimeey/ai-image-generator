@@ -25,6 +25,11 @@ export enum LanguageModel {
     DALL_E_THREE = 'dall-e-3',
 }
 
+export enum Sorting {
+    ASCENDING = 'ASC',
+    DESCENDING = 'DESC',
+}
+
 export enum ImageQuality {
     STANDARD = 'standard',
     HD = 'hd',
