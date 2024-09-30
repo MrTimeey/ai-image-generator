@@ -7,7 +7,7 @@
     "types": "dist/index.d.ts",
     "scripts": {
         "dev": "nodemon",
-        "update-tailwind": "npx tailwindcss -i ./src/static/css/tailwind.css -o ./src/static/css/generated-tailwind.css",
+        "update-tailwind": "npx tailwindcss -i src/static/public/css/tailwind.css -o ./src/static/css/generated-tailwind.css",
         "serve": "ts-node src/main.ts",
         "lint": "eslint **/*.ts",
         "lint:fix": "eslint --fix **/*.ts",

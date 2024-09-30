@@ -3,7 +3,7 @@ import appConfig from './appConfig';
 import { Request, Response, NextFunction } from 'express';
 
 export const verifyAuth = (req: Request, res: Response, next: NextFunction) => {
-    if (req.path === '/login' || req.path === '/login.html') {
+    if (req.path === '/login' || req.path === '/login.html' || req.path.includes('/public/')) {
         return next();
     }
     verifyToken(req, res, next);

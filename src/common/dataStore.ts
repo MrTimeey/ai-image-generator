@@ -34,7 +34,7 @@ const clearThumbnails = (dir: string, imageMap: ImageMap) => {
         .filter(f => !imageMap[f])
         .map(f => path.join(dir, f))
         .filter(p => fs.existsSync(p))
-        .forEach(p => fs.rmSync(path.join(dir, p)));
+        .forEach(p => fs.rmSync(p));
 }
 
 export const cleanDataStore = () => {
