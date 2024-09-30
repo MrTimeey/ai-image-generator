@@ -11,6 +11,7 @@ import bodyParser from 'body-parser';
 import auth from './routes/auth';
 import { verifyAuth } from './common/authUtils';
 import appConfig from './common/appConfig';
+import exchange from './routes/exchange';
 
 const app: express.Application = express();
 
@@ -27,6 +28,7 @@ const apiRouter: express.Router = express.Router();
 apiRouter.use('/openai', openAi);
 apiRouter.use('/thumbnails', thumbnails);
 apiRouter.use('/files', files);
+apiRouter.use('/exchange', exchange);
 
 app.use('/api', apiRouter);
 app.use('/login', auth)

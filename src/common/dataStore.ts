@@ -18,6 +18,24 @@ export const getDataStore = (): ImageDataStore => {
     return JSON.parse(objString);
 };
 
+export const getDataStoreFromPath = (path: string): ImageDataStore => {
+    if (!fs.existsSync(path)) {
+        return {
+            entries: 0,
+            data: [],
+        };
+    }
+    const objString = fs.readFileSync(`${path}/${dataStoreName}`, { encoding: 'utf8', flag: 'r' });
+    return JSON.parse(objString);
+};
+
+export const getImageMap = (dataStore: ImageDataStore): { [key: string]: DataImage } => {
+    return dataStore.data.reduce((acc, i) => {
+        if (!i.fileName) return acc;
+        return { ...acc, [i.fileName]: i };
+    }, {})
+}
+
 export const saveDataStore = (store: ImageDataStore) => {
     if (!fs.existsSync(`${appConfig.baseFolder}`)) {
         fs.mkdirSync(`${appConfig.baseFolder}`);
