@@ -58,11 +58,11 @@ files.delete('/:imageName', async (req, res) => {
     const imageName = req.params.imageName;
     const imagePath = `${imageDir}/${imageName}`;
     if (!fs.existsSync(imagePath)) {
-        return res.status(200);
+        return res.sendStatus(200);
     }
     fs.rmSync(imagePath)
     cleanDataStore()
-    res.status(200)
+    res.sendStatus(200)
 })
 
 export default files;
