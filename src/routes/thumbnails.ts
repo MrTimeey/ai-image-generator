@@ -16,7 +16,7 @@ export async function createThumbnail(image: string) {
     const thumbnailPath = path.join(thumbnailDir, image);
     const imagePath = path.join(appConfig.baseFolder, image);
     if (!fs.existsSync(thumbnailPath) && fs.existsSync(imagePath)) {
-        await sharp(imagePath.replace('.png', '.PNG')).resize(200).toFile(thumbnailPath);
+        await sharp(imagePath).resize(200).toFile(thumbnailPath);
     }
 }
 
