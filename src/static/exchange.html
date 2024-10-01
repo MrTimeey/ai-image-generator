@@ -57,7 +57,7 @@
             <a href="/index.html" class="hover:text-gray-300">Generator</a>
             <a href="/overview.html?sorting=DESC" class="hover:text-gray-300">Overview</a>
             <a href="/exchange.html" class="hover:text-gray-300">Exchange</a>
-            <a href="https://beta.openai.com/docs" target="_blank" class="hover:text-gray-300">API-Dokumentation</a>
+            <a href="https://beta.openai.com/docs" target="_blank" class="hover:text-gray-300">API-Doc</a>
         </nav>
 
         <!-- Burger Menu Button (Mobile) -->
@@ -75,7 +75,7 @@
         <a href="/index.html" class="block py-2 text-white hover:text-gray-300">Generator</a>
         <a href="/overview.html?sorting=DESC" class="block py-2 text-white hover:text-gray-300">Overview</a>
         <a href="/exchange.html" class="block py-2 text-white hover:text-gray-300">Exchange</a>
-        <a href="https://beta.openai.com/docs" target="_blank" class="block py-2 text-white hover:text-gray-300">API-Dokumentation</a>
+        <a href="https://beta.openai.com/docs" target="_blank" class="block py-2 text-white hover:text-gray-300">API-Doc</a>
     </nav>
 </header>
 
@@ -86,24 +86,24 @@
     <!-- Backup Abschnitt -->
     <section class="mb-10 p-6 bg-gray-100 rounded-lg border border-gray-300">
         <h2 class="text-3xl font-bold text-gray-700 mb-4">Backup</h2>
-        <p class="text-gray-600 mb-6">Hier können Sie alle generierten Dateien als ZIP herunterladen.</p>
+        <p class="text-gray-600 mb-6">Here you can download all generated files as a ZIP.</p>
         <button id="download" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Download</button>
     </section>
 
     <!-- Restore Abschnitt -->
     <section class="p-6 bg-gray-100 rounded-lg border border-gray-300">
         <h2 class="text-3xl font-bold text-gray-700 mb-4">Restore</h2>
-        <p class="text-gray-600 mb-6">Hier können Sie die Daten mithilfe einer ZIP-Datei importieren.</p>
+        <p class="text-gray-600 mb-6">Here you can import data using a ZIP file.</p>
 
         <!-- File Chooser -->
         <div class="mb-4">
-            <label class="block text-sm font-bold text-gray-700 mb-2" for="file-upload">Wählen Sie eine ZIP-Datei aus:</label>
+            <label class="block text-sm font-bold text-gray-700 mb-2" for="file-upload">Select a ZIP file:</label>
             <input id="file-upload" type="file" accept=".zip" class="border border-gray-300 p-2 w-full" onchange="handleFileSelect(event)">
         </div>
 
         <!-- Progress Bar -->
         <div id="progress-container" class="hidden mb-4">
-            <label class="block text-sm font-bold text-gray-700 mb-2">Upload Fortschritt:</label>
+            <label class="block text-sm font-bold text-gray-700 mb-2">Upload progress:</label>
             <progress id="progress-bar" value="0" max="100" class="w-full h-4"></progress>
         </div>
 
