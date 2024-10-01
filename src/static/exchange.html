@@ -152,6 +152,8 @@
         if (selectedFile) {
             document.getElementById('import-btn').classList.add('opacity-50', 'cursor-not-allowed');
             document.getElementById('import-btn').disabled = true;
+            downloadBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            downloadBtn.disabled = true;
             document.getElementById('progress-container').classList.remove('hidden');
             const progressBar = document.getElementById('progress-bar');
             const xhr = new XMLHttpRequest();
@@ -164,6 +166,8 @@
                 if (value === 100) {
                     document.getElementById('import-btn').classList.remove('opacity-50', 'cursor-not-allowed');
                     document.getElementById('import-btn').disabled = false;
+                    downloadBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    downloadBtn.disabled = false;
                     spinnerOverlay.classList.remove('hidden')
                 }
             });
