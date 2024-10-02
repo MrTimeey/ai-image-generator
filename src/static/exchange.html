@@ -117,6 +117,13 @@
 
 <script>
     const spinnerOverlay = document.getElementById('spinner-overlay');
+
+    const burgerBtn = document.getElementById('burger-btn');
+    const mobileMenu = document.getElementById('mobile-menu');
+    burgerBtn.addEventListener('click', () => {
+        mobileMenu.classList.toggle('hidden');
+    });
+
     const downloadBtn = document.getElementById('download')
     downloadBtn.addEventListener('click', async () => {
         document.getElementById('progress-container').classList.add('hidden');
