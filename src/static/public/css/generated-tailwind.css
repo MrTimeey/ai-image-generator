@@ -696,6 +696,10 @@ video {
   height: 100%;
 }
 
+.min-h-screen {
+  min-height: 100vh;
+}
+
 .w-16 {
   width: 4rem;
 }
@@ -710,6 +714,10 @@ video {
 
 .w-5 {
   width: 1.25rem;
+}
+
+.w-64 {
+  width: 16rem;
 }
 
 .w-8 {
@@ -1125,8 +1133,16 @@ video {
     height: 13rem;
   }
 
+  .md\:h-96 {
+    height: 24rem;
+  }
+
   .md\:w-48 {
     width: 12rem;
+  }
+
+  .md\:w-96 {
+    width: 24rem;
   }
 
   .md\:grid-cols-2 {
