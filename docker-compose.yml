@@ -10,7 +10,6 @@ services:
       - "3001:3000"
     environment:
       - AI_IMAGE_GENERATOR_PORT=3000
-      - AI_IMAGE_GENERATOR_SAVE_IMAGES=true
       - AI_IMAGE_GENERATOR_OUTPUT_PATH=/app/images
       - OPEN_AI_API_KEY=${OPEN_AI_API_KEY}
       - OPEN_AI_ORG_ID=${OPEN_AI_ORG_ID}
