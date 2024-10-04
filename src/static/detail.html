@@ -9,6 +9,7 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/public/favicon_io/favicon-32x32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/public/favicon_io/favicon-16x16.png" />
     <link rel="manifest" href="/public/favicon_io/site.webmanifest" />
+    <script src="/public/js/toast.js" defer></script>
     <script src="/js/main.js" defer></script>
     <link href="/public/css/generated-tailwind.css" rel="stylesheet">
     <link href="/public/css/style.css" rel="stylesheet">
@@ -53,6 +54,8 @@
         <a href="https://beta.openai.com/docs" target="_blank" class="block py-2 text-white hover:text-gray-300">API-Doc</a>
     </nav>
 </header>
+
+<div id="toast" class="toast"></div>
 
 <!-- Bild Detailansicht -->
 <main class="max-w-4xl mx-auto py-10 px-4 bg-white shadow-lg rounded-lg">
@@ -104,10 +107,15 @@
     document.addEventListener('DOMContentLoaded', async () => {
         const urlParams = new URLSearchParams(window.location.search);
         const filename = urlParams.get('filename');
+        if (!filename || filename === '') {
+            window.location.href = '/notFound.html'
+            return
+        }
         const image = await getDetailInformation(filename);
         if (image.errorMsg) {
-            document.getElementById('msg-container').classList.remove('hidden')
-            document.getElementById('msg').textContent = image.errorMsg
+            console.error('Failed opening detailed view!', image.errorMsg)
+            window.location.href = '/notFound.html'
+            return
         } else {
             document.getElementById('image').src = `/big-thumbnails/${image.filename}`
             document.getElementById('prompt').textContent = image.prompt;

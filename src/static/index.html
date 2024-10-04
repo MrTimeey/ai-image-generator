@@ -10,6 +10,7 @@
     <link rel="icon" type="image/png" sizes="16x16" href="/public/favicon_io/favicon-16x16.png" />
     <link rel="manifest" href="/public/favicon_io/site.webmanifest" />
     <script src="/js/main.js" defer></script>
+    <script src="/public/js/toast.js" defer></script>
     <link href="/public/css/generated-tailwind.css" rel="stylesheet">
     <link href="/public/css/style.css" rel="stylesheet">
     <style>
@@ -59,6 +60,8 @@
         <a href="https://beta.openai.com/docs" target="_blank" class="block py-2 text-white hover:text-gray-300">API-Doc</a>
     </nav>
 </header>
+
+<div id="toast" class="toast"></div>
 
 <main class="max-w-4xl mx-auto py-10 px-4">
     <div class="mb-6">
@@ -141,6 +144,7 @@
                 const image = await getDetailInformation(filename);
                 if (image.errorMsg) {
                     document.getElementById('msg').textContent = image.errorMsg
+                    showToast(image.errorMsg)
                 } else {
                     if (document.getElementById('description').textContent === '') {
                         document.getElementById('description').textContent = image.prompt

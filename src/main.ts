@@ -35,6 +35,10 @@ app.use('/login', auth)
 app.use('/thumbnails', thumbnails);
 app.use(express.static(path.join(__dirname, 'static')));
 
+app.use((_, res) => {
+    res.redirect('/notFound.html');
+});
+
 app.listen(config.port, () => {
     cleanDataStore();
     console.log(`it's alive on http://localhost:${config.port}`);
