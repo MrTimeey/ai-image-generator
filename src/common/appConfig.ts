@@ -7,11 +7,6 @@ if (!process.env.OPEN_AI_API_KEY || !process.env.OPEN_AI_ORG_ID) {
     throw new Error('Missing environments!');
 }
 
-const shouldImagesBeSaved = (): boolean => {
-    const saveImagesEnabledEnv: string = process.env.AI_IMAGE_GENERATOR_SAVE_IMAGES || 'false';
-    return 'true' === saveImagesEnabledEnv;
-};
-
 const isAuthEnabled = (): boolean => {
     const authEnabledEnv: string = process.env.AUTH_ENABLED || 'false';
     return 'true' === authEnabledEnv;
@@ -25,8 +20,7 @@ const appConfig: ApplicationConfig = {
     port: parseInt(process.env.AI_IMAGE_GENERATOR_PORT as string) || 3000,
     apiKey: process.env.OPEN_AI_API_KEY,
     organization: process.env.OPEN_AI_ORG_ID,
-    saveImagesEnabled: shouldImagesBeSaved(),
-    baseFolder: process.env.AI_IMAGE_GENERATOR_OUTPUT_PATH || './generated',
+    baseFolder: process.env.AI_IMAGE_GENERATOR_OUTPUT_PATH || './../ai-images',
     enableAuth: isAuthEnabled(),
     auth: {
         jwtSecret: process.env.JWT_SECRET ?? '',

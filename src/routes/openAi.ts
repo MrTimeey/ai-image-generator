@@ -2,7 +2,6 @@ import express from 'express';
 import { generateImages } from '../controller/openAiController';
 import { GeneratedImages, GenerateImagesRequest, ImageQuality, ImageSize, LanguageModel } from '../types';
 import { downloadFile, persistImage } from '../common/fileUtils';
-import appConfig from '../common/appConfig';
 import { createBigThumbnail } from './files';
 import { createThumbnail } from './thumbnails';
 
@@ -50,13 +49,11 @@ openAi.post('/generate-images', async (req, res) => {
         res.status(500).send({ success: false });
         return;
     }
-    if (appConfig.saveImagesEnabled) {
-        for (const image of images.images) {
-            persistImage(image, images.createdAt, images.languageModel, images.description);
-            downloadFile(image);
-            await createBigThumbnail(image.fileName);
-            await createThumbnail(image.fileName)
-        }
+    for (const image of images.images) {
+        persistImage(image, images.createdAt, images.languageModel, images.description);
+        downloadFile(image);
+        await createBigThumbnail(image.fileName);
+        await createThumbnail(image.fileName)
     }
     res.status(200).send({ createdAt: images.createdAt, images: images.images });
 });
