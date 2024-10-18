@@ -83,10 +83,13 @@ function generateImage() {
         return [];
     }
 
-    return generateImageRequest(prompt, model, size, quality);
+    if (model === 'flux-kontext-pro' || model === 'flux-kontext-max') {
+        return generateBflImageRequest(prompt, model, size)
+    }
+    return generateOpenAiImageRequest(prompt, model, size, quality);
 }
 
-async function generateImageRequest(prompt, model, size, quality) {
+async function generateOpenAiImageRequest(prompt, model, size, quality) {
     try {
         const response = await fetch('/api/openai/generate-images', {
             method: 'POST',
@@ -98,6 +101,32 @@ async function generateImageRequest(prompt, model, size, quality) {
                 languageModel: model,
                 size: size.toUpperCase(),
                 quality: quality.toUpperCase(),
+            }),
+        });
+
+        if (!response.ok) {
+            document.querySelector('#msg').textContent = 'That image could not be generated';
+            return []
+        }
+        const data = await response.json();
+        return data.images.map(i => i.fileName);
+    } catch (error) {
+        document.querySelector('#msg').textContent = error;
+        return [];
+    }
+}
+
+async function generateBflImageRequest(prompt, model, ratio) {
+    try {
+        const response = await fetch('/api/bfl/generate-images', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                description: prompt,
+                languageModel: model,
+                ratio: ratio,
             }),
         });
 

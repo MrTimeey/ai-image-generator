@@ -1,7 +1,14 @@
+import { BflLanguageModel } from './controller/bflTypes';
+
 export type ApplicationConfig = {
     port: number;
-    apiKey: string;
-    organization: string;
+    openai: {
+        apiKey: string;
+        organization: string;
+    };
+    bfl: {
+        apiKey: string;
+    },
     baseFolder: string;
     enableAuth: boolean;
     auth: {
@@ -38,7 +45,8 @@ export type GeneratedImage = {
     id: string;
     url: string;
     fileName: string;
-    revisedPrompt: string;
+    revisedPrompt?: string;
+    engine: string;
 };
 
 export interface GeneratedImages extends BaseImages {
@@ -49,7 +57,7 @@ export interface GeneratedImages extends BaseImages {
 
 export interface BaseImages {
     createdAt: string;
-    languageModel: LanguageModel;
+    languageModel: LanguageModel | BflLanguageModel;
     images: GeneratedImage[];
 }
 
@@ -74,7 +82,7 @@ export type DataImage = {
     url: string;
     fileName?: string;
     createdAt: string;
-    languageModel: LanguageModel;
+    languageModel: LanguageModel | BflLanguageModel;
     description: string;
     revisedPrompt: string;
 }
