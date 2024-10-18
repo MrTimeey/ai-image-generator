@@ -15,12 +15,6 @@ const validSizeProp = (languageModel: LanguageModel, size: string | undefined): 
     return ['LARGE', 'LARGE_HORIZONTAL', 'LARGE_VERTICAL'].includes(size);
 };
 
-const validAmountProp = (languageModel: LanguageModel, amount: number | undefined): boolean => {
-    if (!amount) return true;
-    if (!Number.isInteger(amount)) return false;
-    return languageModel === LanguageModel.DALL_E_TWO ? amount >= 1 && amount <= 10 : amount === 1;
-};
-
 const getTypedImageSize = (size: string | undefined): ImageSize | undefined => {
     // @ts-ignore
     return size && Object.keys(ImageSize).includes(size) ? ImageSize[size] : undefined;
@@ -35,16 +29,16 @@ const getTypedQuality = (quality: 'STANDARD' | 'HD' | undefined) => {
 };
 
 openAi.post('/generate-images', async (req, res) => {
-    const { description, languageModel, quality, size, amount } = req.body as GenerateImagesRequest;
+    const { description, languageModel, quality, size } = req.body as GenerateImagesRequest;
     const typedLanguageModel = getTypedLanguageModel(languageModel);
     const typedQuality = getTypedQuality(quality);
-    if (!description || !validSizeProp(typedLanguageModel, size) || !validAmountProp(typedLanguageModel, amount)) {
+    if (!description || !validSizeProp(typedLanguageModel, size)) {
         res.status(400).send({ success: false });
         return;
     }
     const typedImageSize = getTypedImageSize(size);
 
-    const images: GeneratedImages = await generateImages(description, typedLanguageModel, amount, typedImageSize, typedQuality);
+    const images: GeneratedImages = await generateImages(description, typedLanguageModel, typedImageSize, typedQuality);
     if (images.images.length === 0) {
         res.status(500).send({ success: false });
         return;

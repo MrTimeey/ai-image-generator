@@ -77,17 +77,16 @@ function generateImage() {
     const size = document.querySelector('#size').value;
     const quality = document.querySelector('#quality').value;
     const model = document.querySelector('#model').value;
-    const amount = document.querySelector('#amount').value;
 
     if (prompt === '') {
         document.querySelector('#msg').textContent = 'Please add some text';
         return [];
     }
 
-    return generateImageRequest(prompt, model, size, amount, quality);
+    return generateImageRequest(prompt, model, size, quality);
 }
 
-async function generateImageRequest(prompt, model, size, amount, quality) {
+async function generateImageRequest(prompt, model, size, quality) {
     try {
         const response = await fetch('/api/openai/generate-images', {
             method: 'POST',
@@ -97,7 +96,6 @@ async function generateImageRequest(prompt, model, size, amount, quality) {
             body: JSON.stringify({
                 description: prompt,
                 languageModel: model,
-                amount: parseInt(amount),
                 size: size.toUpperCase(),
                 quality: quality.toUpperCase(),
             }),
