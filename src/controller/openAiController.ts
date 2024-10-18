@@ -8,8 +8,8 @@ import Image = OpenAI.Image;
 import { ImageGenerateParams } from 'openai/src/resources/images';
 
 const configuration: ClientOptions = {
-    organization: appConfig.organization,
-    apiKey: appConfig.apiKey,
+    organization: appConfig.openai.organization,
+    apiKey: appConfig.openai.apiKey,
 };
 const openai = new OpenAI(configuration);
 
@@ -38,7 +38,7 @@ export const generateImages = async (
                 .filter((i: Image) => i.url !== 'not_found')
                 .map((i: Image) => {
                     const id = uuidv4();
-                    return { id: id, url: i.url ?? 'not_found', fileName: getFileName(id, created), revisedPrompt: i.revised_prompt ?? 'not_found' };
+                    return { id: id, url: i.url ?? 'not_found', fileName: getFileName(id, created), revisedPrompt: i.revised_prompt ?? 'not_found', engine: 'openAi' };
                 }) ?? [];
         return {
             createdAt: created,

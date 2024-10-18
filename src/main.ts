@@ -12,6 +12,7 @@ import auth from './routes/auth';
 import { verifyAuth } from './common/authUtils';
 import appConfig from './common/appConfig';
 import exchange from './routes/exchange';
+import bfl from './routes/bfl';
 
 const app: express.Application = express();
 
@@ -26,6 +27,7 @@ if (appConfig.enableAuth) {
 
 const apiRouter: express.Router = express.Router();
 apiRouter.use('/openai', openAi);
+apiRouter.use('/bfl', bfl);
 apiRouter.use('/thumbnails', thumbnails);
 apiRouter.use('/files', files);
 apiRouter.use('/exchange', exchange);

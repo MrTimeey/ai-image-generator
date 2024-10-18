@@ -3,12 +3,13 @@ import { GeneratedImage, LanguageModel } from '../types';
 import { getDataStore, saveDataStore } from './dataStore';
 import appConfig from './appConfig';
 import request from 'sync-request';
+import { BflLanguageModel } from '../controller/bflTypes';
 
 export const getFileName = (id: string, createdAt: string): string => {
     return `${createdAt}_${id}.png`;
 };
 
-export const persistImage = (image: GeneratedImage, createdAt: string, languageModel: LanguageModel, description = ''): void => {
+export const persistImage = (image: GeneratedImage, createdAt: string, languageModel: LanguageModel | BflLanguageModel, description = ''): void => {
     const dataStore = getDataStore();
     dataStore.data.push({
         createdAt: createdAt,
@@ -17,7 +18,7 @@ export const persistImage = (image: GeneratedImage, createdAt: string, languageM
         fileName: image.fileName,
         languageModel: languageModel,
         description: description,
-        revisedPrompt: image.revisedPrompt,
+        revisedPrompt: image?.revisedPrompt ?? '',
     });
     dataStore.entries++;
     saveDataStore(dataStore);

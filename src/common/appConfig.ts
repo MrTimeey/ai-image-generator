@@ -3,7 +3,7 @@ import { ApplicationConfig } from '../types';
 
 dotenv.config();
 
-if (!process.env.OPEN_AI_API_KEY || !process.env.OPEN_AI_ORG_ID) {
+if (!process.env.OPEN_AI_API_KEY || !process.env.OPEN_AI_ORG_ID || !process.env.BFL_API_KEY) {
     throw new Error('Missing environments!');
 }
 
@@ -18,8 +18,13 @@ if (isAuthEnabled() && !process.env.JWT_SECRET) {
 
 const appConfig: ApplicationConfig = {
     port: parseInt(process.env.AI_IMAGE_GENERATOR_PORT as string) || 3000,
-    apiKey: process.env.OPEN_AI_API_KEY,
-    organization: process.env.OPEN_AI_ORG_ID,
+    openai: {
+        apiKey: process.env.OPEN_AI_API_KEY,
+        organization: process.env.OPEN_AI_ORG_ID,
+    },
+    bfl: {
+        apiKey: process.env.BFL_API_KEY,
+    },
     baseFolder: process.env.AI_IMAGE_GENERATOR_OUTPUT_PATH || './../ai-images',
     enableAuth: isAuthEnabled(),
     auth: {

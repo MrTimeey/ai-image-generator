@@ -5,7 +5,7 @@ import { cleanDataStore, getDataStore } from '../common/dataStore';
 import sharp from 'sharp';
 import path from 'path';
 import { fromFormated, READ_FORMAT } from '../common/timeUtils';
-import { DataImage, LanguageModel } from '../types';
+import { DataImage } from '../types';
 
 const files: express.Router = express.Router();
 
@@ -31,8 +31,7 @@ files.get('/download/:imageName', async (req, res) => {
 });
 
 const getLanguageModel = (dataStoreEntry: DataImage | undefined) => {
-    const languageModel = dataStoreEntry?.languageModel ?? LanguageModel.DALL_E_TWO;
-    return languageModel === LanguageModel.DALL_E_TWO ? 'DALL_E_TWO' : 'DALL_E_THREE'
+    return dataStoreEntry?.languageModel ?? '';
 }
 
 files.get('/get/:imageName', async (req, res) => {
