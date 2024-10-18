@@ -39,7 +39,8 @@
             <a href="/index.html" class="hover:text-gray-300">Generator</a>
             <a href="/overview.html?sorting=DESC" class="hover:text-gray-300">Overview</a>
             <a href="/exchange.html" class="hover:text-gray-300">Exchange</a>
-            <a href="https://beta.openai.com/docs" target="_blank" class="hover:text-gray-300">API-Doc</a>
+            <a href="https://beta.openai.com/docs" target="_blank" class="hover:text-gray-300">OpenAI-Doc</a>
+            <a href="https://docs.bfl.ml/quick_start/gen_image/" target="_blank" class="hover:text-gray-300">BLM-Doc</a>
         </nav>
 
         <!-- Burger Menu Button (Mobile) -->
@@ -57,7 +58,8 @@
         <a href="/index.html" class="block py-2 text-white hover:text-gray-300">Generator</a>
         <a href="/overview.html?sorting=DESC" class="block py-2 text-white hover:text-gray-300">Overview</a>
         <a href="/exchange.html" class="block py-2 text-white hover:text-gray-300">Exchange</a>
-        <a href="https://beta.openai.com/docs" target="_blank" class="block py-2 text-white hover:text-gray-300">API-Doc</a>
+        <a href="https://beta.openai.com/docs" target="_blank" class="block py-2 text-white hover:text-gray-300">OpenAI-Doc</a>
+        <a href="https://docs.bfl.ml/quick_start/gen_image/" target="_blank" class="block py-2 text-white hover:text-gray-300">BLM-Doc</a>
     </nav>
 </header>
 
@@ -75,6 +77,7 @@
             <select id="model" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent">
                 <option id="language_version_two" value="DALL_E_TWO">DALL·E 2</option>
                 <option id="language_version_three" value="DALL_E_THREE" selected>DALL·E 3</option>
+                <option id="black_forest_labs" value="BLACK_FOREST_LABS">Black Forest Labs</option>
             </select>
         </div>
         <div>
@@ -86,6 +89,7 @@
                 <option class="dalle_three_value default-value" value="large" selected>Large</option>
                 <option class="dalle_three_value" value="large_vertical">Large Vertical</option>
                 <option class="dalle_three_value" value="large_horizontal">Large Horizontal</option>
+                <option class="blm_value default-value hidden" value="large" selected>Large</option>
             </select>
         </div>
         <div>
@@ -94,6 +98,7 @@
                 <option class="dalle_two_value hidden default-value" value="STANDARD" selected>Standard</option>
                 <option class="dalle_three_value default-value" value="STANDARD" selected>Standard</option>
                 <option class="dalle_three_value" value="HD">HD</option>
+                <option class="blm_value hidden default-value" value="STANDARD" selected>Standard</option>
             </select>
         </div>
     </div>
@@ -168,14 +173,22 @@
         const selectedLanguageModel = modelBtn.value
         const versionTwoValues = Array.from(document.getElementsByClassName('dalle_two_value'));
         const versionThreeValues = Array.from(document.getElementsByClassName('dalle_three_value'));
+        const blmValues = Array.from(document.getElementsByClassName('blm_value'));
         if (selectedLanguageModel === 'DALL_E_TWO') {
             versionTwoValues.forEach(el => el.classList.remove('hidden'))
             versionThreeValues.forEach(el => el.classList.add('hidden'))
+            blmValues.forEach(el => el.classList.add('hidden'))
             restoreDefaults(versionTwoValues)
-        } else {
+        } else if (selectedLanguageModel === 'DALL_E_THREE') {
             versionThreeValues.forEach(el => el.classList.remove('hidden'))
             versionTwoValues.forEach(el => el.classList.add('hidden'))
+            blmValues.forEach(el => el.classList.add('hidden'))
             restoreDefaults(versionThreeValues)
+        } else {
+            versionThreeValues.forEach(el => el.classList.add('hidden'))
+            versionTwoValues.forEach(el => el.classList.add('hidden'))
+            blmValues.forEach(el => el.classList.remove('hidden'))
+            restoreDefaults(blmValues)
         }
     })
     const generateBtn = document.getElementById('generate-btn');
