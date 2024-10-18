@@ -83,6 +83,10 @@ function generateImage() {
         return [];
     }
 
+    if (model === 'BLACK_FOREST_LABS') {
+        document.querySelector('#msg').textContent = 'Not supported at the moment!';
+        return []
+    }
     return generateImageRequest(prompt, model, size, quality);
 }
 
