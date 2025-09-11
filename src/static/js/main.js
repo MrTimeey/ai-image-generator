@@ -83,7 +83,7 @@ function generateImage() {
         return [];
     }
 
-    if (model === 'flux-kontext-pro' || model === 'flux-kontext-max') {
+    if (model === 'flux-kontext-pro' || model === 'flux-kontext-max' || model === 'flux-pro-1.1') {
         return generateBflImageRequest(prompt, model, size)
     }
     return generateOpenAiImageRequest(prompt, model, size, quality);

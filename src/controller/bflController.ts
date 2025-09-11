@@ -1,11 +1,9 @@
-import { OpenAI } from 'openai';
 import appConfig from '../common/appConfig';
 import { GeneratedImage, GeneratedImages } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { currentTimestamp } from '../common/timeUtils';
 import { getFileName } from '../common/fileUtils';
 import { BflLanguageModel, BflOutputFormat, BflRatio } from './bflTypes';
-import Image = OpenAI.Image;
 import axios, { AxiosError } from 'axios';
 
 const pollInterval = 1000;
@@ -13,7 +11,7 @@ const initialWait = 3000;
 
 export const generateImages = async (
     prompt: string,
-    languageModel: BflLanguageModel = BflLanguageModel.FLUX_PRO,
+    languageModel: BflLanguageModel = BflLanguageModel.PRO,
     ratio: BflRatio = BflRatio['1x1'],
     outputFormat: BflOutputFormat = BflOutputFormat.PNG,
     amount = 1,
@@ -29,12 +27,10 @@ export const generateImages = async (
         const images: GeneratedImage[] =
             results
                 .filter(r => r.status === "fulfilled" && r.value)
-                .map((r: any) => r.value as string)
-                .map((u: string) => ({ url: u ?? 'not_found' }))
-                .filter((i: Image) => i.url !== 'not_found')
-                .map((i: Image) => {
+                .map((p: any) => p.value)
+                .map((i: BflResult) => {
                     const id = uuidv4();
-                    return { id: id, url: i.url ?? 'not_found', fileName: getFileName(id, created), engine: 'bfl' };
+                    return { id: id, url: i.url ?? 'not_found', fileName: getFileName(id, created), engine: 'bfl', revisedPrompt: i?.prompt };
                 }) ?? [];
         return {
             createdAt: created,
@@ -57,7 +53,7 @@ const sendRequest = async (
     model: BflLanguageModel,
     ratio: BflRatio,
     format: BflOutputFormat,
-): Promise<string> => {
+): Promise<BflResult> => {
     try {
         const response = await axios.post(
             `https://api.bfl.ml/v1/${model}`,
@@ -65,6 +61,7 @@ const sendRequest = async (
                 prompt,
                 aspect_ratio: ratio,
                 output_format: format,
+                prompt_upsampling: true
             },
             {
                 headers: {
@@ -87,7 +84,12 @@ const sendRequest = async (
     }
 };
 
-export const pollForResult = async (requestId: string): Promise<string> => {
+type BflResult = {
+    url: string;
+    prompt: string;
+}
+
+export const pollForResult = async (requestId: string): Promise<BflResult> => {
     const pollUrl = `https://api.bfl.ml/v1/get_result?id=${requestId}`;
 
     let attempt = 0;
@@ -105,7 +107,7 @@ export const pollForResult = async (requestId: string): Promise<string> => {
             const status: string = response.data?.status;
 
             if (status === "Ready") {
-                return response.data?.result?.sample ?? '';
+                return {url: response.data?.result?.sample ?? '', prompt: response.data?.result?.prompt ?? ''};
             }
 
             if (status === "Failed") {

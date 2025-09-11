@@ -12,7 +12,7 @@ const bfl: express.Router = express.Router();
 const BflImagesRequestSchema = z.object({
     description: z.string().min(1),
     amount: z.number().int().min(1).max(4).optional().default(1),
-    languageModel: z.nativeEnum(BflLanguageModel).optional().default(BflLanguageModel.FLUX_PRO),
+    languageModel: z.nativeEnum(BflLanguageModel).optional().default(BflLanguageModel.PRO),
     ratio: z.enum(Object.values(BflRatio) as [BflRatio, ...BflRatio[]]).optional().default(BflRatio['1x1']),
     outputFormat: z.nativeEnum(BflOutputFormat).optional().default(BflOutputFormat.PNG),
 });

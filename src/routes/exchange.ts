@@ -59,7 +59,7 @@ exchange.post('/upload', upload.single('file'), (req, res) => {
     if (!req.file) {
         return res.status(400).send('Keine Datei hochgeladen.');
     }
-    console.log(`Datei hochgeladen: ${req.file.filename}`);
+    console.debug(`Datei hochgeladen: ${req.file.filename}`);
 
     const uploadedFile = path.join(imageDir, 'uploads', req.file.filename)
     const zip = new AdmZip(uploadedFile)

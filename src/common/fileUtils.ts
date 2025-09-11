@@ -29,7 +29,7 @@ export function downloadFile(image: GeneratedImage): void {
         const res = request('GET', image.url);
         if (res.statusCode === 200) {
             fs.writeFileSync(`${appConfig.baseFolder}/${image.fileName}`, res.getBody());
-            console.log('Download completed!');
+            console.debug('Download completed!');
         } else {
             console.error(`Failed to get '${image.url}' (${res.statusCode})`);
         }

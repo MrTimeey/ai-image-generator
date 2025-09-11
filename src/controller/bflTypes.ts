@@ -1,4 +1,5 @@
 export enum BflLanguageModel {
+    PRO = 'flux-pro-1.1',
     FLUX_MAX = 'flux-kontext-max',
     FLUX_PRO = 'flux-kontext-pro',
 }
