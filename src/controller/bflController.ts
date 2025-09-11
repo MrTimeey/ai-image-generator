@@ -6,9 +6,10 @@ import { currentTimestamp } from '../common/timeUtils';
 import { getFileName } from '../common/fileUtils';
 import { BflLanguageModel, BflOutputFormat, BflRatio } from './bflTypes';
 import Image = OpenAI.Image;
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 
-const pollInterval = 500;
+const pollInterval = 1000;
+const initialWait = 3000;
 
 export const generateImages = async (
     prompt: string,
@@ -22,11 +23,13 @@ export const generateImages = async (
         const requests = Array.from({ length: amount }, () =>
             sendRequest(prompt, languageModel, ratio, outputFormat)
         );
-        const results = await Promise.all(requests);
+        const results = await Promise.allSettled(requests);
 
         const created = currentTimestamp();
         const images: GeneratedImage[] =
             results
+                .filter(r => r.status === "fulfilled" && r.value)
+                .map((r: any) => r.value as string)
                 .map((u: string) => ({ url: u ?? 'not_found' }))
                 .filter((i: Image) => i.url !== 'not_found')
                 .map((i: Image) => {
@@ -41,9 +44,9 @@ export const generateImages = async (
         };
     } catch (error: any) {
         if (error.response) {
-            console.log(error.response.status, error.response.data);
+            console.error(error.response.status, error.response.data);
         } else {
-            console.log(error.message);
+            console.error(error.message);
         }
     }
     return { createdAt: currentTimestamp(), languageModel, description: prompt, images: [] };
@@ -73,6 +76,7 @@ const sendRequest = async (
         );
 
         const requestId = response.data.id as string;
+        await sleep(initialWait);
         return await pollForResult(requestId);
     } catch (error: any) {
         console.error(
@@ -83,40 +87,63 @@ const sendRequest = async (
     }
 };
 
-const pollForResult = async (requestId: string): Promise<string> => {
+export const pollForResult = async (requestId: string): Promise<string> => {
     const pollUrl = `https://api.bfl.ml/v1/get_result?id=${requestId}`;
 
-    return new Promise<string>((resolve, reject) => {
-        const poll = async () => {
-            try {
-                const response = await axios.get(pollUrl, {
-                    headers: {
-                        accept: "application/json",
-                        "x-key": appConfig.bfl.apiKey,
-                    },
-                });
+    let attempt = 0;
+    const found = false
+    while (!found) {
+        try {
+            const response = await axios.get(pollUrl, {
+                timeout: 10_000,
+                headers: {
+                    accept: "application/json",
+                    "x-key": appConfig.bfl.apiKey,
+                },
+            });
 
-                const status = response.data.status;
+            const status: string = response.data?.status;
 
-                if (status === "Ready") {
-                    const resultUrl: string = response.data.result.sample;
-                    resolve(resultUrl);
-                } else if (status === "Failed") {
-                    reject(new Error("Bildgenerierung fehlgeschlagen"));
-                } else {
-                    setTimeout(poll, pollInterval);
-                }
-            } catch (error: any) {
-                reject(
-                    new Error(
-                        `Fehler beim Abrufen des Ergebnisses: ${
-                            error.response ? error.response.data : error.message
-                        }`
-                    )
-                );
+            if (status === "Ready") {
+                return response.data?.result?.sample ?? '';
             }
-        };
 
-        poll();
-    });
+            if (status === "Failed") {
+                return Promise.reject(new Error("Bildgenerierung fehlgeschlagen"));
+            }
+
+            await sleep(pollInterval);
+        } catch (e: any) {
+            const err = e as AxiosError;
+            const retryable = isRetryableNetworkError(err) || isRetryableHttpStatus(err.response?.status);
+
+            if (!retryable) {
+                const detail = err.response?.data ?? err.message;
+                throw new Error(`Fehler beim Abrufen des Ergebnisses: ${JSON.stringify(detail)}`);
+            }
+
+            if (attempt >= 6) {
+                const detail = err.response?.data ?? err.message;
+                throw new Error(`Fehler (nach ${attempt} Retries) beim Abrufen des Ergebnisses: ${JSON.stringify(detail)}`);
+            }
+
+            await sleep(pollInterval);
+            attempt++;
+        }
+    }
+    return Promise.reject('Bildgenerierung fehlgeschlagen')
+};
+
+const sleep = (ms: number) => new Promise(res => setTimeout(res, ms));
+
+const isRetryableNetworkError = (err: AxiosError | any): boolean => {
+    const code = (err?.code || "").toString();
+    // typische transient network/dns errors aus Node/axios
+    return ["EAI_AGAIN", "ENOTFOUND", "ETIMEDOUT", "ECONNRESET", "ECONNREFUSED", "EPIPE"].includes(code);
+};
+
+const isRetryableHttpStatus = (status?: number): boolean => {
+    if (!status) return false;
+    if (status === 429) return true;
+    return status >= 500 && status < 600;
 };
