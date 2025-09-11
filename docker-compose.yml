@@ -13,6 +13,7 @@ services:
       - AI_IMAGE_GENERATOR_OUTPUT_PATH=/app/images
       - OPEN_AI_API_KEY=${OPEN_AI_API_KEY}
       - OPEN_AI_ORG_ID=${OPEN_AI_ORG_ID}
+      - BFL_API_KEY=${BFL_API_KEY}
       - AUTH_ENABLED=true
       - JWT_SECRET=${JWT_SECRET}
       - AUTH_USER=${AUTH_USER}
