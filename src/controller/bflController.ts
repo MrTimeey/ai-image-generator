@@ -15,11 +15,12 @@ export const generateImages = async (
     ratio: BflRatio = BflRatio['1x1'],
     outputFormat: BflOutputFormat = BflOutputFormat.PNG,
     amount = 1,
+    revisePrompt = true
 ): Promise<GeneratedImages> => {
     try {
         if (amount > 4) amount = 4
         const requests = Array.from({ length: amount }, () =>
-            sendRequest(prompt, languageModel, ratio, outputFormat)
+            sendRequest(prompt, languageModel, ratio, outputFormat, revisePrompt)
         );
         const results = await Promise.allSettled(requests);
 
@@ -53,6 +54,7 @@ const sendRequest = async (
     model: BflLanguageModel,
     ratio: BflRatio,
     format: BflOutputFormat,
+    revisePrompt = true
 ): Promise<BflResult> => {
     try {
         const response = await axios.post(
@@ -61,7 +63,7 @@ const sendRequest = async (
                 prompt,
                 aspect_ratio: ratio,
                 output_format: format,
-                prompt_upsampling: true
+                prompt_upsampling: revisePrompt
             },
             {
                 headers: {

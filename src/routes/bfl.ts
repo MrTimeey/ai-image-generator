@@ -15,6 +15,7 @@ const BflImagesRequestSchema = z.object({
     languageModel: z.nativeEnum(BflLanguageModel).optional().default(BflLanguageModel.PRO),
     ratio: z.enum(Object.values(BflRatio) as [BflRatio, ...BflRatio[]]).optional().default(BflRatio['1x1']),
     outputFormat: z.nativeEnum(BflOutputFormat).optional().default(BflOutputFormat.PNG),
+    revisePrompt: z.boolean().optional().default(true),
 });
 
 bfl.post('/generate-images', async (req, res) => {
@@ -22,9 +23,9 @@ bfl.post('/generate-images', async (req, res) => {
     if (!parseResult.success) {
         return res.status(400).send({ success: false, errors: parseResult.error.errors });
     }
-    const { description, languageModel, amount, ratio, outputFormat } = parseResult.data;
+    const { description, languageModel, amount, ratio, outputFormat, revisePrompt } = parseResult.data;
 
-    const images: GeneratedImages = await generateImages(description, languageModel, ratio, outputFormat, amount);
+    const images: GeneratedImages = await generateImages(description, languageModel, ratio, outputFormat, amount, revisePrompt);
     if (images.images.length === 0) {
         res.status(500).send({ success: false });
         return;
