@@ -58,9 +58,9 @@ const sendRequest = async (
 ): Promise<BflResult> => {
     try {
         const response = await axios.post(
-            `https://api.bfl.ml/v1/${model}`,
+            `https://api.bfl.ai/v1/${model}`,
             {
-                prompt,
+                prompt: prompt,
                 aspect_ratio: ratio,
                 output_format: format,
                 prompt_upsampling: revisePrompt
@@ -74,9 +74,9 @@ const sendRequest = async (
             }
         );
 
-        const requestId = response.data.id as string;
+        const pollingUrl = response.data.polling_url as string;
         await sleep(initialWait);
-        return await pollForResult(requestId);
+        return await pollForResult(pollingUrl);
     } catch (error: any) {
         console.error(
             "Fehler bei der API-Anfrage:",
@@ -91,8 +91,7 @@ type BflResult = {
     prompt: string;
 }
 
-export const pollForResult = async (requestId: string): Promise<BflResult> => {
-    const pollUrl = `https://api.bfl.ml/v1/get_result?id=${requestId}`;
+export const pollForResult = async (pollUrl: string): Promise<BflResult> => {
 
     let attempt = 0;
     const found = false
