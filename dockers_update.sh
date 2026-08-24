@@ -38,11 +38,24 @@ docker image prune -f
 # Ein Deploy, der stillschweigend ein kaputtes Image startet, ist schlimmer
 # als einer, der meckert. `/api/health` ist bewusst ohne Anmeldung erreichbar,
 # genau dafuer.
-sleep 5
-if docker exec aiImageGenerator node -e "fetch('http://127.0.0.1:3000/api/health').then(r=>r.json()).then(j=>{console.log('health:',JSON.stringify(j));process.exit(j.status==='ok'?0:1)}).catch(e=>{console.error(e.message);process.exit(1)})"; then
+#
+# **Wiederholt pruefen, nicht einmal nach fester Wartezeit.** Gestartet wird
+# ueber ts-node, das den Quellcode beim Start uebersetzt und dafuer je nach
+# Last des Servers deutlich laenger als fuenf Sekunden braucht — ein einzelner
+# Versuch meldet dann einen Fehlschlag, obwohl der Deploy in Ordnung ist.
+HEALTH_OK=0
+for _ in $(seq 1 20); do
+  if docker exec aiImageGenerator node -e "fetch('http://127.0.0.1:3000/api/health').then(r=>r.json()).then(j=>{console.log('health:',JSON.stringify(j));process.exit(j.status==='ok'?0:1)}).catch(()=>process.exit(1))" 2>/dev/null; then
+    HEALTH_OK=1
+    break
+  fi
+  sleep 3
+done
+
+if [ "$HEALTH_OK" = "1" ]; then
   echo "Deploy erfolgreich"
 else
-  echo "WARNUNG: Health-Endpunkt antwortet nicht wie erwartet"
+  echo "WARNUNG: Health-Endpunkt antwortet auch nach 60 s nicht wie erwartet"
   docker compose logs --tail 40 ai-image-generator
   exit 1
 fi
