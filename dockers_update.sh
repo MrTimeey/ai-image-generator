@@ -1,4 +1,9 @@
 #!/usr/bin/env sh
+# **Alles in einer Klammer.** `git reset --hard` weiter unten ersetzt diese
+# Datei mitten im Lauf, und `sh` liest sein Skript haeppchenweise nach: ohne
+# die Klammer fuehrt es ab dem Tausch an einer zufaelligen Stelle der *neuen*
+# Datei weiter. Die Klammer zwingt `sh`, erst alles zu lesen.
+{
 # Wird vom webhook-Container ausgefuehrt, wenn GitHub einen Push meldet.
 # Arbeitsverzeichnis ist der Ordner, in dem diese Datei liegt — auf Host und
 # im Container derselbe Pfad, damit die relativen Bind-Mounts der
@@ -81,3 +86,4 @@ if [ "$STATUS" = "200" ]; then
 else
   echo "WARNUNG: Der Proxy liefert $STATUS statt 200"
 fi
+}
