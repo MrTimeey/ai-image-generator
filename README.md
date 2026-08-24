@@ -73,6 +73,7 @@ Alles unter `/api` verlangt eine Anmeldung und antwortet bei fehlender mit
 | `GET /api/files/get/:name` | Metadaten |
 | `GET /api/files/download/:name` | Datei |
 | `DELETE /api/files/:name` | löschen |
+| `GET /api/credits` | Guthaben der Anbieter (`?refresh=1` umgeht den 60-s-Cache) |
 | `GET/POST/DELETE /api/keys` | API-Keys (**nur mit Sitzung**) |
 | `GET /api/health` | öffentlich |
 
@@ -106,6 +107,19 @@ Antwort:
                "url": "/api/files/download/…png", "revisedPrompt": "…", "seed": 42 }],
   "errors": [] }
 ```
+
+### Kontoseite
+
+`/account.html` zeigt das BFL-Guthaben und verlinkt die Stellen, die man sonst
+sucht: [BFL-Dashboard](https://dashboard.bfl.ai/),
+[OpenAI-Abrechnung](https://platform.openai.com/settings/organization/billing/overview),
+OpenAI-Verbrauch, Authentik-Konto. Dort steht auch der Abmelden-Knopf; in der
+Navigationsleiste führt das Kürzel des Benutzers hin.
+
+**OpenAI gibt den Kontostand über keine API heraus** —
+`/v1/dashboard/billing/*` antwortet API-Keys mit 403. Mit einem Admin-Key
+(`OPEN_AI_ADMIN_KEY`, Scope `api.usage.read`) zeigt die Seite immerhin die
+Ausgaben des laufenden Monats über `/v1/organization/costs`.
 
 ### API-Keys
 

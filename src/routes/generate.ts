@@ -6,6 +6,7 @@ import { generate } from '../controller/imageService';
 import { describeError, ProviderError, statusOf } from '../common/providerError';
 import { hasProvider } from '../common/appConfig';
 import { clampQuality, resolveSize } from '../common/aspectRatio';
+import { getCredits } from '../controller/creditsController';
 
 const generateRouter: express.Router = express.Router();
 
@@ -60,6 +61,10 @@ generateRouter.get('/models', (_req, res) => {
               ),
     }));
     res.send({ defaultModel: findModel(DEFAULT_MODEL) && hasProvider.bfl ? DEFAULT_MODEL : models[0]?.id, models });
+});
+
+generateRouter.get('/credits', async (req, res) => {
+    res.send({ providers: await getCredits(req.query.refresh === '1') });
 });
 
 generateRouter.post('/generate', async (req, res) => {

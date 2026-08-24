@@ -6,6 +6,8 @@ export type ApplicationConfig = {
     openai: {
         apiKey: string;
         organization: string;
+        /** Getrennter Admin-Key (`sk-admin-…`), nur fuer die Kostenabfrage. */
+        adminKey: string;
     };
     bfl: {
         apiKey: string;

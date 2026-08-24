@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Konto &middot; AI Image Generator</title>
+    <link rel="apple-touch-icon" sizes="180x180" href="/public/favicon_io/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/public/favicon_io/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/public/favicon_io/favicon-16x16.png" />
+    <link rel="manifest" href="/public/favicon_io/site.webmanifest" />
+    <meta name="theme-color" content="#2563eb">
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').catch((error) =>
+                    console.debug('Service Worker nicht registriert', error));
+            });
+        }
+    </script>
+    <script src="/public/js/toast.js" defer></script>
+    <script src="/public/js/nav.js" defer></script>
+    <link href="/public/css/generated-tailwind.css" rel="stylesheet">
+    <link href="/public/css/style.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+
+<header class="bg-blue-600 text-white">
+    <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+        <div class="text-2xl font-bold"><a href="/index.html">AI Image Generator</a></div>
+        <nav id="nav-desktop" class="hidden md:flex space-x-6 items-center"></nav>
+        <div class="md:hidden">
+            <button id="burger-btn" class="focus:outline-none">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path>
+                </svg>
+            </button>
+        </div>
+    </div>
+    <nav id="mobile-menu" class="hidden bg-blue-600 md:hidden px-4 py-4">
+        <div id="nav-mobile"></div>
+    </nav>
+</header>
+
+<div id="toast" class="toast"></div>
+
+<main class="max-w-4xl mx-auto py-10 px-4">
+    <div class="flex items-center gap-4 mb-8">
+        <div id="avatar" class="h-14 w-14 rounded-full bg-blue-600 text-white flex items-center justify-center text-xl font-semibold">?</div>
+        <div>
+            <h1 id="user-name" class="text-2xl font-semibold text-gray-800">Konto</h1>
+            <p id="user-meta" class="text-sm text-gray-600"></p>
+        </div>
+    </div>
+
+    <div class="flex items-center justify-between mb-3">
+        <h2 class="text-lg font-semibold text-gray-800">Guthaben</h2>
+        <button id="refresh-btn" class="text-sm text-blue-600 hover:underline">Neu laden</button>
+    </div>
+    <div id="credits" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+        <div class="bg-white rounded-lg shadow p-6 text-gray-500">wird geladen&hellip;</div>
+    </div>
+
+    <h2 class="text-lg font-semibold text-gray-800 mb-3">Schnellzugriff</h2>
+    <div class="bg-white rounded-lg shadow divide-y divide-gray-100 mb-8">
+        <a href="https://dashboard.bfl.ai/" target="_blank" rel="noopener"
+           class="flex items-center justify-between p-4 hover:bg-gray-50">
+            <span>
+                <span class="block font-medium text-gray-800">BFL-Dashboard</span>
+                <span class="block text-sm text-gray-600">Credits kaufen, Verbrauch und API-Keys</span>
+            </span>
+            <span class="text-blue-600">dashboard.bfl.ai &rarr;</span>
+        </a>
+        <a href="https://platform.openai.com/settings/organization/billing/overview" target="_blank" rel="noopener"
+           class="flex items-center justify-between p-4 hover:bg-gray-50">
+            <span>
+                <span class="block font-medium text-gray-800">OpenAI-Abrechnung</span>
+                <span class="block text-sm text-gray-600">Guthaben aufladen, Limits und Rechnungen</span>
+            </span>
+            <span class="text-blue-600">platform.openai.com &rarr;</span>
+        </a>
+        <a href="https://platform.openai.com/settings/organization/usage" target="_blank" rel="noopener"
+           class="flex items-center justify-between p-4 hover:bg-gray-50">
+            <span>
+                <span class="block font-medium text-gray-800">OpenAI-Verbrauch</span>
+                <span class="block text-sm text-gray-600">Was die Bilder tats&auml;chlich gekostet haben</span>
+            </span>
+            <span class="text-blue-600">Nutzung &rarr;</span>
+        </a>
+        <a id="authentik-link" href="#" target="_blank" rel="noopener"
+           class="hidden items-center justify-between p-4 hover:bg-gray-50">
+            <span>
+                <span class="block font-medium text-gray-800">Authentik</span>
+                <span class="block text-sm text-gray-600">Passwort &auml;ndern, Sitzungen verwalten</span>
+            </span>
+            <span class="text-blue-600">auth.mrtimeey.com &rarr;</span>
+        </a>
+        <a href="/api-keys.html" class="flex items-center justify-between p-4 hover:bg-gray-50">
+            <span>
+                <span class="block font-medium text-gray-800">API-Keys</span>
+                <span class="block text-sm text-gray-600">Schl&uuml;ssel f&uuml;r Skripte erzeugen und widerrufen</span>
+            </span>
+            <span class="text-blue-600">Verwalten &rarr;</span>
+        </a>
+    </div>
+
+    <div id="logout-box" class="hidden">
+        <a href="/auth/logout"
+           class="inline-block bg-red-600 text-white px-5 py-2 rounded-lg hover:bg-red-700">Abmelden</a>
+    </div>
+</main>
+
+<script>
+    const creditsBox = document.getElementById('credits');
+
+    const card = (provider) => {
+        const box = document.createElement('div');
+        box.className = 'bg-white rounded-lg shadow p-6';
+
+        const label = document.createElement('p');
+        label.className = 'text-sm text-gray-600';
+        label.textContent = provider.label;
+        box.appendChild(label);
+
+        const value = document.createElement('p');
+        value.className = 'text-3xl font-semibold text-gray-800 my-1';
+        if (provider.kind === 'unavailable') {
+            value.textContent = '—';
+            value.classList.add('text-gray-400');
+        } else {
+            // Kontostand und Ausgaben sehen sonst gleich aus, meinen aber das
+            // Gegenteil — deshalb das Vorzeichen im Text.
+            const number = provider.value.toLocaleString('de-DE', { maximumFractionDigits: 2 });
+            value.textContent = provider.kind === 'spend'
+                ? `${number} ${provider.unit}`
+                : `${number} ${provider.unit}`;
+        }
+        box.appendChild(value);
+
+        const kind = document.createElement('p');
+        kind.className = 'text-xs uppercase tracking-wide text-gray-500';
+        kind.textContent = provider.kind === 'balance' ? 'Restguthaben'
+            : provider.kind === 'spend' ? 'Ausgaben diesen Monat'
+            : 'nicht abrufbar';
+        box.appendChild(kind);
+
+        if (provider.hint) {
+            const hint = document.createElement('p');
+            hint.className = 'text-xs text-gray-500 mt-2';
+            hint.textContent = provider.hint;
+            box.appendChild(hint);
+        }
+
+        const link = document.createElement('a');
+        link.href = provider.topUpUrl;
+        link.target = '_blank';
+        link.rel = 'noopener';
+        link.className = 'inline-block mt-4 bg-blue-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-700';
+        link.textContent = provider.provider === 'bfl' ? 'Credits aufladen' : 'Guthaben aufladen';
+        box.appendChild(link);
+
+        return box;
+    };
+
+    const loadCredits = async (refresh) => {
+        creditsBox.replaceChildren(Object.assign(document.createElement('div'), {
+            className: 'bg-white rounded-lg shadow p-6 text-gray-500',
+            textContent: 'wird geladen…',
+        }));
+        try {
+            const response = await fetch(`/api/credits${refresh ? '?refresh=1' : ''}`);
+            if (!response.ok) throw new Error(`Fehler ${response.status}`);
+            const data = await response.json();
+            creditsBox.replaceChildren(...data.providers.map(card));
+        } catch (error) {
+            creditsBox.replaceChildren(Object.assign(document.createElement('div'), {
+                className: 'bg-white rounded-lg shadow p-6 text-red-600',
+                textContent: `Guthaben nicht abrufbar: ${error.message}`,
+            }));
+        }
+    };
+
+    document.getElementById('refresh-btn').addEventListener('click', () => loadCredits(true));
+
+    (async () => {
+        try {
+            const response = await fetch('/auth/me');
+            const me = response.ok ? await response.json() : null;
+            if (me && me.authEnabled && me.authenticated) {
+                document.getElementById('avatar').textContent = me.username.slice(0, 2).toUpperCase();
+                document.getElementById('user-name').textContent = me.name || me.username;
+                document.getElementById('user-meta').textContent =
+                    [me.username, me.email, (me.groups || []).join(', ')].filter(Boolean).join(' · ');
+                document.getElementById('logout-box').classList.remove('hidden');
+                if (me.accountUrl) {
+                    const link = document.getElementById('authentik-link');
+                    link.href = me.accountUrl;
+                    link.classList.remove('hidden');
+                    link.classList.add('flex');
+                }
+            } else {
+                document.getElementById('avatar').textContent = 'DEV';
+                document.getElementById('user-name').textContent = 'Ohne Anmeldung';
+                document.getElementById('user-meta').textContent = 'AUTH_ENABLED ist aus.';
+            }
+        } catch (error) {
+            console.debug('Anmeldestatus nicht ermittelbar', error);
+        }
+        await loadCredits(false);
+    })();
+</script>
+</body>
+</html>

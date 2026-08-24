@@ -31,6 +31,9 @@ const appConfig: ApplicationConfig = {
         // Optional: ein veraltetes Org-Id fuehrt zu 401 `mismatched_organization`
         // auf *jedem* Aufruf, ein fehlendes zu gar nichts.
         organization: process.env.OPEN_AI_ORG_ID ?? '',
+        // Optional und bewusst getrennt vom Arbeitsschluessel: er darf nur
+        // Nutzungsdaten lesen, nicht Bilder erzeugen.
+        adminKey: process.env.OPEN_AI_ADMIN_KEY ?? '',
     },
     bfl: {
         apiKey: bflKey,

@@ -169,6 +169,19 @@ Unter `/api` antwortet die App bei fehlender Anmeldung mit **401 JSON**, nie mit
 einer Weiterleitung — ein `401` heißt also immer Token, ein `5xx` immer Dienst.
 `GET /api/health` geht ohne Schlüssel.
 
+## Guthaben
+
+`https://ai.mrtimeey.com/account.html` zeigt das BFL-Guthaben und verlinkt die
+Aufladeseiten. Per API:
+
+```bash
+curl -s https://ai.mrtimeey.com/api/credits -H "Authorization: Bearer $AIG_TOKEN"
+```
+
+BFL liefert echte Credits. **OpenAI gibt den Kontostand über keine API heraus** —
+dort steht bestenfalls der Verbrauch des Monats, und auch das nur mit einem
+hinterlegten Admin-Key.
+
 ## Was der Skill nicht macht
 
 - **Kosten:** jedes Bild kostet echtes Geld bei BFL bzw. OpenAI. Bei größeren
