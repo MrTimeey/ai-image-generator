@@ -9,9 +9,10 @@
         "dev": "nodemon",
         "update-tailwind": "npx tailwindcss -i src/static/public/css/tailwind.css -o ./src/static/public/css/generated-tailwind.css",
         "serve": "ts-node src/main.ts",
-        "lint": "eslint **/*.ts",
+        "lint": "eslint **/*.ts && node scripts/lint-pages.mjs",
         "lint:fix": "eslint --fix **/*.ts",
-        "format": "npx prettier --write ."
+        "format": "npx prettier --write .",
+        "lint:pages": "node scripts/lint-pages.mjs"
     },
     "author": "",
     "license": "MIT",

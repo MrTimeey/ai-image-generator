@@ -169,6 +169,8 @@
 
     /** Die Registry vom Server — die Oberflaeche fuehrt keine eigene Modellliste. */
     let models = [];
+    /** Referenzbilder als { name, dataUrl }. Gehen als base64 an /api/generate. */
+    let references = [];
 
     const option = (value, label) => {
         const el = document.createElement('option');
