@@ -5,7 +5,7 @@ import { cleanDataStore, getDataStore } from '../common/dataStore';
 import sharp from 'sharp';
 import path from 'path';
 import { fromFormated, READ_FORMAT } from '../common/timeUtils';
-import { DataImage } from '../types';
+import { modelNameOf, safeImageName } from '../common/fileUtils';
 
 const files: express.Router = express.Router();
 
@@ -16,52 +16,63 @@ export const createBigThumbnail = async (imageName: string) => {
     fs.ensureDirSync(bigThumbnailDir);
     const thumbnailPath = path.join(bigThumbnailDir, imageName);
     if (!fs.existsSync(thumbnailPath)) {
-        await sharp(path.join(imageDir, imageName))
-            .resize(512) // Größe des Thumbnails
-            .toFile(thumbnailPath);
+        await sharp(path.join(imageDir, imageName)).resize(512).toFile(thumbnailPath);
     }
-}
+};
+
+/**
+ * Loest den Namen aus der URL auf eine Datei im Bilderordner auf — oder auf
+ * gar nichts. Vorher wurde der Parameter ungeprueft in den Pfad interpoliert.
+ */
+const resolveImage = (raw: string): { name: string; path: string } | null => {
+    const name = safeImageName(raw);
+    if (!name) return null;
+    const filePath = path.join(imageDir, name);
+    if (!fs.existsSync(filePath)) return null;
+    return { name, path: filePath };
+};
 
 files.get('/download/:imageName', async (req, res) => {
-    const imageName = req.params.imageName;
-    if (!fs.existsSync(`${imageDir}/${imageName}`)) {
-        return res.status(500).send('Fehler beim Laden des Bildes.');
+    const image = resolveImage(req.params.imageName);
+    if (!image) {
+        return res.status(404).send({ error: 'not_found', message: 'Bild nicht gefunden.' });
     }
-    res.download(`${imageDir}/${imageName}`);
+    res.download(image.path);
 });
 
-const getLanguageModel = (dataStoreEntry: DataImage | undefined) => {
-    return dataStoreEntry?.languageModel ?? '';
-}
-
 files.get('/get/:imageName', async (req, res) => {
-    const imageName = req.params.imageName;
-    const imagePath = `${imageDir}/${imageName}`;
-    if (!fs.existsSync(imagePath)) {
-        return res.status(500).send('Fehler beim Laden des Bildes.');
+    const image = resolveImage(req.params.imageName);
+    if (!image) {
+        return res.status(404).send({ error: 'not_found', message: 'Bild nicht gefunden.' });
     }
-    await createBigThumbnail(imageName)
-    const dataStore = getDataStore();
-    const dataStoreEntry = dataStore.data.find((i) => i.fileName === imageName);
-    const formattedDate = fromFormated(dataStoreEntry?.createdAt??'')?.format(READ_FORMAT) ?? '';
+    await createBigThumbnail(image.name);
+    const entry = getDataStore().data.find(i => i.fileName === image.name);
+    const formattedDate = fromFormated(entry?.createdAt ?? '')?.format(READ_FORMAT) ?? '';
     res.send({
-        prompt: dataStoreEntry?.description,
-        revisedPrompt: dataStoreEntry?.revisedPrompt ?? 'unknown',
-        filename: dataStoreEntry?.fileName,
+        prompt: entry?.description,
+        revisedPrompt: entry?.revisedPrompt || 'unknown',
+        filename: entry?.fileName ?? image.name,
         createdAt: formattedDate,
-        languageModel: getLanguageModel(dataStoreEntry)
-    })
-})
+        model: modelNameOf(entry),
+        provider: entry?.provider ?? '',
+        ratio: entry?.ratio ?? '',
+        width: entry?.width,
+        height: entry?.height,
+        // Der alte Feldname, damit bestehende Skripte weiterlesen koennen.
+        languageModel: modelNameOf(entry),
+    });
+});
 
 files.delete('/:imageName', async (req, res) => {
-    const imageName = req.params.imageName;
-    const imagePath = `${imageDir}/${imageName}`;
-    if (!fs.existsSync(imagePath)) {
-        return res.sendStatus(200);
+    const image = resolveImage(req.params.imageName);
+    if (!image) {
+        // Schon weg ist auch weg — aber mit JSON antworten, damit Clients die
+        // Antwort einheitlich lesen koennen.
+        return res.status(200).send({ deleted: false });
     }
-    fs.rmSync(imagePath)
-    cleanDataStore()
-    res.sendStatus(200)
-})
+    fs.rmSync(image.path);
+    cleanDataStore();
+    res.status(200).send({ deleted: true });
+});
 
 export default files;

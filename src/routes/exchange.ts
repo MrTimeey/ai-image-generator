@@ -8,6 +8,7 @@ import multer from 'multer';
 import AdmZip from 'adm-zip';
 import { getDataStore, getDataStoreFromPath, getImageMap, saveDataStore } from '../common/dataStore';
 import { rimraf } from 'rimraf';
+import { isImageFile, safeImageName } from '../common/fileUtils';
 
 const exchange: express.Router = express.Router();
 
@@ -24,7 +25,15 @@ exchange.get('/all', async (req, res) => {
     archive.on('error', (err) => {
         throw err;
     });
-    archive.directory(imageDir, false);
+    // Gezielt statt `archive.directory(imageDir, false)`: im Bilderordner
+    // liegt seit den API-Keys auch `api-keys.json`, und die gehoert in kein
+    // Export-Archiv.
+    for (const entry of fs.readdirSync(imageDir)) {
+        if (!isImageFile(entry) && entry !== 'data.json') continue;
+        const entryPath = path.join(imageDir, entry);
+        if (!fs.statSync(entryPath).isFile()) continue;
+        archive.file(entryPath, { name: entry });
+    }
     archive.finalize();
     output.on('close', () => {
         res.setHeader('Content-Type', 'application/zip');
@@ -64,7 +73,15 @@ exchange.post('/upload', upload.single('file'), (req, res) => {
     const uploadedFile = path.join(imageDir, 'uploads', req.file.filename)
     const zip = new AdmZip(uploadedFile)
     const unzippedFolderPath = uploadedFile.replace(path.extname(uploadedFile), '');
-    zip.extractAllTo(unzippedFolderPath);
+    fs.ensureDirSync(unzippedFolderPath);
+    // Nicht `extractAllTo`: ein Archiv aus fremder Hand kann Eintraege wie
+    // `../../etc/…` enthalten, und AdmZip legt die bereitwillig an.
+    for (const entry of zip.getEntries()) {
+        if (entry.isDirectory) continue;
+        const name = entry.entryName;
+        if (name !== 'data.json' && !safeImageName(name)) continue;
+        fs.writeFileSync(path.join(unzippedFolderPath, path.basename(name)), entry.getData());
+    }
 
     const dataStore = getDataStore();
     const imageMap = getImageMap(dataStore);
@@ -75,7 +92,9 @@ exchange.post('/upload', upload.single('file'), (req, res) => {
         return res.status(400).send('Keine Daten vorhanden.');
     }
     for (const imageToImport of importDataStore.data) {
-        const imageName = imageToImport?.fileName?? '';
+        // Der Name stammt aus einer fremden `data.json` und darf den
+        // Bilderordner nicht verlassen.
+        const imageName = safeImageName(imageToImport?.fileName ?? '') ?? '';
         if (imageName === '') {
             continue
         }
@@ -88,6 +107,9 @@ exchange.post('/upload', upload.single('file'), (req, res) => {
             }
         } else {
             const importImagePath = path.join(unzippedFolderPath, imageName);
+            // Ein Eintrag ohne zugehoerige Datei hat den Import frueher mit
+            // ENOENT abgebrochen — der Rest des Archivs blieb liegen.
+            if (!fs.existsSync(importImagePath)) continue;
             fs.renameSync(importImagePath, path.join(imageDir, imageName))
             dataStore.data.push(importImageMap[imageName]);
             dataStore.entries = dataStore.entries + 1

@@ -1,76 +1,77 @@
-import { BflLanguageModel } from './controller/bflTypes';
+import { ModelId, Provider } from './controller/modelRegistry';
 
 export type ApplicationConfig = {
     port: number;
+    publicBaseUrl: string;
     openai: {
         apiKey: string;
         organization: string;
     };
     bfl: {
         apiKey: string;
-    },
+    };
     baseFolder: string;
     enableAuth: boolean;
+    isProduction: boolean;
     auth: {
-        jwtSecret: string;
-        user: string;
-        pass: string;
+        sessionSecret: string;
+        issuer: string;
+        clientId: string;
+        clientSecret: string;
+        allowedGroup: string;
     };
 };
 
-export enum ImageSize {
-    SMALL = '256x256',
-    MEDIUM = '512x512',
-    LARGE = '1024x1024',
-    LARGE_VERTICAL = '1024x1792',
-    LARGE_HORIZONTAL = '1792x1024',
-}
+/**
+ * Ein einziges Vokabular fuer alle Anbieter. Was daraus wird — `aspect_ratio`,
+ * `width`/`height` oder ein `size`-String — entscheidet die Model-Registry;
+ * siehe `common/aspectRatio.ts`.
+ */
+export const ASPECT_RATIOS = ['21:9', '16:9', '3:2', '4:3', '1:1', '3:4', '2:3', '9:16', '9:21'] as const;
+export type AspectRatio = (typeof ASPECT_RATIOS)[number];
 
-export enum LanguageModel {
-    DALL_E_TWO = 'dall-e-2',
-    DALL_E_THREE = 'dall-e-3',
-}
+export const QUALITIES = ['low', 'medium', 'high'] as const;
+export type Quality = (typeof QUALITIES)[number];
+
+export const OUTPUT_FORMATS = ['png', 'jpeg', 'webp'] as const;
+export type OutputFormat = (typeof OUTPUT_FORMATS)[number];
 
 export enum Sorting {
     ASCENDING = 'ASC',
     DESCENDING = 'DESC',
 }
 
-export enum ImageQuality {
-    STANDARD = 'standard',
-    HD = 'hd',
-}
+/** Was ein Provider-Controller zurueckgibt: entweder eine URL oder Bytes. */
+export type ProviderImage = {
+    /** Von BFL; laeuft nach ~10 Minuten ab und muss sofort geladen werden. */
+    url?: string;
+    /** Von OpenAI; `gpt-image-*` liefert ausschliesslich base64. */
+    buffer?: Buffer;
+    revisedPrompt?: string;
+    seed?: number;
+};
 
 export type GeneratedImage = {
     id: string;
-    url: string;
     fileName: string;
+    /** An der fertigen Datei gemessen, nicht aus dem Wunsch abgeleitet. */
+    width: number;
+    height: number;
     revisedPrompt?: string;
-    engine: string;
+    seed?: number;
 };
 
-export interface GeneratedImages extends BaseImages {
+export type GenerationResult = {
     createdAt: string;
+    model: ModelId;
+    provider: Provider;
     description: string;
+    width: number;
+    height: number;
     images: GeneratedImage[];
-}
-
-export interface BaseImages {
-    createdAt: string;
-    languageModel: LanguageModel | BflLanguageModel;
-    images: GeneratedImage[];
-}
-
-export interface GenerateImagesRequest extends BaseImageRequest {
-    description: string;
-}
-
-export interface BaseImageRequest {
-    amount?: number;
-    languageModel?: 'DALL_E_TWO' | 'DALL_E_THREE';
-    size?: 'SMALL' | 'MEDIUM' | 'LARGE';
-    quality?: 'STANDARD' | 'HD';
-}
+    /** Teilfehler bei `amount > 1`. Leer heisst: alles hat geklappt. */
+    errors: string[];
+};
 
 export type ImageDataStore = {
     entries: number;
@@ -79,10 +80,21 @@ export type ImageDataStore = {
 
 export type DataImage = {
     id: string;
-    url: string;
     fileName?: string;
     createdAt: string;
-    languageModel: LanguageModel | BflLanguageModel;
     description: string;
     revisedPrompt: string;
-}
+    model?: string;
+    provider?: string;
+    ratio?: string;
+    width?: number;
+    height?: number;
+    /**
+     * Der alte Feldname aus der Zeit von DALL-E. Wird nur noch **gelesen**,
+     * damit vorhandene `data.json`-Eintraege ihr Modell behalten; neue
+     * Eintraege schreiben `model`.
+     */
+    languageModel?: string;
+    /** Frueher die Anbieter-URL. Laengst abgelaufen, bleibt fuer Altdaten. */
+    url?: string;
+};

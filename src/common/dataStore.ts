@@ -4,6 +4,7 @@ import appConfig from './appConfig';
 import path from 'node:path';
 import { bigThumbnailDir } from '../routes/files';
 import { thumbnailDir } from '../routes/thumbnails';
+import { isImageFile } from './fileUtils';
 
 const dataStoreName = `data.json`;
 
@@ -48,7 +49,7 @@ type ImageMap = {[key: string]: DataImage}
 const clearThumbnails = (dir: string, imageMap: ImageMap) => {
     if (!fs.existsSync(dir)) return;
     fs.readdirSync(dir)
-        .filter((file: string) => '.png' === path.extname(file))
+        .filter((file: string) => isImageFile(file))
         .filter(f => !imageMap[f])
         .map(f => path.join(dir, f))
         .filter(p => fs.existsSync(p))
@@ -60,7 +61,10 @@ export const cleanDataStore = () => {
     if (dataStore.entries === 0 || !fs.existsSync(`${appConfig.baseFolder}`)) {
         return;
     }
-    const files = fs.readdirSync(appConfig.baseFolder).filter((file) => '.png' === path.extname(file));
+    // Frueher stand hier ein harter `.png`-Vergleich. Seit BFL auch jpeg
+    // liefert, haette der jeden solchen Eintrag aus `data.json` geworfen —
+    // das Bild blieb liegen, Prompt und Modell waren weg.
+    const files = fs.readdirSync(appConfig.baseFolder).filter(isImageFile);
     const filteredFiles = dataStore.data.filter((i) => i.fileName && files.includes(i.fileName));
     dataStore.data = filteredFiles;
     dataStore.entries = filteredFiles.length;

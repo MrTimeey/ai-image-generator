@@ -5,7 +5,7 @@
         }
     },
     "compilerOptions": {
-        "module": "NodeNext",
+        "module": "CommonJS",
         "moduleResolution": "Node",
         "esModuleInterop": true,
         "resolveJsonModule": true,

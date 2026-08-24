@@ -72,75 +72,44 @@ async function getExportZip() {
 
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-function generateImage() {
-    const prompt = document.querySelector('#description').value;
-    const size = document.querySelector('#size').value;
-    const quality = document.querySelector('#quality').value;
-    const model = document.querySelector('#model').value;
-
-    if (prompt === '') {
-        document.querySelector('#msg').textContent = 'Please add some text';
-        return [];
-    }
-
-    if (model === 'flux-kontext-pro' || model === 'flux-kontext-max' || model === 'flux-pro-1.1') {
-        return generateBflImageRequest(prompt, model, size)
-    }
-    return generateOpenAiImageRequest(prompt, model, size, quality);
+async function loadModels() {
+    const response = await fetch('/api/models', { headers: { Accept: 'application/json' } });
+    if (!response.ok) throw new Error('Modellliste nicht ladbar');
+    return await response.json();
 }
 
-async function generateOpenAiImageRequest(prompt, model, size, quality) {
+/**
+ * Ein Aufruf fuer alle Anbieter. Frueher entschied das Frontend anhand des
+ * Modellnamens, an welchen der beiden Endpunkte es schickt — und welches
+ * Groessen-Vokabular es mitgab.
+ */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+async function generateImage(request) {
+    const msg = document.querySelector('#msg');
+    msg.textContent = '';
     try {
-        const response = await fetch('/api/openai/generate-images', {
+        const response = await fetch('/api/generate', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                description: prompt,
-                languageModel: model,
-                size: size.toUpperCase(),
-                quality: quality.toUpperCase(),
-            }),
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(request),
         });
+        const data = await response.json().catch(() => ({}));
 
         if (!response.ok) {
-            document.querySelector('#msg').textContent = 'That image could not be generated';
-            return []
+            // Die Meldung des Anbieters durchreichen statt sie durch einen
+            // Einheitssatz zu ersetzen.
+            const text = data.message || data.error || `Fehler ${response.status}`;
+            msg.textContent = text;
+            showToast(text);
+            return [];
         }
-        const data = await response.json();
+        if (Array.isArray(data.errors) && data.errors.length > 0) {
+            showToast(`${data.errors.length} von ${data.errors.length + data.images.length} Bildern fehlgeschlagen`);
+        }
         return data.images.map(i => i.fileName);
     } catch (error) {
-        document.querySelector('#msg').textContent = error;
+        msg.textContent = String(error);
+        showToast(String(error));
         return [];
     }
 }
-
-async function generateBflImageRequest(prompt, model, ratio) {
-    try {
-        const response = await fetch('/api/bfl/generate-images', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                description: prompt,
-                languageModel: model,
-                ratio: ratio,
-            }),
-        });
-
-        if (!response.ok) {
-            document.querySelector('#msg').textContent = 'That image could not be generated';
-            return []
-        }
-        const data = await response.json();
-        return data.images.map(i => i.fileName);
-    } catch (error) {
-        document.querySelector('#msg').textContent = error;
-        return [];
-    }
-}
-
-
-

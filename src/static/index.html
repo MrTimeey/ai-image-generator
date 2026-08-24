@@ -9,8 +9,20 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/public/favicon_io/favicon-32x32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/public/favicon_io/favicon-16x16.png" />
     <link rel="manifest" href="/public/favicon_io/site.webmanifest" />
+    <meta name="theme-color" content="#2563eb">
+    <script>
+        // Nur ueber https oder localhost — sonst verweigert der Browser die
+        // Registrierung ohnehin und wirft eine Konsolenmeldung.
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').catch((error) =>
+                    console.debug('Service Worker nicht registriert', error));
+            });
+        }
+    </script>
     <script src="/js/main.js" defer></script>
     <script src="/public/js/toast.js" defer></script>
+    <script src="/public/js/nav.js" defer></script>
     <link href="/public/css/generated-tailwind.css" rel="stylesheet">
     <link href="/public/css/style.css" rel="stylesheet">
     <style>
@@ -35,13 +47,7 @@
         </div>
 
         <!-- Navigation (Desktop) -->
-        <nav class="hidden md:flex space-x-6">
-            <a href="/index.html" class="hover:text-gray-300">Generator</a>
-            <a href="/overview.html?sorting=DESC" class="hover:text-gray-300">Overview</a>
-            <a href="/exchange.html" class="hover:text-gray-300">Exchange</a>
-            <a href="https://beta.openai.com/docs" target="_blank" class="hover:text-gray-300">OpenAI-Doc</a>
-            <a href="https://docs.bfl.ml/quick_start/gen_image/" target="_blank" class="hover:text-gray-300">BFL-Doc</a>
-        </nav>
+        <nav id="nav-desktop" class="hidden md:flex space-x-6"></nav>
 
         <!-- Burger Menu Button (Mobile) -->
         <div class="md:hidden">
@@ -55,11 +61,7 @@
 
     <!-- Navigation (Mobile) -->
     <nav id="mobile-menu" class="hidden bg-blue-600 md:hidden px-4 py-4">
-        <a href="/index.html" class="block py-2 text-white hover:text-gray-300">Generator</a>
-        <a href="/overview.html?sorting=DESC" class="block py-2 text-white hover:text-gray-300">Overview</a>
-        <a href="/exchange.html" class="block py-2 text-white hover:text-gray-300">Exchange</a>
-        <a href="https://beta.openai.com/docs" target="_blank" class="block py-2 text-white hover:text-gray-300">OpenAI-Doc</a>
-        <a href="https://docs.bfl.ml/quick_start/gen_image/" target="_blank" class="block py-2 text-white hover:text-gray-300">BFL-Doc</a>
+        <div id="nav-mobile"></div>
     </nav>
 </header>
 
@@ -67,59 +69,70 @@
 
 <main class="max-w-4xl mx-auto py-10 px-4">
     <div class="mb-6">
-        <label for="description" class="block text-lg font-medium text-gray-700 mb-2">Describe the picture:</label>
-        <textarea id="description" rows="4" class="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent" placeholder="Describe the picture you want to generate..."></textarea>
+        <label for="description" class="block text-lg font-medium text-gray-700 mb-2">Beschreibung</label>
+        <textarea id="description" rows="4" class="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent" placeholder="z. B. ein Leuchtturm bei Sonnenuntergang, Aquarell&hellip;"></textarea>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-        <div>
-            <label for="model" class="block text-sm font-medium text-gray-700 mb-2">Language Model</label>
-            <select id="model" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent">
-                <option id="language_version_three" value="DALL_E_THREE" selected>DALL·E 3</option>
-                <option id="black_forest_labs_pro_1_1" value="flux-pro-1.1">BFL Flux Pro 1.1</option>
-                <option id="black_forest_labs_pro" value="flux-kontext-pro">BFL Flux Kontext Pro</option>
-                <option id="black_forest_labs_max" value="flux-kontext-max">BFL Flux Kontext Max</option>
-            </select>
+    <div class="mb-6">
+        <label for="model" class="block text-sm font-medium text-gray-700 mb-2">Modell</label>
+        <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+            <select id="model" class="sm:w-80 p-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent"></select>
+            <div class="flex-1">
+                <p id="model-title" class="text-sm font-medium text-gray-700"></p>
+                <p id="model-hint" class="text-sm text-gray-600"></p>
+            </div>
         </div>
-        <div>
-            <label for="size" class="block text-sm font-medium text-gray-700 mb-2">Size/Ratio</label>
-            <select id="size" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent">
-                <option class="blm_value hidden" value="21:9">21:9</option>
-                <option class="blm_value hidden" value="16:9">16:9</option>
-                <option class="blm_value hidden" value="4:3">4:3</option>
-                <option class="blm_value hidden default-value" value="1:1" selected>1:1</option>
-                <option class="blm_value hidden" value="9:16">9:16</option>
-                <option class="blm_value hidden" value="9:21">9:21</option>
-                <option class="dalle_two_value hidden default-value" value="small" selected>Small</option>
-                <option class="dalle_two_value hidden" value="medium">Medium</option>
-                <option class="dalle_two_value hidden" value="large">Large</option>
-                <option class="dalle_three_value default-value" value="large" selected>Large</option>
-                <option class="dalle_three_value" value="large_vertical">Large Vertical</option>
-                <option class="dalle_three_value" value="large_horizontal">Large Horizontal</option>
-            </select>
-        </div>
-        <div>
-            <label for="quality" class="block text-sm font-medium text-gray-700 mb-2">Quality</label>
-            <select id="quality" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent">
-                <option class="blm_value hidden" value="STANDARD" selected>Standard</option>
-                <option class="dalle_two_value hidden default-value" value="STANDARD" selected>Standard</option>
-                <option class="dalle_three_value default-value" value="STANDARD" selected>Standard</option>
-                <option class="dalle_three_value" value="HD">HD</option>
+    </div>
 
-            </select>
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+        <div>
+            <label for="ratio" class="block text-sm font-medium text-gray-700 mb-2">Seitenverh&auml;ltnis</label>
+            <select id="ratio" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent"></select>
+            <p id="ratio-hint" class="text-xs text-gray-500 mt-1"></p>
         </div>
+        <div>
+            <label for="quality" class="block text-sm font-medium text-gray-700 mb-2">Qualit&auml;t</label>
+            <select id="quality" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent"></select>
+        </div>
+        <div>
+            <label for="amount" class="block text-sm font-medium text-gray-700 mb-2">Anzahl</label>
+            <select id="amount" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent"></select>
+        </div>
+        <div>
+            <label for="format" class="block text-sm font-medium text-gray-700 mb-2">Format</label>
+            <select id="format" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent"></select>
+        </div>
+    </div>
+
+    <div id="reference-block" class="mb-6">
+        <label class="block text-sm font-medium text-gray-700 mb-2">
+            Referenzbilder <span id="reference-count" class="font-normal text-gray-500"></span>
+        </label>
+        <div class="flex flex-wrap items-center gap-3">
+            <input type="file" id="reference-input" accept="image/png,image/jpeg,image/webp" multiple
+                   class="text-sm text-gray-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+            <button id="reference-clear" class="hidden text-sm text-red-600 hover:underline">Alle entfernen</button>
+        </div>
+        <div id="reference-preview" class="flex flex-wrap gap-3 mt-3"></div>
+    </div>
+
+    <div class="mb-6">
+        <label class="flex items-center gap-2 text-sm text-gray-700">
+            <input type="checkbox" id="revise-prompt" class="rounded border-gray-300">
+            <span id="revise-label">Prompt vom Anbieter ausformulieren lassen</span>
+        </label>
     </div>
 
     <div class="text-center">
-        <button id="generate-btn" type="submit" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2">Generate</button>
+        <button id="generate-btn" type="submit" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2">Erzeugen</button>
     </div>
 
     <!-- Ergebnis-Anzeige -->
     <div class="mt-10 text-center">
-        <h2 class="text-2xl font-semibold text-gray-700 mb-4">Generated Image:</h2>
+        <h2 class="text-2xl font-semibold text-gray-700 mb-4">Ergebnis</h2>
         <div id="preview-container" class="w-full h-64 bg-gray-200 border border-gray-300 flex items-center justify-center">
             <!-- Platzhalter für das generierte Bild -->
-            <span class="text-gray-500">The image is displayed here</span>
+            <span class="text-gray-500">Hier erscheint das erzeugte Bild.</span>
         </div>
 
         <div id="image-container" class="hidden w-full flex flex-col items-center justify-center">
@@ -133,93 +146,190 @@
     </div>
 </main>
 <script>
-    const modelBtn = document.getElementById('model');
+    const modelSelect = document.getElementById('model');
+    const ratioSelect = document.getElementById('ratio');
+    const qualitySelect = document.getElementById('quality');
+    const amountSelect = document.getElementById('amount');
+    const formatSelect = document.getElementById('format');
+    const referenceBlock = document.getElementById('reference-block');
+    const referenceInput = document.getElementById('reference-input');
+    const referencePreview = document.getElementById('reference-preview');
+    const referenceClear = document.getElementById('reference-clear');
+    const referenceCount = document.getElementById('reference-count');
+    const reviseCheckbox = document.getElementById('revise-prompt');
+    const reviseLabel = document.getElementById('revise-label');
+    const modelTitle = document.getElementById('model-title');
+    const modelHint = document.getElementById('model-hint');
+    const ratioHint = document.getElementById('ratio-hint');
     const imageContainer = document.getElementById('image-container');
-
-    document.addEventListener('DOMContentLoaded', async () => {
-        const urlParams = new URLSearchParams(window.location.search);
-        const filename = urlParams.get('filename');
-        if (filename && filename !== '' && document.getElementById('image-container').classList.contains('hidden')) {
-            const images = filename.includes(',') ? filename.split(',') : [filename]
-            spinnerOverlay.classList.remove('hidden')
-            for (const image of images) {
-                const image = await getDetailInformation(filename);
-                if (image.errorMsg) {
-                    document.getElementById('msg').textContent = image.errorMsg
-                    showToast(image.errorMsg)
-                } else {
-                    if (document.getElementById('description').textContent === '') {
-                        document.getElementById('description').textContent = image.prompt
-                        const language = image.languageModel === 'DALL_E_TWO' ? 'language_version_two' : 'language_version_three'
-                        document.getElementById(language).selected = true
-                        modelBtn.click();
-                    }
-                    previewContainer.classList.add('hidden');
-                    imageContainer.classList.remove('hidden')
-                    imageContainer.appendChild(createImage(image.filename))
-                }
-            }
-            spinnerOverlay.classList.add('hidden')
-        }
-
-
-    })
-    const burgerBtn = document.getElementById('burger-btn');
-    const mobileMenu = document.getElementById('mobile-menu');
-
-    const msgField = document.getElementById('msg')
-
-    burgerBtn.addEventListener('click', () => {
-        mobileMenu.classList.toggle('hidden');
-    });
-
-    const restoreDefaults = (options) => options.filter(e => e.classList.contains('default-value')).forEach(el => el.selected = true)
-
-
-    modelBtn.addEventListener('click', () => {
-        const selectedLanguageModel = modelBtn.value
-        const versionTwoValues = Array.from(document.getElementsByClassName('dalle_two_value'));
-        const versionThreeValues = Array.from(document.getElementsByClassName('dalle_three_value'));
-        const blmValues = Array.from(document.getElementsByClassName('blm_value'));
-        if (selectedLanguageModel === 'DALL_E_TWO') {
-            versionTwoValues.forEach(el => el.classList.remove('hidden'))
-            versionThreeValues.forEach(el => el.classList.add('hidden'))
-            blmValues.forEach(el => el.classList.add('hidden'))
-            restoreDefaults(versionTwoValues)
-        } else if (selectedLanguageModel === 'DALL_E_THREE') {
-            versionThreeValues.forEach(el => el.classList.remove('hidden'))
-            versionTwoValues.forEach(el => el.classList.add('hidden'))
-            blmValues.forEach(el => el.classList.add('hidden'))
-            restoreDefaults(versionThreeValues)
-        } else {
-            versionThreeValues.forEach(el => el.classList.add('hidden'))
-            versionTwoValues.forEach(el => el.classList.add('hidden'))
-            blmValues.forEach(el => el.classList.remove('hidden'))
-            restoreDefaults(blmValues)
-        }
-    })
+    const msgField = document.getElementById('msg');
     const generateBtn = document.getElementById('generate-btn');
     const spinnerOverlay = document.getElementById('spinner-overlay');
     const previewContainer = document.getElementById('preview-container');
 
+    /** Die Registry vom Server — die Oberflaeche fuehrt keine eigene Modellliste. */
+    let models = [];
+
+    const option = (value, label) => {
+        const el = document.createElement('option');
+        el.value = value;
+        el.textContent = label;
+        return el;
+    };
+
+    const selectedModel = () => models.find(m => m.id === modelSelect.value);
+
+    const COST_LABEL = { low: 'günstig', medium: 'mittel', high: 'teuer' };
+
+    /**
+     * Baut die abhaengigen Felder neu auf. Das ersetzt die alte Loesung, bei
+     * der alle Optionen aller Modelle im selben Select lagen und nur per
+     * CSS-Klasse versteckt wurden — und die am `click`-Ereignis haengte, also
+     * immer mit dem vorherigen Modell rechnete.
+     */
+    const renderModelOptions = () => {
+        const model = selectedModel();
+        if (!model) return;
+
+        modelTitle.textContent = `${model.label} · ${COST_LABEL[model.cost] ?? model.cost}`;
+        modelHint.textContent = model.hint;
+
+        const previousRatio = ratioSelect.value;
+        ratioSelect.replaceChildren(
+            ...model.ratios.map(r => option(r, model.sizes ? `${r} — ${model.sizes[r]}` : r))
+        );
+        // Das gewaehlte Verhaeltnis behalten, wenn das neue Modell es kann.
+        ratioSelect.value = model.ratios.includes(previousRatio) ? previousRatio : (model.ratios.includes('1:1') ? '1:1' : model.ratios[0]);
+        ratioHint.textContent = model.sizes ? '' : 'Die Kantenlängen bestimmt der Anbieter.';
+
+        const previousQuality = qualitySelect.value;
+        if (model.qualities.length === 0) {
+            qualitySelect.replaceChildren(option('', 'vom Modell vorgegeben'));
+            qualitySelect.disabled = true;
+        } else {
+            qualitySelect.disabled = false;
+            qualitySelect.replaceChildren(...model.qualities.map(q => option(q, q)));
+            qualitySelect.value = model.qualities.includes(previousQuality)
+                ? previousQuality
+                : (model.qualities.includes('medium') ? 'medium' : model.qualities[0]);
+        }
+
+        const previousAmount = amountSelect.value;
+        amountSelect.replaceChildren(
+            ...Array.from({ length: model.maxAmount }, (_, i) => option(String(i + 1), String(i + 1)))
+        );
+        amountSelect.value = Number(previousAmount) <= model.maxAmount ? (previousAmount || '1') : '1';
+
+        const previousFormat = formatSelect.value;
+        formatSelect.replaceChildren(...model.formats.map(f => option(f, f)));
+        formatSelect.value = model.formats.includes(previousFormat) ? previousFormat : model.formats[0];
+
+        reviseCheckbox.disabled = !model.supportsRevisePrompt;
+        reviseLabel.classList.toggle('text-gray-400', !model.supportsRevisePrompt);
+        reviseLabel.textContent = model.supportsRevisePrompt
+            ? 'Prompt vom Anbieter ausformulieren lassen'
+            : 'Dieses Modell formuliert den Prompt nicht um';
+        if (!model.supportsRevisePrompt) reviseCheckbox.checked = false;
+
+        renderReferences();
+    };
+
+    // `change`, nicht `click`: beim Klick steht im Select noch der alte Wert.
+    modelSelect.addEventListener('change', renderModelOptions);
+
+    const renderReferences = () => {
+        const model = selectedModel();
+        const max = model?.maxInputImages ?? 0;
+
+        // Modelle ohne Bildeingabe zeigen das Feld gar nicht erst.
+        referenceBlock.classList.toggle('hidden', max === 0);
+        if (max === 0) {
+            references = [];
+        } else if (references.length > max) {
+            // Beim Wechsel auf ein Modell mit weniger Plätzen abschneiden,
+            // statt die Anfrage später mit 400 scheitern zu lassen.
+            references = references.slice(0, max);
+            showToast(`„${model.label}" nimmt nur ${max} Referenzbild(er).`);
+        }
+
+        referenceCount.textContent = max === 0 ? '' : `(bis zu ${max}, aktuell ${references.length})`;
+        referenceInput.disabled = references.length >= max;
+        referenceClear.classList.toggle('hidden', references.length === 0);
+
+        referencePreview.replaceChildren(
+            ...references.map((reference, index) => {
+                const figure = document.createElement('figure');
+                figure.className = 'relative';
+                const img = document.createElement('img');
+                img.src = reference.dataUrl;
+                img.alt = reference.name;
+                img.title = reference.name;
+                img.className = 'h-20 w-20 object-cover rounded border border-gray-300';
+                const remove = document.createElement('button');
+                remove.type = 'button';
+                remove.textContent = '×';
+                remove.title = 'Entfernen';
+                remove.className =
+                    'absolute -top-2 -right-2 h-6 w-6 rounded-full bg-white border border-gray-300 text-gray-700 leading-none hover:bg-red-50';
+                remove.addEventListener('click', () => {
+                    references.splice(index, 1);
+                    renderReferences();
+                });
+                figure.append(img, remove);
+                return figure;
+            })
+        );
+    };
+
+    const readAsDataUrl = (file) =>
+        new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = () => reject(reader.error);
+            reader.readAsDataURL(file);
+        });
+
+    referenceInput.addEventListener('change', async () => {
+        const max = selectedModel()?.maxInputImages ?? 0;
+        const free = max - references.length;
+        const files = [...referenceInput.files].slice(0, Math.max(0, free));
+        if (referenceInput.files.length > files.length) {
+            showToast(`Es passen noch ${free} Bild(er) — der Rest wurde ignoriert.`);
+        }
+        for (const file of files) {
+            // 8 MB ist auch serverseitig die Grenze.
+            if (file.size > 8 * 1024 * 1024) {
+                showToast(`„${file.name}" ist größer als 8 MB.`);
+                continue;
+            }
+            references.push({ name: file.name, dataUrl: await readAsDataUrl(file) });
+        }
+        // Zurücksetzen, damit dieselbe Datei erneut gewählt werden kann.
+        referenceInput.value = '';
+        renderReferences();
+    });
+
+    referenceClear.addEventListener('click', () => {
+        references = [];
+        renderReferences();
+    });
+
     const createImage = (imageName) => {
-        let imageElement = document.createElement('img');
+        const imageElement = document.createElement('img');
         imageElement.src = `/big-thumbnails/${imageName}`;
         imageElement.title = imageName;
         imageElement.alt = 'Bild';
-        imageElement.className = 'w-full max-w-xs lg:max-w-none'
+        imageElement.className = 'w-full max-w-xs lg:max-w-none';
 
-        const anchorElement = document.createElement('a')
-        anchorElement.classList.add('my-5')
-        anchorElement.href = `/detail.html?filename=${imageName}`
-        anchorElement.appendChild(imageElement)
-
-        return anchorElement
-    }
+        const anchorElement = document.createElement('a');
+        anchorElement.classList.add('my-5');
+        anchorElement.href = `/detail.html?filename=${imageName}`;
+        anchorElement.appendChild(imageElement);
+        return anchorElement;
+    };
 
     function saveUrl(imageNames) {
-        const currentUrl = window.location.href;
-        const url = new URL(currentUrl);
+        const url = new URL(window.location.href);
         const params = new URLSearchParams(url.search);
         if (imageNames) {
             params.set('filename', imageNames.join(','));
@@ -227,25 +337,91 @@
             params.delete('filename');
         }
         const appendix = params.has('filename') ? `?${params.toString()}` : '';
-        const newUrl = `${url.origin}${url.pathname}${appendix}`;
-        window.history.replaceState(null, '', newUrl);
+        window.history.replaceState(null, '', `${url.origin}${url.pathname}${appendix}`);
     }
 
+    /** Ein bereits erzeugtes Bild ueber `?filename=` wieder anzeigen. */
+    const restoreFromUrl = async () => {
+        const filename = new URLSearchParams(window.location.search).get('filename');
+        if (!filename) return;
+        // Die Namen einzeln durchgehen — frueher wurde die komma-verbundene
+        // Zeichenkette bei jedem Durchlauf erneut angefragt.
+        const names = filename.split(',').filter(Boolean);
+        spinnerOverlay.classList.remove('hidden');
+        for (const name of names) {
+            const image = await getDetailInformation(name);
+            if (image.errorMsg) {
+                msgField.textContent = image.errorMsg;
+                showToast(image.errorMsg);
+                continue;
+            }
+            const description = document.getElementById('description');
+            if (description.value === '') {
+                description.value = image.prompt ?? '';
+                // Nur wenn das Modell noch existiert — die DALL-E-Eintraege in
+                // alten Daten zeigen auf abgeschaltete Modelle.
+                if (image.model && models.some(m => m.id === image.model)) {
+                    modelSelect.value = image.model;
+                    renderModelOptions();
+                }
+                // Das Verhaeltnis steht seit dem Umbau in den Metadaten.
+                if (image.ratio && [...ratioSelect.options].some(o => o.value === image.ratio)) {
+                    ratioSelect.value = image.ratio;
+                }
+            }
+            previewContainer.classList.add('hidden');
+            imageContainer.classList.remove('hidden');
+            imageContainer.appendChild(createImage(image.filename ?? name));
+        }
+        spinnerOverlay.classList.add('hidden');
+    };
+
     generateBtn.addEventListener('click', async () => {
+        const prompt = document.getElementById('description').value.trim();
+        if (prompt === '') {
+            msgField.textContent = 'Bitte eine Beschreibung eingeben.';
+            return;
+        }
+        const model = selectedModel();
         spinnerOverlay.classList.remove('hidden');
         msgField.textContent = '';
         imageContainer.replaceChildren();
         previewContainer.classList.remove('hidden');
-        const imageNames = await generateImage();
+
+        const request = {
+            prompt,
+            model: model.id,
+            ratio: ratioSelect.value,
+            amount: Number(amountSelect.value),
+            outputFormat: formatSelect.value,
+            revisePrompt: reviseCheckbox.checked,
+        };
+        if (qualitySelect.value) request.quality = qualitySelect.value;
+        if (references.length) request.inputImages = references.map(r => r.dataUrl);
+
+        const imageNames = await generateImage(request);
         if (imageNames.length !== 0) {
             previewContainer.classList.add('hidden');
-            imageNames
-                .map(createImage)
-                .forEach(i => imageContainer.appendChild(i))
-            saveUrl(imageNames)
-            imageContainer.classList.remove('hidden')
+            imageNames.map(createImage).forEach(i => imageContainer.appendChild(i));
+            saveUrl(imageNames);
+            imageContainer.classList.remove('hidden');
         }
         spinnerOverlay.classList.add('hidden');
+    });
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        try {
+            const registry = await loadModels();
+            models = registry.models;
+            modelSelect.replaceChildren(...models.map(m => option(m.id, m.label)));
+            modelSelect.value = registry.defaultModel ?? models[0]?.id;
+            renderModelOptions();
+        } catch (error) {
+            msgField.textContent = 'Die Modellliste ließ sich nicht laden.';
+            showToast(String(error));
+            return;
+        }
+        await restoreFromUrl();
     });
 </script>
 

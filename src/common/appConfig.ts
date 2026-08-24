@@ -3,35 +3,59 @@ import { ApplicationConfig } from '../types';
 
 dotenv.config();
 
-if (!process.env.OPEN_AI_API_KEY || !process.env.OPEN_AI_ORG_ID || !process.env.BFL_API_KEY) {
-    throw new Error('Missing environments!');
+const required = (name: string, value: string | undefined): string => {
+    if (!value) throw new Error(`Missing environment variable: ${name}`);
+    return value;
+};
+
+const isAuthEnabled = 'true' === (process.env.AUTH_ENABLED || 'false');
+
+/**
+ * Anbieter-Schluessel sind **einzeln** optional: wer nur BFL nutzt, soll die
+ * App nicht mit einem OpenAI-Schluessel fuettern muessen. Nur ganz ohne
+ * Schluessel ergibt sie keinen Sinn.
+ */
+const openAiKey = process.env.OPEN_AI_API_KEY ?? '';
+const bflKey = process.env.BFL_API_KEY ?? '';
+if (!openAiKey && !bflKey) {
+    throw new Error('Neither OPEN_AI_API_KEY nor BFL_API_KEY is set — no provider available.');
 }
 
-const isAuthEnabled = (): boolean => {
-    const authEnabledEnv: string = process.env.AUTH_ENABLED || 'false';
-    return 'true' === authEnabledEnv;
-};
-if (isAuthEnabled() && !process.env.JWT_SECRET) {
-    if (!process.env.JWT_SECRET || !process.env.AUTH_USER || !process.env.AUTH_PASS)
-    throw new Error('Missing environments!');
-}
+const publicBaseUrl = (process.env.PUBLIC_BASE_URL ?? `http://localhost:${process.env.AI_IMAGE_GENERATOR_PORT ?? 3000}`).replace(/\/+$/, '');
 
 const appConfig: ApplicationConfig = {
     port: parseInt(process.env.AI_IMAGE_GENERATOR_PORT as string) || 3000,
+    publicBaseUrl,
     openai: {
-        apiKey: process.env.OPEN_AI_API_KEY,
-        organization: process.env.OPEN_AI_ORG_ID,
+        apiKey: openAiKey,
+        // Optional: ein veraltetes Org-Id fuehrt zu 401 `mismatched_organization`
+        // auf *jedem* Aufruf, ein fehlendes zu gar nichts.
+        organization: process.env.OPEN_AI_ORG_ID ?? '',
     },
     bfl: {
-        apiKey: process.env.BFL_API_KEY,
+        apiKey: bflKey,
     },
     baseFolder: process.env.AI_IMAGE_GENERATOR_OUTPUT_PATH || './../ai-images',
-    enableAuth: isAuthEnabled(),
+    enableAuth: isAuthEnabled,
+    isProduction: process.env.NODE_ENV === 'production' || publicBaseUrl.startsWith('https://'),
     auth: {
-        jwtSecret: process.env.JWT_SECRET ?? '',
-        user: process.env.AUTH_USER ?? '',
-        pass: process.env.AUTH_PASS ?? '',
-    }
+        // Alle vier sind nur mit eingeschalteter Anmeldung Pflicht — dann aber
+        // wirklich, statt still auf '' zurueckzufallen wie frueher.
+        sessionSecret: isAuthEnabled ? required('SESSION_SECRET', process.env.SESSION_SECRET) : '',
+        issuer: isAuthEnabled ? required('OIDC_ISSUER', process.env.OIDC_ISSUER) : '',
+        clientId: isAuthEnabled ? required('OIDC_CLIENT_ID', process.env.OIDC_CLIENT_ID) : '',
+        clientSecret: isAuthEnabled ? required('OIDC_CLIENT_SECRET', process.env.OIDC_CLIENT_SECRET) : '',
+        allowedGroup: process.env.OIDC_ALLOWED_GROUP ?? '',
+    },
+};
+
+if (isAuthEnabled && appConfig.auth.sessionSecret.length < 32) {
+    throw new Error('SESSION_SECRET must be at least 32 characters.');
+}
+
+export const hasProvider = {
+    openai: openAiKey.length > 0,
+    bfl: bflKey.length > 0,
 };
 
 export default appConfig;

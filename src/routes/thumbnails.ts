@@ -6,6 +6,7 @@ import path from 'path';
 import { getDataStore } from '../common/dataStore';
 import { DataImage, Sorting } from '../types';
 import { fromFormated } from '../common/timeUtils';
+import { isImageFile } from '../common/fileUtils';
 
 const thumbnails: express.Router = express.Router();
 
@@ -36,7 +37,7 @@ thumbnails.get('/all', async (req, res) => {
 
     fs.ensureDirSync(thumbnailDir);
     const fileNames = fs.readdirSync(imageDir);
-    const images = fileNames.filter((file) => /\.(jpg|jpeg|png)$/.test(file));
+    const images = fileNames.filter(isImageFile);
 
     for (const image of images) {
         await createThumbnail(image);

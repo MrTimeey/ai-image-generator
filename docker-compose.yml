@@ -1,26 +1,30 @@
-version: '3'
-
 services:
 
   ai-image-generator:
     build: .
     container_name: aiImageGenerator
     restart: always
-    ports:
-      - "3001:3000"
+    # Kein ports-Mapping: der Nginx Proxy Manager haengt im selben Netz und
+    # spricht den Container ueber seinen Namen an.
     environment:
       - AI_IMAGE_GENERATOR_PORT=3000
       - AI_IMAGE_GENERATOR_OUTPUT_PATH=/app/images
+      - PUBLIC_BASE_URL=${PUBLIC_BASE_URL}
       - OPEN_AI_API_KEY=${OPEN_AI_API_KEY}
       - OPEN_AI_ORG_ID=${OPEN_AI_ORG_ID}
       - BFL_API_KEY=${BFL_API_KEY}
       - AUTH_ENABLED=true
-      - JWT_SECRET=${JWT_SECRET}
-      - AUTH_USER=${AUTH_USER}
-      - AUTH_PASS=${AUTH_PASS}
+      - OIDC_ISSUER=${OIDC_ISSUER}
+      - OIDC_CLIENT_ID=${OIDC_CLIENT_ID}
+      - OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET}
+      - OIDC_ALLOWED_GROUP=${OIDC_ALLOWED_GROUP}
+      - SESSION_SECRET=${SESSION_SECRET}
     volumes:
       - "./../ai-images:/app/images"
       - "./../ai-images/thumbnails:/app/src/static/thumbnails"
       - "./../ai-images/big-thumbnails:/app/src/static/big-thumbnails"
 
-
+networks:
+  default:
+    name: mrtimeey
+    external: true
