@@ -1,0 +1,15 @@
+{
+    "name": "mrtimeey",
+    "description": "Plugins rund um die Dienste auf mrtimeey.com",
+    "owner": {
+        "name": "Tim Kruse",
+        "url": "https://github.com/MrTimeey"
+    },
+    "plugins": [
+        {
+            "name": "ai-image",
+            "source": "./plugin",
+            "description": "Bilder über ai.mrtimeey.com erzeugen — Modellwahl, Seitenverhältnis, Referenzbilder, Guthaben."
+        }
+    ]
+}

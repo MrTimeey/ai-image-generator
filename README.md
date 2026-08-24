@@ -74,6 +74,7 @@ Alles unter `/api` verlangt eine Anmeldung und antwortet bei fehlender mit
 | `GET /api/files/download/:name` | Datei |
 | `DELETE /api/files/:name` | löschen |
 | `GET /api/credits` | Guthaben der Anbieter (`?refresh=1` umgeht den 60-s-Cache) |
+| `GET /api/skill/download` | Claude-Skill als ZIP |
 | `GET/POST/DELETE /api/keys` | API-Keys (**nur mit Sitzung**) |
 | `GET /api/health` | öffentlich |
 
@@ -143,13 +144,34 @@ export AIG_TOKEN='aig_…'
 curl -s https://ai.mrtimeey.com/api/models -H "Authorization: Bearer $AIG_TOKEN"
 ```
 
-### Skill
+### Claude-Skill
 
-`skill/ai-image/` enthält einen Claude-Code-Skill samt CLI (`scripts/aig.py`,
-nur Standardbibliothek). Einbinden:
+Das Repo ist zugleich ein **Plugin-Marketplace**: `.claude-plugin/marketplace.json`
+im Wurzelverzeichnis, das Plugin unter `plugin/` mit dem Skill in
+`plugin/skills/ai-image/` (SKILL.md plus `scripts/aig.py`, nur
+Python-Standardbibliothek).
+
+```
+/plugin marketplace add MrTimeey/ai-image-generator
+/plugin install ai-image@mrtimeey
+```
+
+Die laufende App bietet ihn zusätzlich unter `/skill.html` an — mit Erklärung
+und als ZIP über `GET /api/skill/download`. Beim Packen wird die
+Standardadresse im Skill auf `PUBLIC_BASE_URL` umgeschrieben, damit ein
+Download von einer anderen Instanz nicht auf `ai.mrtimeey.com` zeigt.
+
+Beim Entwickeln direkt einhängen:
 
 ```bash
-ln -s "$PWD/skill/ai-image" ~/.claude/skills/ai-image
+ln -s "$PWD/plugin/skills/ai-image" ~/.claude/skills/ai-image
+```
+
+Manifeste prüfen:
+
+```bash
+claude plugin validate .claude-plugin/marketplace.json --strict
+claude plugin validate plugin --strict
 ```
 
 ## Anmeldung über Authentik

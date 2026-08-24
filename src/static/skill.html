@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Claude-Skill &middot; AI Image Generator</title>
+    <link rel="apple-touch-icon" sizes="180x180" href="/public/favicon_io/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/public/favicon_io/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/public/favicon_io/favicon-16x16.png" />
+    <link rel="manifest" href="/public/favicon_io/site.webmanifest" />
+    <meta name="theme-color" content="#2563eb">
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').catch((error) =>
+                    console.debug('Service Worker nicht registriert', error));
+            });
+        }
+    </script>
+    <script src="/public/js/toast.js" defer></script>
+    <script src="/public/js/nav.js" defer></script>
+    <link href="/public/css/generated-tailwind.css" rel="stylesheet">
+    <link href="/public/css/style.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+
+<header class="bg-blue-600 text-white">
+    <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+        <div class="text-2xl font-bold"><a href="/index.html">AI Image Generator</a></div>
+        <nav id="nav-desktop" class="hidden md:flex space-x-6 items-center"></nav>
+        <div class="md:hidden">
+            <button id="burger-btn" class="focus:outline-none">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path>
+                </svg>
+            </button>
+        </div>
+    </div>
+    <nav id="mobile-menu" class="hidden bg-blue-600 md:hidden px-4 py-4">
+        <div id="nav-mobile"></div>
+    </nav>
+</header>
+
+<div id="toast" class="toast"></div>
+
+<main class="max-w-4xl mx-auto py-10 px-4">
+    <h1 class="text-2xl font-semibold text-gray-800 mb-2">Claude-Skill</h1>
+    <p class="text-gray-600 mb-8 max-w-2xl">
+        Ein Skill ist eine Anleitung, die Claude Code bei passenden Anfragen von selbst heranzieht.
+        Ist er installiert, gen&uuml;gt &bdquo;erzeug mir ein Titelbild f&uuml;r den Blogpost&ldquo; &mdash;
+        Claude w&auml;hlt Modell und Seitenverh&auml;ltnis, ruft diese Instanz auf und legt das
+        fertige Bild ab. Ohne den Skill m&uuml;sste man ihm jedes Mal die API erkl&auml;ren.
+    </p>
+
+    <div class="bg-white rounded-lg shadow p-6 mb-8">
+        <h2 class="text-lg font-semibold text-gray-800 mb-3">Was er kann</h2>
+        <ul class="space-y-2 text-gray-700 text-sm">
+            <li>&bull; <strong>Modellwahl als Entscheidungshilfe</strong> &mdash; wann FLUX.2, wann
+                <code>gpt-image-2</code> (Text im Bild), wann Kontext (Bildbearbeitung), was jeweils kostet.</li>
+            <li>&bull; <strong>Seitenverh&auml;ltnisse</strong> f&uuml;r die &uuml;blichen F&auml;lle:
+                Titelbild 16:9, Poster 2:3, Social 1:1, Banner 21:9.</li>
+            <li>&bull; <strong>Referenzbilder</strong> &mdash; wie viele welches Modell auswertet und
+                wie ein Bearbeitungs-Prompt aussehen muss.</li>
+            <li>&bull; Ein <strong>CLI ohne Abh&auml;ngigkeiten</strong> (<code>aig.py</code>, nur
+                Python-Standardbibliothek): erzeugen, auflisten, Metadaten, herunterladen, l&ouml;schen,
+                Guthaben.</li>
+            <li>&bull; <strong>Grenzen</strong>: dass jedes Bild Geld kostet und <code>rm</code>
+                endg&uuml;ltig ist &mdash; damit Claude nicht ungefragt vierzig Varianten erzeugt.</li>
+        </ul>
+    </div>
+
+    <h2 class="text-lg font-semibold text-gray-800 mb-3">Installation</h2>
+
+    <div class="bg-white rounded-lg shadow p-6 mb-4">
+        <div class="flex items-center gap-2 mb-2">
+            <h3 class="font-medium text-gray-800">Als Plugin</h3>
+            <span class="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded">empfohlen</span>
+        </div>
+        <p class="text-sm text-gray-600 mb-3">
+            Zwei Befehle in Claude Code. Updates holt man sp&auml;ter mit
+            <code>/plugin marketplace update mrtimeey</code> &mdash; ohne etwas herunterzuladen.
+        </p>
+        <pre class="bg-gray-900 text-gray-100 rounded p-4 text-xs overflow-x-auto"><code>/plugin marketplace add MrTimeey/ai-image-generator
+/plugin install ai-image@mrtimeey</code></pre>
+        <button id="copy-plugin" class="mt-2 text-sm text-blue-600 hover:underline">Befehle kopieren</button>
+    </div>
+
+    <div class="bg-white rounded-lg shadow p-6 mb-8">
+        <h3 class="font-medium text-gray-800 mb-2">Von Hand</h3>
+        <p class="text-sm text-gray-600 mb-3">
+            Ohne GitHub, und man sieht vorher, was drinsteht. Das Archiv enth&auml;lt
+            <code>ai-image/SKILL.md</code> und <code>ai-image/scripts/aig.py</code>
+            &mdash; die Standardadresse darin zeigt bereits auf diese Instanz.
+        </p>
+        <a href="/api/skill/download"
+           class="inline-block bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700">Skill herunterladen (ZIP)</a>
+        <p class="text-sm text-gray-600 mt-4 mb-2">Danach entpacken:</p>
+        <pre class="bg-gray-900 text-gray-100 rounded p-4 text-xs overflow-x-auto"><code id="unzip-cmd">mkdir -p ~/.claude/skills
+unzip -o ~/Downloads/ai-image-skill.zip -d ~/.claude/skills</code></pre>
+        <button id="copy-unzip" class="mt-2 text-sm text-blue-600 hover:underline">Befehl kopieren</button>
+    </div>
+
+    <h2 class="text-lg font-semibold text-gray-800 mb-3">Danach: Schl&uuml;ssel hinterlegen</h2>
+    <div class="bg-white rounded-lg shadow p-6 mb-8">
+        <p class="text-sm text-gray-600 mb-3">
+            Der Skill braucht einen API-Key dieser Instanz. Einen erzeugst du unter
+            <a href="/api-keys.html" class="text-blue-600 hover:underline">API-Keys</a> &mdash; dort
+            stehen die fertigen Befehle mit dem Schl&uuml;ssel schon eingesetzt. Der Ablageort:
+        </p>
+        <pre class="bg-gray-900 text-gray-100 rounded p-4 text-xs overflow-x-auto"><code id="token-cmd"></code></pre>
+        <p class="text-sm text-gray-600 mt-3">
+            Alternativ <code>AIG_TOKEN</code> als Umgebungsvariable setzen.
+            <code>AIG_URL</code> &uuml;berschreibt die Adresse.
+        </p>
+    </div>
+
+    <h2 class="text-lg font-semibold text-gray-800 mb-3">Ausprobieren</h2>
+    <div class="bg-white rounded-lg shadow p-6">
+        <p class="text-sm text-gray-600 mb-3">In Claude Code einfach fragen:</p>
+        <p class="border-l-4 border-blue-200 pl-4 text-gray-700 italic mb-4">
+            &bdquo;Erzeug mir ein Titelbild f&uuml;r einen Blogpost &uuml;ber Zugausf&auml;lle,
+            16:9, als Aquarell.&ldquo;
+        </p>
+        <p class="text-sm text-gray-600 mb-2">Oder direkt auf der Kommandozeile:</p>
+        <pre class="bg-gray-900 text-gray-100 rounded p-4 text-xs overflow-x-auto"><code id="try-cmd"></code></pre>
+        <button id="copy-try" class="mt-2 text-sm text-blue-600 hover:underline">Befehl kopieren</button>
+    </div>
+</main>
+
+<script>
+    const SKILL_PATH = '~/.claude/skills/ai-image/scripts/aig.py';
+
+    document.getElementById('token-cmd').textContent =
+        `mkdir -p ~/.config/ai-image-generator\n` +
+        `printf '%s' '<dein Schlüssel>' > ~/.config/ai-image-generator/token\n` +
+        `chmod 600 ~/.config/ai-image-generator/token`;
+
+    document.getElementById('try-cmd').textContent =
+        `python3 ${SKILL_PATH} models\n` +
+        `python3 ${SKILL_PATH} gen "ein Leuchtturm bei Sonnenuntergang, Aquarell" \\\n` +
+        `  --model flux-2-pro --ratio 16:9 --quality medium --out .`;
+
+    const copyFrom = (elementId) => async () => {
+        try {
+            await navigator.clipboard.writeText(document.getElementById(elementId).textContent);
+            showToast('Kopiert');
+        } catch {
+            // In unsicheren Kontexten (http) gibt es keine Zwischenablage.
+            showToast('Kopieren ging nicht — bitte von Hand markieren');
+        }
+    };
+
+    document.getElementById('copy-unzip').addEventListener('click', copyFrom('unzip-cmd'));
+    document.getElementById('copy-try').addEventListener('click', copyFrom('try-cmd'));
+    document.getElementById('copy-plugin').addEventListener('click', async () => {
+        try {
+            await navigator.clipboard.writeText(
+                '/plugin marketplace add MrTimeey/ai-image-generator\n/plugin install ai-image@mrtimeey');
+            showToast('Kopiert');
+        } catch {
+            showToast('Kopieren ging nicht — bitte von Hand markieren');
+        }
+    });
+</script>
+</body>
+</html>

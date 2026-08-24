@@ -9,10 +9,19 @@ Bilder erzeugen über die eigene Instanz auf `https://ai.mrtimeey.com`. Die Bild
 liegen danach **auf dem Server**, in der Übersicht der Weboberfläche — lokal
 landen sie nur, wenn `--out` mitgegeben wird.
 
-Alles läuft über ein CLI:
+Alles läuft über ein CLI. Als Plugin installiert liegt es unter
+`${CLAUDE_PLUGIN_ROOT}/skills/ai-image/scripts/aig.py`, von Hand entpackt
+unter `~/.claude/skills/ai-image/scripts/aig.py`. In den Beispielen steht
+`aig.py` für den Pfad, unter dem es tatsächlich liegt:
 
 ```bash
-python3 ~/.claude/skills/ai-image/scripts/aig.py <befehl>
+python3 <pfad>/aig.py <befehl>
+```
+
+Wer es oft braucht, legt sich einen Alias an:
+
+```bash
+alias aig='python3 ~/.claude/skills/ai-image/scripts/aig.py'
 ```
 
 ## Ersteinrichtung (einmalig)
@@ -121,7 +130,7 @@ rechnet jedes Referenzbild extra ab — vier Vorlagen kosten spürbar mehr als e
 Erlaubt sind PNG, JPEG und WebP bis 8 MB je Bild.
 
 ```bash
-python3 ~/.claude/skills/ai-image/scripts/aig.py gen "mach den Hintergrund tiefblau" \
+aig.py gen "mach den Hintergrund tiefblau" \
   --model flux-2-pro --image ./vorlage.png --out .
 ```
 
@@ -130,7 +139,7 @@ python3 ~/.claude/skills/ai-image/scripts/aig.py gen "mach den Hintergrund tiefb
 Ein Bild, gleich lokal:
 
 ```bash
-python3 ~/.claude/skills/ai-image/scripts/aig.py gen \
+aig.py gen \
   "ein Leuchtturm bei Sonnenuntergang, Aquarell" \
   --model flux-2-pro --ratio 16:9 --quality medium --out ./bilder
 ```
@@ -138,14 +147,14 @@ python3 ~/.claude/skills/ai-image/scripts/aig.py gen \
 Vier Varianten zur Auswahl, günstig:
 
 ```bash
-python3 ~/.claude/skills/ai-image/scripts/aig.py gen "…" \
+aig.py gen "…" \
   --model flux-2-klein-9b --amount 4 --quality low --out ./entwuerfe
 ```
 
 Titelbild mit Schrift:
 
 ```bash
-python3 ~/.claude/skills/ai-image/scripts/aig.py gen \
+aig.py gen \
   "Blog-Header, Schriftzug 'Release Notes' in klarer Groteske, minimalistisch" \
   --model gpt-image-2 --ratio 16:9 --quality high --out .
 ```
@@ -153,9 +162,9 @@ python3 ~/.claude/skills/ai-image/scripts/aig.py gen \
 Nachsehen, was zuletzt erzeugt wurde, und eins davon holen:
 
 ```bash
-python3 ~/.claude/skills/ai-image/scripts/aig.py list --limit 10
-python3 ~/.claude/skills/ai-image/scripts/aig.py get <dateiname>
-python3 ~/.claude/skills/ai-image/scripts/aig.py download <dateiname> --out .
+aig.py list --limit 10
+aig.py get <dateiname>
+aig.py download <dateiname> --out .
 ```
 
 `--json` gibt bei jedem Befehl die Rohantwort aus — für eigene Skripte.

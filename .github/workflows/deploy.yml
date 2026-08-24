@@ -7,10 +7,11 @@ on:
     # koennen das Image nicht veraendern. `.github/**` ist bewusst **nicht**
     # ausgenommen: eine Aenderung am Workflow soll ihn ausfuehren, sonst faellt
     # ein Fehler darin erst beim naechsten Code-Commit auf.
+    # `plugin/**` ist bewusst **nicht** ausgenommen: die App liefert den Skill
+    # als ZIP aus, also muss eine Aenderung daran ein neues Image bauen.
     paths-ignore:
       - 'doc/**'
-      - 'skill/**'
-      - '**.md'
+      - 'README.md'
   # Notausgang: erzwingt einen Build ohne Code-Aenderung.
   workflow_dispatch:
 

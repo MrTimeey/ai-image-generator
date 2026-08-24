@@ -10,6 +10,7 @@
         { href: '/overview.html?sorting=DESC', label: 'Übersicht', match: '/overview.html' },
         { href: '/exchange.html', label: 'Austausch' },
         { href: '/api-keys.html', label: 'API-Keys' },
+        { href: '/skill.html', label: 'Skill' },
     ];
 
     const current = window.location.pathname;
