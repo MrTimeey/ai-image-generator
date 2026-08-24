@@ -167,9 +167,19 @@ npm run serve    # ts-node
 docker compose up -d --force-recreate --build
 ```
 
-Nach jedem `compose down`/`up` auf dem Server den Proxy neu laden, sonst zeigt
-er auf die alte Container-IP:
+### Deployment
+
+Auf dem Server erledigt das `dockers_update.sh`, das der webhook-Container bei
+einem Push ausführt: `git reset --hard` auf den verfolgten Branch, `compose
+build`, `down`/`up`, **Nginx-Reload** und eine Health-Prüfung — einmal am
+Container und einmal durch den Proxy.
+
+Der Nginx-Reload ist nicht optional: NPM löst Upstream-Namen beim Laden seiner
+Konfiguration auf und behält die IP. Nach `down`/`up` zeigt er sonst ins Leere
+und liefert 502, während von innen alles in Ordnung aussieht.
+
+Von Hand:
 
 ```shell
-docker exec nginx-proxy-manager nginx -s reload
+~/coding/ai-image-generator/dockers_update.sh
 ```

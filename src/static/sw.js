@@ -4,16 +4,16 @@
  * gecachte Antwort waere dort im besten Fall veraltet und im schlechtesten
  * eine fremde Sitzung.
  */
-const CACHE = 'aig-shell-v1';
+const CACHE = 'aig-shell-v2';
 
+/**
+ * Nur Bausteine, nie HTML. Eine Seite, die ohne Sitzung abgerufen wird,
+ * antwortet mit einer Weiterleitung zur Anmeldung — die als App-Shell im
+ * Cache zu haben, waere schlimmer als gar kein Cache. HTML kommt deshalb
+ * ausschliesslich ueber die Laufzeit-Strategie hinein, und nur wenn der
+ * Server sie wirklich ausgeliefert hat.
+ */
 const SHELL = [
-    '/index.html',
-    '/overview.html',
-    '/detail.html',
-    '/exchange.html',
-    '/api-keys.html',
-    '/account.html',
-    '/notFound.html',
     '/js/main.js',
     '/public/js/toast.js',
     '/public/js/nav.js',

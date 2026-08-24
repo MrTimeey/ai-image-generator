@@ -74,7 +74,14 @@ async function getExportZip() {
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function loadModels() {
     const response = await fetch('/api/models', { headers: { Accept: 'application/json' } });
-    if (!response.ok) throw new Error('Modellliste nicht ladbar');
+    if (response.status === 401) {
+        // Kann passieren, wenn die Seite aus dem Cache kam und die Sitzung
+        // inzwischen abgelaufen ist. Dann gehoert der Nutzer zur Anmeldung,
+        // nicht vor eine Fehlermeldung.
+        window.location.href = `/auth/login?next=${encodeURIComponent(window.location.pathname)}`;
+        throw new Error('Anmeldung nötig');
+    }
+    if (!response.ok) throw new Error(`Modellliste nicht ladbar (Fehler ${response.status})`);
     return await response.json();
 }
 
