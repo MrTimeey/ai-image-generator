@@ -45,7 +45,7 @@ app.use('/thumbnails', thumbnails);
 app.use(express.static(path.join(__dirname, 'static')));
 
 app.use((req, res) => {
-    if (req.path.startsWith('/api')) {
+    if (req.path.startsWith('/api/')) {
         return res.status(404).send({ error: 'not_found', message: `Unbekannter Endpunkt ${req.path}` });
     }
     res.redirect('/notFound.html');

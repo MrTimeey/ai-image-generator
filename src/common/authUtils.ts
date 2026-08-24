@@ -60,7 +60,9 @@ export const requireAuth = (req: Request, res: Response, next: NextFunction): vo
         return next();
     }
 
-    if (req.path.startsWith('/api')) {
+    // Mit Schraegstrich: `/api-keys.html` ist eine Seite und gehoert zur
+    // Anmeldung weitergeleitet, nicht mit 401 JSON abgewiesen.
+    if (req.path.startsWith('/api/')) {
         res.status(401).send({
             error: 'unauthorized',
             message: 'Anmeldung nötig. Für Skripte einen API-Key unter /api-keys.html erzeugen.',
