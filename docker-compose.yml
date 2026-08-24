@@ -1,7 +1,10 @@
 services:
 
   ai-image-generator:
-    build: .
+    # Das Image baut die CI und legt es in der GitHub Registry ab. Der Server
+    # zieht nur — er hat knapp 5 GB frei, und `npm ci` samt Build dort waere
+    # jedes Mal ein Risiko.
+    image: ghcr.io/mrtimeey/ai-image-generator:latest
     container_name: aiImageGenerator
     restart: always
     # Kein ports-Mapping: der Nginx Proxy Manager haengt im selben Netz und

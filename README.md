@@ -177,17 +177,22 @@ Dev-Betrieb gedacht.
 npm install
 npm run dev      # nodemon
 npm run serve    # ts-node
-docker compose up -d --force-recreate --build
+npm run lint     # eslint über die TS-Dateien + Inline-Skripte der Seiten
 ```
+
+Für den Betrieb im Container zieht `docker compose up -d` das Image aus der
+GitHub Registry. Lokal bauen geht mit `docker build -t ai-image-generator .`.
 
 ### Deployment
 
-Ein Push auf `main` startet `.github/workflows/deploy.yml`: erst
-`tsc --noEmit` und `npm run lint`, dann ein Aufruf von
+Ein Push auf `main` startet `.github/workflows/deploy.yml`: `tsc --noEmit` und
+`npm run lint`, dann Build und Push nach
+`ghcr.io/mrtimeey/ai-image-generator:latest`, dann ein Aufruf von
 `https://webhook.mrtimeey.com/hooks/ai-image-generator` mit dem Token aus dem
 Repository-Secret `WEBHOOK_SECRET`.
 
-Dort erledigt `dockers_update.sh` den Rest: `git reset --hard` auf den verfolgten Branch, `compose
+Der Server **baut nicht selbst** — er hat knapp 5 GB frei, und der
+webhook-Container bringt kein `git` mit. `dockers_update.sh` zieht nur: `git reset --hard` auf den verfolgten Branch, `compose
 build`, `down`/`up`, **Nginx-Reload** und eine Health-Prüfung — einmal am
 Container und einmal durch den Proxy.
 

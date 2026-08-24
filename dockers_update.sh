@@ -10,17 +10,18 @@ cd "$DIR"
 
 echo "Aktualisiere AI Image Generator in $DIR"
 
-# Das Image entsteht hier aus dem Quellcode (kein Registry-Push), also erst
-# den neuen Stand holen.
-git fetch --all --prune
-git reset --hard "origin/$(git rev-parse --abbrev-ref HEAD)"
+# **Kein `git` hier.** Der webhook-Container bringt es nicht mit, und der
+# Quellcode wird auf dem Server auch nicht gebraucht: das Image kommt fertig
+# aus der GitHub Registry. Compose-Datei und `.env` liegen ohnehin schon hier.
 
 # **Die Bind-Mount-Quellen selbst anlegen.** Fehlt eines der Verzeichnisse,
 # erzeugt Docker es beim Start als root — die Bilder landeten dann in einem
 # Ordner, in den spaetere Laeufe nicht mehr schreiben koennen.
 mkdir -p ../ai-images/thumbnails ../ai-images/big-thumbnails
 
-docker compose build
+# Erst ziehen, dann tauschen — haelt die Auszeit kurz.
+docker compose pull
+
 docker compose down --remove-orphans || true
 docker compose up -d --remove-orphans
 
