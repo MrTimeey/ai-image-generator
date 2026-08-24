@@ -191,8 +191,10 @@ Ein Push auf `main` startet `.github/workflows/deploy.yml`: `tsc --noEmit` und
 `https://webhook.mrtimeey.com/hooks/ai-image-generator` mit dem Token aus dem
 Repository-Secret `WEBHOOK_SECRET`.
 
-Der Server **baut nicht selbst** — er hat knapp 5 GB frei, und der
-webhook-Container bringt kein `git` mit. `dockers_update.sh` zieht nur: `git reset --hard` auf den verfolgten Branch, `compose
+Der Server **baut nicht selbst** — er hat knapp 5 GB frei. `dockers_update.sh`
+zieht per `git` nur `docker-compose.yml` und sich selbst nach (das Remote ist
+deshalb HTTPS, damit der Container ohne SSH-Key auskommt) und holt das fertige
+Image aus der Registry: `git reset --hard` auf den verfolgten Branch, `compose
 build`, `down`/`up`, **Nginx-Reload** und eine Health-Prüfung — einmal am
 Container und einmal durch den Proxy.
 

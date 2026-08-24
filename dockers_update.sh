@@ -10,9 +10,20 @@ cd "$DIR"
 
 echo "Aktualisiere AI Image Generator in $DIR"
 
-# **Kein `git` hier.** Der webhook-Container bringt es nicht mit, und der
-# Quellcode wird auf dem Server auch nicht gebraucht: das Image kommt fertig
-# aus der GitHub Registry. Compose-Datei und `.env` liegen ohnehin schon hier.
+# Den Stand nachziehen — **nicht** fuer den Quellcode, den bringt das Image
+# schon mit, sondern fuer `docker-compose.yml` und dieses Skript selbst. Ohne
+# das liefe der Server nach einer Aenderung an der Compose-Datei stillschweigend
+# mit der alten weiter. `git` steckt deshalb im webhook-Image.
+if command -v git >/dev/null 2>&1; then
+  # Im Container gehoert das Verzeichnis einer anderen uid als dem laufenden
+  # Nutzer; ohne diese Ausnahme verweigert git mit „dubious ownership".
+  git config --global --get-all safe.directory | grep -qx "$DIR" \
+    || git config --global --add safe.directory "$DIR"
+  git fetch --all --prune
+  git reset --hard "origin/$(git rev-parse --abbrev-ref HEAD)"
+else
+  echo "WARNUNG: kein git im Container — Compose-Datei und Skript bleiben, wie sie sind"
+fi
 
 # **Die Bind-Mount-Quellen selbst anlegen.** Fehlt eines der Verzeichnisse,
 # erzeugt Docker es beim Start als root — die Bilder landeten dann in einem
