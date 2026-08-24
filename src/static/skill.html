@@ -77,8 +77,9 @@
             <span class="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded">empfohlen</span>
         </div>
         <p class="text-sm text-gray-600 mb-3">
-            Zwei Befehle in Claude Code. Updates holt man sp&auml;ter mit
-            <code>/plugin marketplace update mrtimeey</code> &mdash; ohne etwas herunterzuladen.
+            Zwei Befehle in Claude Code. Der Skill steht danach in jeder Sitzung bereit;
+            Updates holt man sp&auml;ter mit <code>/plugin marketplace update mrtimeey</code>
+            &mdash; ohne etwas herunterzuladen.
         </p>
         <pre class="bg-gray-900 text-gray-100 rounded p-4 text-xs overflow-x-auto"><code>/plugin marketplace add MrTimeey/ai-image-generator
 /plugin install ai-image@mrtimeey</code></pre>
@@ -128,7 +129,9 @@ unzip -o ~/Downloads/ai-image-skill.zip -d ~/.claude/skills</code></pre>
 </main>
 
 <script>
-    const SKILL_PATH = '~/.claude/skills/ai-image/scripts/aig.py';
+    // Als Plugin liegt das CLI unter ~/.claude/plugins/…, von Hand entpackt
+    // unter ~/.claude/skills/… — dieser Aufruf findet beides.
+    const FIND_CLI = `AIG=$(find ~/.claude -path '*ai-image*/scripts/aig.py' | head -1)`;
 
     document.getElementById('token-cmd').textContent =
         `mkdir -p ~/.config/ai-image-generator\n` +
@@ -136,8 +139,9 @@ unzip -o ~/Downloads/ai-image-skill.zip -d ~/.claude/skills</code></pre>
         `chmod 600 ~/.config/ai-image-generator/token`;
 
     document.getElementById('try-cmd').textContent =
-        `python3 ${SKILL_PATH} models\n` +
-        `python3 ${SKILL_PATH} gen "ein Leuchtturm bei Sonnenuntergang, Aquarell" \\\n` +
+        `${FIND_CLI}\n` +
+        `python3 "$AIG" models\n` +
+        `python3 "$AIG" gen "ein Leuchtturm bei Sonnenuntergang, Aquarell" \\\n` +
         `  --model flux-2-pro --ratio 16:9 --quality medium --out .`;
 
     const copyFrom = (elementId) => async () => {

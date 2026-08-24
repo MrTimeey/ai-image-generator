@@ -9,19 +9,21 @@ Bilder erzeugen über die eigene Instanz auf `https://ai.mrtimeey.com`. Die Bild
 liegen danach **auf dem Server**, in der Übersicht der Weboberfläche — lokal
 landen sie nur, wenn `--out` mitgegeben wird.
 
-Alles läuft über ein CLI. Als Plugin installiert liegt es unter
-`${CLAUDE_PLUGIN_ROOT}/skills/ai-image/scripts/aig.py`, von Hand entpackt
-unter `~/.claude/skills/ai-image/scripts/aig.py`. In den Beispielen steht
-`aig.py` für den Pfad, unter dem es tatsächlich liegt:
+Alles läuft über ein CLI. Wo es liegt, hängt vom Installationsweg ab — als
+Plugin unter `${CLAUDE_PLUGIN_ROOT}/skills/ai-image/scripts/aig.py`, von Hand
+entpackt unter `~/.claude/skills/ai-image/scripts/aig.py`. Dieser Aufruf
+findet beides:
 
 ```bash
-python3 <pfad>/aig.py <befehl>
+AIG=$(find ~/.claude -path '*ai-image*/scripts/aig.py' | head -1)
+python3 "$AIG" <befehl>
 ```
 
-Wer es oft braucht, legt sich einen Alias an:
+In den Beispielen unten steht `aig.py` für genau diesen Pfad. Wer es oft
+braucht, legt sich einen Alias an:
 
 ```bash
-alias aig='python3 ~/.claude/skills/ai-image/scripts/aig.py'
+alias aig="python3 $(find ~/.claude -path '*ai-image*/scripts/aig.py' | head -1)"
 ```
 
 ## Ersteinrichtung (einmalig)
