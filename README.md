@@ -124,11 +124,24 @@ Ausgaben des laufenden Monats über `/v1/organization/costs`.
 ### API-Keys
 
 Unter `/api-keys.html` erzeugbar, gespeichert als SHA-256-Hash in
-`api-keys.json` neben `data.json`. Der Klartext wird nur einmal angezeigt.
+`api-keys.json` neben `data.json`. Der Klartext wird nur einmal angezeigt —
+zusammen mit fertigen Befehlen zum Setzen der Variablen und zum Ablegen der
+Token-Datei, den Schlüssel schon eingesetzt.
+
+Jeder Schlüssel bekommt eine **Gültigkeit** (30/90 Tage, 1/2 Jahre oder
+unbegrenzt). Ein abgelaufener Schlüssel wird abgewiesen wie ein unbekannter,
+bleibt aber in der Liste stehen — sonst wäre nicht zu sehen, warum ein Skript
+plötzlich 401 bekommt.
+
 Ein Schlüssel kommt an alles außer `/api/keys` — neue Schlüssel entstehen
 ausschließlich in der angemeldeten Oberfläche.
 
-Mitgeben als `Authorization: Bearer <key>` oder `X-API-Key: <key>`.
+Mitgeben als `Authorization: Bearer <key>` oder `X-API-Key: <key>`:
+
+```bash
+export AIG_TOKEN='aig_…'
+curl -s https://ai.mrtimeey.com/api/models -H "Authorization: Bearer $AIG_TOKEN"
+```
 
 ### Skill
 
@@ -169,8 +182,12 @@ docker compose up -d --force-recreate --build
 
 ### Deployment
 
-Auf dem Server erledigt das `dockers_update.sh`, das der webhook-Container bei
-einem Push ausführt: `git reset --hard` auf den verfolgten Branch, `compose
+Ein Push auf `main` startet `.github/workflows/deploy.yml`: erst
+`tsc --noEmit` und `npm run lint`, dann ein Aufruf von
+`https://webhook.mrtimeey.com/hooks/ai-image-generator` mit dem Token aus dem
+Repository-Secret `WEBHOOK_SECRET`.
+
+Dort erledigt `dockers_update.sh` den Rest: `git reset --hard` auf den verfolgten Branch, `compose
 build`, `down`/`up`, **Nginx-Reload** und eine Health-Prüfung — einmal am
 Container und einmal durch den Proxy.
 

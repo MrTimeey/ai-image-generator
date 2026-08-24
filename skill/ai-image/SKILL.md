@@ -17,9 +17,10 @@ python3 ~/.claude/skills/ai-image/scripts/aig.py <befehl>
 
 ## Ersteinrichtung (einmalig)
 
-1. `https://ai.mrtimeey.com/api-keys.html` öffnen, Schlüssel erzeugen, Klartext
-   kopieren — er wird **nur einmal** angezeigt.
-2. Ablegen:
+1. `https://ai.mrtimeey.com/api-keys.html` öffnen, Namen und Gültigkeit wählen
+   (30/90 Tage, 1/2 Jahre oder unbegrenzt), Schlüssel erzeugen.
+2. Die Seite zeigt den Klartext **nur einmal** — dafür samt fertiger Befehle
+   zum Kopieren, mit dem Schlüssel schon eingesetzt:
    ```bash
    mkdir -p ~/.config/ai-image-generator
    printf '%s' '<der Schlüssel>' > ~/.config/ai-image-generator/token
@@ -28,6 +29,10 @@ python3 ~/.claude/skills/ai-image/scripts/aig.py <befehl>
 
 Alternativ `AIG_TOKEN` setzen. `AIG_URL` überschreibt die Adresse (z. B.
 `http://localhost:3000` im Dev-Betrieb).
+
+**Ein abgelaufener Schlüssel meldet sich wie ein falscher**: Exit-Code 2 und
+„Nicht angemeldet (401)". Die Liste auf `/api-keys.html` zeigt abgelaufene
+Einträge rot markiert — dort zuerst nachsehen, bevor man anderswo sucht.
 
 Der Schlüssel gilt **nicht** für `/api/keys` — neue Schlüssel entstehen nur in
 der angemeldeten Oberfläche. Das ist Absicht: ein durchgesickerter Schlüssel

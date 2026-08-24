@@ -11,14 +11,18 @@ apiKeys.get('/', (_req, res) => {
     res.send({ keys: listApiKeys() });
 });
 
-const CreateSchema = z.object({ name: z.string().min(1).max(60) });
+const CreateSchema = z.object({
+    name: z.string().min(1).max(60),
+    /** Gültigkeit in Tagen; 0 heißt unbegrenzt. Zwei Jahre als Obergrenze. */
+    expiresInDays: z.number().int().min(0).max(730).optional(),
+});
 
 apiKeys.post('/', (req, res) => {
     const parsed = CreateSchema.safeParse(req.body);
     if (!parsed.success) {
         return res.status(400).send({ error: 'invalid_request', message: 'Ein Name ist nötig (1–60 Zeichen).' });
     }
-    const { record, secret } = createApiKey(parsed.data.name, callerName(req));
+    const { record, secret } = createApiKey(parsed.data.name, callerName(req), parsed.data.expiresInDays);
     // Der einzige Moment, in dem der Klartext existiert.
     res.status(201).send({ ...record, secret });
 });

@@ -53,17 +53,37 @@
     </p>
 
     <div class="bg-white rounded-lg shadow p-6 mb-8">
-        <label for="key-name" class="block text-sm font-medium text-gray-700 mb-2">Wof&uuml;r ist der Schl&uuml;ssel?</label>
-        <div class="flex flex-wrap gap-3">
-            <input id="key-name" type="text" maxlength="60" placeholder="z. B. Laptop, CI, Blog-Skript"
-                   class="flex-1 min-w-[16rem] p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600">
+        <div class="flex flex-wrap gap-4 items-end">
+            <div class="flex-1 min-w-[16rem]">
+                <label for="key-name" class="block text-sm font-medium text-gray-700 mb-2">Wof&uuml;r ist der Schl&uuml;ssel?</label>
+                <input id="key-name" type="text" maxlength="60" placeholder="z. B. Laptop, CI, Blog-Skript"
+                       class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600">
+            </div>
+            <div>
+                <label for="key-ttl" class="block text-sm font-medium text-gray-700 mb-2">G&uuml;ltig</label>
+                <select id="key-ttl" class="p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600">
+                    <option value="30">30 Tage</option>
+                    <option value="90" selected>90 Tage</option>
+                    <option value="365">1 Jahr</option>
+                    <option value="730">2 Jahre</option>
+                    <option value="0">unbegrenzt</option>
+                </select>
+            </div>
             <button id="create-btn" class="bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700">Erzeugen</button>
         </div>
 
         <div id="secret-box" class="hidden mt-5 border border-amber-300 bg-amber-50 rounded-lg p-4">
             <p class="text-sm text-amber-900 mb-2">Jetzt kopieren &mdash; dieser Wert erscheint nicht wieder:</p>
             <code id="secret-value" class="block bg-white border border-amber-200 rounded p-3 text-sm break-all"></code>
-            <button id="copy-btn" class="mt-3 text-sm text-blue-600 hover:underline">In die Zwischenablage</button>
+            <button id="copy-btn" class="mt-3 text-sm text-blue-600 hover:underline">Schl&uuml;ssel kopieren</button>
+
+            <p class="text-sm text-amber-900 mt-4 mb-2">In der Shell als Variable setzen:</p>
+            <pre class="bg-gray-900 text-gray-100 rounded p-3 text-xs overflow-x-auto"><code id="secret-export"></code></pre>
+            <button id="copy-export-btn" class="mt-2 text-sm text-blue-600 hover:underline">Befehl kopieren</button>
+
+            <p class="text-sm text-amber-900 mt-4 mb-2">Dauerhaft ablegen (das CLI des Skills liest die Datei):</p>
+            <pre class="bg-gray-900 text-gray-100 rounded p-3 text-xs overflow-x-auto"><code id="secret-file"></code></pre>
+            <button id="copy-file-btn" class="mt-2 text-sm text-blue-600 hover:underline">Befehl kopieren</button>
         </div>
     </div>
 
@@ -74,6 +94,7 @@
                     <th class="px-4 py-3">Name</th>
                     <th class="px-4 py-3">Anfang</th>
                     <th class="px-4 py-3">Erzeugt</th>
+                    <th class="px-4 py-3">L&auml;uft ab</th>
                     <th class="px-4 py-3">Zuletzt genutzt</th>
                     <th class="px-4 py-3"></th>
                 </tr>
@@ -85,6 +106,9 @@
 
     <div class="bg-white rounded-lg shadow p-6">
         <h2 class="text-lg font-semibold text-gray-800 mb-3">Benutzung</h2>
+        <p class="text-sm text-gray-600 mb-2">Einmal pro Shell den Schl&uuml;ssel setzen:</p>
+        <pre class="bg-gray-900 text-gray-100 rounded p-4 text-xs overflow-x-auto mb-4"><code>export AIG_TOKEN='aig_&hellip;'</code></pre>
+        <p class="text-sm text-gray-600 mb-2">Danach reicht:</p>
         <pre class="bg-gray-900 text-gray-100 rounded p-4 text-xs overflow-x-auto"><code id="curl-example"></code></pre>
         <p class="text-sm text-gray-600 mt-3">
             <code>GET /api/models</code> listet alle Modelle mit ihren m&ouml;glichen Seitenverh&auml;ltnissen.
@@ -112,13 +136,35 @@
         emptyHint.classList.toggle('hidden', keys.length > 0);
         for (const key of keys) {
             const tr = document.createElement('tr');
-            tr.className = 'border-t border-gray-100';
-            for (const text of [key.name, `${key.prefix}…`, formatDate(key.createdAt), formatDate(key.lastUsedAt)]) {
+            tr.className = key.expired ? 'border-t border-gray-100 bg-red-50' : 'border-t border-gray-100';
+
+            const expiry = document.createElement('td');
+            expiry.className = 'px-4 py-3';
+            if (!key.expiresAt) {
+                expiry.textContent = 'unbegrenzt';
+                expiry.classList.add('text-gray-500');
+            } else if (key.expired) {
+                expiry.textContent = `abgelaufen (${formatDate(key.expiresAt)})`;
+                expiry.classList.add('text-red-600', 'font-medium');
+            } else {
+                const days = Math.ceil((new Date(key.expiresAt) - Date.now()) / 86400000);
+                expiry.textContent = `${formatDate(key.expiresAt)} (${days} Tage)`;
+                // Eine Woche vorher auffallen, damit der Ablauf nicht ein
+                // laufendes Skript ueberrascht.
+                if (days <= 7) expiry.classList.add('text-amber-700', 'font-medium');
+            }
+
+            for (const text of [key.name, `${key.prefix}…`, formatDate(key.createdAt)]) {
                 const td = document.createElement('td');
                 td.className = 'px-4 py-3';
                 td.textContent = text;
                 tr.appendChild(td);
             }
+            tr.appendChild(expiry);
+            const used = document.createElement('td');
+            used.className = 'px-4 py-3';
+            used.textContent = formatDate(key.lastUsedAt);
+            tr.appendChild(used);
             const actions = document.createElement('td');
             actions.className = 'px-4 py-3 text-right';
             const revoke = document.createElement('button');
@@ -156,7 +202,7 @@
         const response = await fetch('/api/keys', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name }),
+            body: JSON.stringify({ name, expiresInDays: Number(document.getElementById('key-ttl').value) }),
         });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) {
@@ -164,19 +210,32 @@
             return;
         }
         secretValue.textContent = data.secret;
+        // Mit dem echten Schluessel darin — sonst muss man ihn doch wieder
+        // von Hand in den Befehl einsetzen.
+        document.getElementById('secret-export').textContent =
+            `export AIG_URL='${window.location.origin}'\nexport AIG_TOKEN='${data.secret}'`;
+        document.getElementById('secret-file').textContent =
+            `mkdir -p ~/.config/ai-image-generator\n` +
+            `printf '%s' '${data.secret}' > ~/.config/ai-image-generator/token\n` +
+            `chmod 600 ~/.config/ai-image-generator/token`;
         secretBox.classList.remove('hidden');
         input.value = '';
         await load();
     });
 
-    document.getElementById('copy-btn').addEventListener('click', async () => {
+    const copyFrom = (elementId) => async () => {
         try {
-            await navigator.clipboard.writeText(secretValue.textContent);
+            await navigator.clipboard.writeText(document.getElementById(elementId).textContent);
             showToast('Kopiert');
         } catch {
+            // In unsicheren Kontexten (http) gibt es keine Zwischenablage.
             showToast('Kopieren ging nicht — bitte von Hand markieren');
         }
-    });
+    };
+
+    document.getElementById('copy-btn').addEventListener('click', copyFrom('secret-value'));
+    document.getElementById('copy-export-btn').addEventListener('click', copyFrom('secret-export'));
+    document.getElementById('copy-file-btn').addEventListener('click', copyFrom('secret-file'));
 
     load();
 </script>

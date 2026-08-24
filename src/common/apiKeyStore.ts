@@ -18,6 +18,8 @@ export type ApiKeyRecord = {
     createdAt: string;
     createdBy: string;
     lastUsedAt?: string;
+    /** ISO-Zeitpunkt. Fehlt er, gilt der Schluessel unbegrenzt. */
+    expiresAt?: string;
 };
 
 type ApiKeyStore = { keys: ApiKeyRecord[] };
@@ -53,12 +55,22 @@ const writeStore = (store: ApiKeyStore): void => {
     fs.renameSync(tmp, file);
 };
 
-export const listApiKeys = (): Omit<ApiKeyRecord, 'hash'>[] =>
+export const isExpired = (key: Pick<ApiKeyRecord, 'expiresAt'>, now = Date.now()): boolean =>
+    Boolean(key.expiresAt) && Date.parse(key.expiresAt as string) <= now;
+
+export type PublicApiKey = Omit<ApiKeyRecord, 'hash'> & { expired: boolean };
+
+export const listApiKeys = (): PublicApiKey[] =>
     readStore()
-        .keys.map(({ hash: _hash, ...rest }) => rest)
+        .keys.map(({ hash: _hash, ...rest }) => ({ ...rest, expired: isExpired(rest) }))
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
-export const createApiKey = (name: string, createdBy: string): { record: Omit<ApiKeyRecord, 'hash'>; secret: string } => {
+export const createApiKey = (
+    name: string,
+    createdBy: string,
+    /** Gueltigkeit in Tagen. 0 oder nichts heisst: unbegrenzt. */
+    expiresInDays?: number
+): { record: PublicApiKey; secret: string } => {
     const secret = KEY_PREFIX + crypto.randomBytes(32).toString('base64url');
     const record: ApiKeyRecord = {
         id: crypto.randomUUID(),
@@ -67,12 +79,16 @@ export const createApiKey = (name: string, createdBy: string): { record: Omit<Ap
         hash: hashKey(secret),
         createdAt: new Date().toISOString(),
         createdBy,
+        expiresAt:
+            expiresInDays && expiresInDays > 0
+                ? new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000).toISOString()
+                : undefined,
     };
     const store = readStore();
     store.keys.push(record);
     writeStore(store);
     const { hash: _hash, ...rest } = record;
-    return { record: rest, secret };
+    return { record: { ...rest, expired: false }, secret };
 };
 
 export const revokeApiKey = (id: string): boolean => {
@@ -99,6 +115,9 @@ export const verifyApiKey = (raw: string | undefined): ApiKeyRecord | null => {
         if (!crypto.timingSafeEqual(candidate, digest)) continue;
 
         const now = Date.now();
+        // Abgelaufen zaehlt wie nicht vorhanden. Der Eintrag bleibt aber
+        // stehen, damit in der Liste sichtbar ist, warum ein Skript scheitert.
+        if (isExpired(key, now)) return null;
         if ((lastWritten.get(key.id) ?? 0) + LAST_USED_THROTTLE_MS < now) {
             lastWritten.set(key.id, now);
             key.lastUsedAt = new Date().toISOString();

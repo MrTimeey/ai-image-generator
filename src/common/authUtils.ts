@@ -50,7 +50,10 @@ export const requireAuth = (req: Request, res: Response, next: NextFunction): vo
         }
         // Ein mitgeschickter, aber ungueltiger Schluessel ist nie ein Grund,
         // auf die Anmeldeseite umzuleiten.
-        res.status(401).send({ error: 'invalid_api_key', message: 'Der API-Key ist unbekannt oder widerrufen.' });
+        res.status(401).send({
+            error: 'invalid_api_key',
+            message: 'Der API-Key ist unbekannt, abgelaufen oder widerrufen.',
+        });
         return;
     }
 
