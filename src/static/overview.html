@@ -25,20 +25,47 @@
     <link href="/public/css/generated-tailwind.css" rel="stylesheet">
     <link href="/public/css/style.css" rel="stylesheet">
     <style>
-        /* Stile für die Bildanpassung */
+        /**
+         * Das Raster fuellt die Breite selbst auf, statt feste Spaltenzahlen je
+         * Bildschirmgroesse vorzugeben. Vorher stand auf dem Handy
+         * `grid-cols-1` — ein einziges 200-px-Bild pro Zeile, bei dem der
+         * halbe Bildschirm leer blieb.
+         */
+        #thumbnail-grid {
+            display: grid;
+            /**
+             * `min(…, 45%)` deckelt die Kachel auf dem Handy: ohne das faellt
+             * die groesste Stufe dort auf eine einzige Spalte zurueck — genau
+             * der Zustand, der vorher gestoert hat. So bleiben es immer
+             * mindestens zwei.
+             */
+            grid-template-columns: repeat(auto-fill, minmax(min(var(--tile, 150px), 45%), 1fr));
+            gap: 0.5rem;
+        }
+
         .thumbnail {
-            width: 200px;
-            height: 200px;
+            /* Quadratisch ueber das Seitenverhaeltnis, nicht ueber feste Pixel:
+               so waechst die Kachel mit der Spalte mit. */
+            aspect-ratio: 1 / 1;
+            width: 100%;
             display: flex;
             justify-content: center;
             align-items: center;
             overflow: hidden;
+            background-color: #e5e7eb;
         }
 
         .thumbnail img {
+            /**
+             * `width`/`height` statt `max-*`: als Flex-Element bezieht sich
+             * `max-height: 100%` auf eine Hoehe, die hier gar nicht feststeht —
+             * Hochformat-Bilder wurden dadurch hoeher als ihre Kachel und oben
+             * wie unten abgeschnitten. Mit fester Groesse plus `contain` passt
+             * jedes Seitenverhaeltnis hinein.
+             */
+            width: 100%;
+            height: 100%;
             object-fit: contain;
-            max-width: 100%;
-            max-height: 100%;
         }
         @keyframes spin {
             0% { transform: rotate(0deg); }
@@ -47,7 +74,8 @@
         #confirm-modal {
             display: none; /* Initially hidden */
         }
-        @media (max-width: 768px) {
+        /* Ohne Mauszeiger gibt es kein Hover — dort muss das Symbol stehen. */
+        @media (hover: none) {
             .action-icon {
                 display: block !important;
             }
@@ -87,46 +115,45 @@
     </nav>
 </header>
 
-<main class="max-w-6xl mx-auto py-10 px-4 relative">
+<main class="max-w-6xl mx-auto py-6 px-4">
 
-    <div id="asc-sort" class="hidden absolute top-0 right-0 mt-2 mr-4 flex items-center space-x-1 text-blue-600 cursor-pointer">
-        <span>From Old to New</span>
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-            <path fill-rule="evenodd" d="M5.293 9.293a1 1 0 011.414 0L10 12.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
-        </svg>
-    </div>
-    <div id="desc-sort" class="hidden absolute top-0 right-0 mt-2 mr-4 flex items-center space-x-1 text-blue-600 cursor-pointer">
-        <span>From New to Old</span>
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 20 20" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
-        </svg>
-    </div>
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <button id="sort-toggle" class="flex items-center gap-1 text-blue-600 hover:underline">
+            <span id="sort-label"></span>
+            <svg id="sort-icon" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M5.293 9.293a1 1 0 011.414 0L10 12.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+            </svg>
+        </button>
 
-    <div id="thumbnail-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 justify-items-center">
-        <div class="dummy-entry thumbnail bg-gray-200 relative group">
-            <div class="hidden group-hover:block absolute top-2 right-2 bg-white rounded-full p-1 cursor-pointer">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+        <div class="flex items-center gap-2">
+            <span class="text-sm text-gray-600">Raster</span>
+            <div id="tile-size" class="inline-flex rounded-lg border border-gray-300 overflow-hidden bg-white">
+                <button data-tile="90" class="px-3 py-1 text-sm hover:bg-gray-100" title="viele kleine Bilder">S</button>
+                <button data-tile="150" class="px-3 py-1 text-sm border-l border-gray-300 hover:bg-gray-100">M</button>
+                <button data-tile="240" class="px-3 py-1 text-sm border-l border-gray-300 hover:bg-gray-100" title="wenige große Bilder">L</button>
             </div>
         </div>
-        <div class="dummy-entry thumbnail bg-gray-200">
+    </div>
+
+    <div id="thumbnail-grid">
+        <div class="dummy-entry thumbnail"></div>
+        <div class="dummy-entry thumbnail">
         </div>
-        <div class="dummy-entry thumbnail bg-gray-200">
+        <div class="dummy-entry thumbnail">
         </div>
-        <div class="dummy-entry thumbnail bg-gray-200">
+        <div class="dummy-entry thumbnail">
         </div>
-        <div class="dummy-entry thumbnail bg-gray-200">
+        <div class="dummy-entry thumbnail">
         </div>
-        <div class="dummy-entry thumbnail bg-gray-200">
+        <div class="dummy-entry thumbnail">
         </div>
-        <div class="dummy-entry thumbnail bg-gray-200">
+        <div class="dummy-entry thumbnail">
         </div>
-        <div class="dummy-entry thumbnail bg-gray-200">
+        <div class="dummy-entry thumbnail">
         </div>
-        <div class="dummy-entry thumbnail bg-gray-200">
+        <div class="dummy-entry thumbnail">
         </div>
-        <div class="dummy-entry thumbnail bg-gray-200">
+        <div class="dummy-entry thumbnail">
         </div>
     </div>
 </main>
@@ -144,8 +171,6 @@
 </div>
 
 <script>
-    document.getElementById('asc-sort').addEventListener('click', () => window.location.href = '/overview.html?sorting=DESC')
-    document.getElementById('desc-sort').addEventListener('click', () => window.location.href = '/overview.html?sorting=ASC')
     const confirmModal = document.getElementById('confirm-modal');
     let currentImage = null;
     let currentThumbnailDiv = null;
@@ -155,15 +180,20 @@
         imageElement.src = `/thumbnails/${imageName}`;
         imageElement.title = imageName;
         imageElement.alt = imageName;
+        // Der Bilderordner hat inzwischen ueber 700 Eintraege — ohne das hier
+        // laedt das Handy sie alle auf einmal.
+        imageElement.loading = 'lazy';
+        imageElement.decoding = 'async';
 
         const anchorElement = document.createElement('a');
         anchorElement.href = `/detail.html?filename=${imageName}`;
         anchorElement.appendChild(imageElement);
 
         const deleteIcon = document.createElement('div');
-        deleteIcon.className = 'action-icon hidden group-hover:block absolute top-2 right-2 bg-white rounded-full p-1 cursor-pointer';
+        deleteIcon.className = 'action-icon hidden group-hover:block absolute top-1 right-1 bg-white/90 rounded-full p-0.5 cursor-pointer shadow';
+        deleteIcon.title = 'Bild löschen';
         deleteIcon.innerHTML = `
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-red-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
         `;
@@ -202,6 +232,45 @@
     const spinnerOverlay = document.getElementById('spinner-overlay');
     const thumbnailGrid = document.getElementById('thumbnail-grid');
 
+    /**
+     * Kachelgroesse. Die Wahl gehoert dem Geraet — auf dem Handy will man
+     * andere Kacheln als am Monitor —, deshalb localStorage statt der URL.
+     */
+    const TILE_KEY = 'aig.tileSize';
+    const DEFAULT_TILE = '150';
+
+    const applyTile = (value) => {
+        document.documentElement.style.setProperty('--tile', `${value}px`);
+        for (const button of document.querySelectorAll('#tile-size button')) {
+            const active = button.dataset.tile === value;
+            button.classList.toggle('bg-blue-600', active);
+            button.classList.toggle('text-white', active);
+            button.classList.toggle('hover:bg-gray-100', !active);
+        }
+    };
+
+    const storedTile = () => {
+        try {
+            return localStorage.getItem(TILE_KEY) ?? DEFAULT_TILE;
+        } catch {
+            // Privates Fenster oder blockierte Speicherung — dann eben Standard.
+            return DEFAULT_TILE;
+        }
+    };
+
+    applyTile(storedTile());
+
+    document.getElementById('tile-size').addEventListener('click', (event) => {
+        const value = event.target.closest('button')?.dataset.tile;
+        if (!value) return;
+        applyTile(value);
+        try {
+            localStorage.setItem(TILE_KEY, value);
+        } catch {
+            // Nicht speicherbar ist kein Grund, die Ansicht nicht umzustellen.
+        }
+    });
+
     function updateUrl(newSorting) {
         const currentUrl = window.location.href;
         const url = new URL(currentUrl);
@@ -219,24 +288,18 @@
             updateUrl('DESC')
             sortingParam = 'DESC'
         }
-        if (sortingParam === 'ASC') {
-            document.getElementById('asc-sort').classList.remove('hidden');
-        } else {
-            document.getElementById('desc-sort').classList.remove('hidden');
-        }
+        const ascending = sortingParam === 'ASC';
+        document.getElementById('sort-label').textContent = ascending ? 'Älteste zuerst' : 'Neueste zuerst';
+        document.getElementById('sort-icon').style.transform = ascending ? 'rotate(180deg)' : '';
+        document.getElementById('sort-toggle').addEventListener('click', () => {
+            window.location.href = `/overview.html?sorting=${ascending ? 'DESC' : 'ASC'}`;
+        });
         const images = await getAllThumbnails(sortingParam);
         Array.from(document.getElementsByClassName('dummy-entry')).forEach(e => e.remove())
         spinnerOverlay.classList.add('hidden')
         images.map(createImage).forEach(i => thumbnailGrid.appendChild(i))
     });
 
-
-    const burgerBtn = document.getElementById('burger-btn');
-    const mobileMenu = document.getElementById('mobile-menu');
-
-    burgerBtn.addEventListener('click', () => {
-        mobileMenu.classList.toggle('hidden');
-    });
 </script>
 
 </body>
