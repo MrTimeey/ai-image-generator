@@ -86,4 +86,12 @@ if [ "$STATUS" = "200" ]; then
 else
   echo "WARNUNG: Der Proxy liefert $STATUS statt 200"
 fi
+
+# Der webhook-Container laeuft als root, und `git reset` legt die Dateien
+# entsprechend an. Ohne das hier gehoerte das Deployment nach dem ersten
+# automatischen Lauf wieder root, und vom Host aus waere nichts mehr zu
+# aendern. 1000:1000 ist `tk` auf diesem Server.
+if [ "$(id -u)" = "0" ]; then
+  chown -R 1000:1000 "$DIR" 2>/dev/null || true
+fi
 }
