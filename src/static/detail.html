@@ -92,6 +92,19 @@
             <p id="filename">...</p>
         </div>
 
+        <!-- Referenzbilder -->
+        <div id="reference-block" class="hidden">
+            <h3 class="font-semibold text-lg">Referenzbilder:</h3>
+            <p class="text-sm text-gray-500 mb-2">Vorlagen, die bei der Erzeugung mitgegeben wurden.</p>
+            <div id="reference-images" class="flex flex-wrap gap-3"></div>
+        </div>
+
+        <!-- Modell -->
+        <div>
+            <h3 class="font-semibold text-lg">Modell:</h3>
+            <p id="model">...</p>
+        </div>
+
         <!-- Erstellungsdatum -->
         <div>
             <h3 class="font-semibold text-lg">Erstellt am:</h3>
@@ -101,12 +114,40 @@
 </main>
 
 <script>
-    const burgerBtn = document.getElementById('burger-btn');
-    const mobileMenu = document.getElementById('mobile-menu');
-    burgerBtn.addEventListener('click', () => {
-        mobileMenu.classList.toggle('hidden');
-    });
     const spinnerOverlay = document.getElementById('spinner-overlay');
+
+    /**
+     * Ohne die Vorlage ist ein Prompt wie „mach den Hintergrund tiefblau" nicht
+     * zu deuten — deshalb steht sie hier daneben.
+     */
+    const zeigeReferenzbilder = (namen) => {
+        if (!Array.isArray(namen) || namen.length === 0) return;
+        const behaelter = document.getElementById('reference-images');
+        behaelter.replaceChildren(...namen.map((name) => {
+            const bild = document.createElement('img');
+            bild.src = `/api/files/reference/${name}`;
+            bild.alt = 'Referenzbild';
+            bild.loading = 'lazy';
+            bild.className = 'h-24 w-24 object-cover rounded border border-gray-300';
+            // Nach einem Import fehlen die Vorlagen — das Archiv enthaelt sie
+            // nicht. Dann lieber nichts zeigen als ein kaputtes Bildsymbol.
+            bild.addEventListener('error', () => {
+                link.remove();
+                if (!behaelter.children.length) {
+                    document.getElementById('reference-block').classList.add('hidden');
+                }
+            });
+
+            const link = document.createElement('a');
+            link.href = `/api/files/reference/${name}`;
+            link.target = '_blank';
+            link.rel = 'noopener';
+            link.title = 'In voller Größe öffnen';
+            link.appendChild(bild);
+            return link;
+        }));
+        document.getElementById('reference-block').classList.remove('hidden');
+    };
 
     document.addEventListener('DOMContentLoaded', async () => {
         const urlParams = new URLSearchParams(window.location.search);
@@ -127,6 +168,12 @@
             document.getElementById('filename').textContent = image.filename;
             document.getElementById('created').textContent = image.createdAt;
             document.getElementById('anchor').href = `/api/files/download/${image.filename}`
+
+            const groesse = image.width && image.height ? ` · ${image.width}×${image.height}` : '';
+            const verhaeltnis = image.ratio ? ` · ${image.ratio}` : '';
+            document.getElementById('model').textContent = (image.model || 'unbekannt') + verhaeltnis + groesse;
+
+            zeigeReferenzbilder(image.referenceImages);
         }
         spinnerOverlay.classList.add('hidden')
     });

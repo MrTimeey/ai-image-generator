@@ -198,6 +198,25 @@ BFL liefert echte Credits. **OpenAI gibt den Kontostand über keine API heraus**
 dort steht bestenfalls der Verbrauch des Monats, und auch das nur mit einem
 hinterlegten Admin-Key.
 
+## Wenn die Verbindung abreißt
+
+Dauert eine Generierung lange, kann der Aufruf sterben (Netzwechsel, oder die
+PWA wandert in den Hintergrund). Der Server macht trotzdem weiter. Wer direkt
+gegen die API geht, gibt deshalb eine eigene `requestId` mit und fragt danach
+`GET /api/jobs/<id>` ab:
+
+```bash
+ID=$(openssl rand -hex 12)
+curl -s "$AIG_URL/api/generate" -H "Authorization: Bearer $AIG_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d "{\"prompt\":\"…\",\"model\":\"flux-2-pro\",\"requestId\":\"$ID\"}"
+# falls der Aufruf abbricht:
+curl -s "$AIG_URL/api/jobs/$ID" -H "Authorization: Bearer $AIG_TOKEN"
+```
+
+Das CLI wartet einfach ab (`gen` blockiert bis zum Ergebnis) — dort ist das
+nur bei sehr wackligen Verbindungen ein Thema.
+
 ## Was der Skill nicht macht
 
 - **Kosten:** jedes Bild kostet echtes Geld bei BFL bzw. OpenAI. Bei größeren
@@ -205,4 +224,5 @@ hinterlegten Admin-Key.
 - **`rm` ist endgültig** — Bild und Metadaten sind weg, es gibt keinen Papierkorb.
   Nur löschen, wenn ausdrücklich darum gebeten wurde.
 - Bildbearbeitung mit Maske (Inpaint, Outpaint, Erase) ist nicht eingebunden —
-  nur ganze Referenzbilder.
+  nur ganze Referenzbilder. Die mitgegebenen Vorlagen sind später in der
+  Detailansicht des Bildes zu sehen.

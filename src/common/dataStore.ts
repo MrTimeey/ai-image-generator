@@ -4,7 +4,7 @@ import appConfig from './appConfig';
 import path from 'node:path';
 import { bigThumbnailDir } from '../routes/files';
 import { thumbnailDir } from '../routes/thumbnails';
-import { isImageFile } from './fileUtils';
+import { isImageFile, REFERENCE_DIR } from './fileUtils';
 
 const dataStoreName = `data.json`;
 
@@ -80,4 +80,21 @@ export const cleanDataStore = () => {
     }, {})
     clearThumbnails(thumbnailDir, imageMap);
     clearThumbnails(bigThumbnailDir, imageMap);
+    clearReferences(filteredFiles);
+};
+
+/**
+ * Referenzbilder, auf die kein Eintrag mehr zeigt. Ohne das hier waechst der
+ * Ordner mit jedem geloeschten Bild weiter — die Vorlagen selbst stehen ja in
+ * keiner Uebersicht und fielen niemandem auf.
+ */
+const clearReferences = (entries: DataImage[]) => {
+    const dir = path.join(appConfig.baseFolder, REFERENCE_DIR);
+    if (!fs.existsSync(dir)) return;
+    const used = new Set(entries.flatMap(entry => entry.referenceImages ?? []));
+    fs.readdirSync(dir)
+        .filter(file => !used.has(file))
+        .map(file => path.join(dir, file))
+        .filter(p => fs.existsSync(p))
+        .forEach(p => fs.rmSync(p));
 };

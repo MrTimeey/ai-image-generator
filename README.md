@@ -74,6 +74,8 @@ Alles unter `/api` verlangt eine Anmeldung und antwortet bei fehlender mit
 | `GET /api/files/download/:name` | Datei |
 | `DELETE /api/files/:name` | löschen |
 | `GET /api/credits` | Guthaben der Anbieter (`?refresh=1` umgeht den 60-s-Cache) |
+| `GET /api/jobs/:id` | Stand eines Auftrags (siehe unten) |
+| `GET /api/files/reference/:name` | mitgegebenes Referenzbild |
 | `GET /api/skill/download` | Claude-Skill als ZIP |
 | `GET/POST/DELETE /api/keys` | API-Keys (**nur mit Sitzung**) |
 | `GET /api/health` | öffentlich |
@@ -108,6 +110,33 @@ Antwort:
                "url": "/api/files/download/…png", "revisedPrompt": "…", "seed": 42 }],
   "errors": [] }
 ```
+
+### Abgerissene Verbindungen
+
+`POST /api/generate` nimmt optional eine selbst vergebene `requestId`
+(8–64 Zeichen, `[A-Za-z0-9_-]`). Der Server führt den Auftrag unter dieser
+Kennung, und `GET /api/jobs/:id` liefert `running`, `done` (mit demselben
+Rumpf wie `/generate`) oder `error`.
+
+Das ist kein Luxus: legt man die **installierte PWA in den Hintergrund**,
+friert das System die JS-Ausführung ein und bricht den laufenden `fetch` ab.
+Der Server erzeugt und speichert unbeirrt weiter — die Oberfläche meldete
+vorher „Failed to fetch", obwohl das Bild fertig war. Jetzt fragt sie mit der
+Kennung nach, sobald die Seite wieder sichtbar wird.
+
+Aufträge liegen im Speicher (30 Minuten, höchstens 200). Ein Neustart des
+Containers verliert sie; die Bilder stehen dann in der Übersicht.
+
+### Referenzbilder in der Detailansicht
+
+Mitgegebene Vorlagen werden auf 512 px verkleinert unter
+`<baseFolder>/references/` abgelegt und in `data.json` als `referenceImages`
+vermerkt. `/detail.html` zeigt sie neben dem Prompt — ohne die Vorlage ist
+„mach den Hintergrund tiefblau" nicht zu deuten. `cleanDataStore` räumt
+Vorlagen weg, auf die kein Eintrag mehr zeigt.
+
+Der Export (`/api/exchange/all`) enthält sie **nicht**; nach einem Import
+fehlen sie und die Detailansicht blendet den Block aus.
 
 ### Kontoseite
 

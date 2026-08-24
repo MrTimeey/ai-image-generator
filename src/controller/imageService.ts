@@ -10,7 +10,14 @@ import {
 import { ModelDefinition } from './modelRegistry';
 import { clampQuality, resolveSize } from '../common/aspectRatio';
 import { currentTimestamp } from '../common/timeUtils';
-import { fetchImageBytes, getFileName, imagePath, persistImage, writeImage } from '../common/fileUtils';
+import {
+    fetchImageBytes,
+    getFileName,
+    imagePath,
+    persistImage,
+    saveReferenceImage,
+    writeImage,
+} from '../common/fileUtils';
 import sharp from 'sharp';
 import { createThumbnail } from '../routes/thumbnails';
 import { createBigThumbnail } from '../routes/files';
@@ -59,6 +66,22 @@ export const generate = async (request: GenerationRequest): Promise<GenerationRe
     }
     const inputImages: InputImage[] = raw.map(parseInputImage);
 
+    /**
+     * Die Referenzbilder einmal ablegen — alle Bilder dieses Laufs teilen sie
+     * sich. In der Detailansicht ist sonst nicht nachvollziehbar, worauf sich
+     * ein Prompt wie „mach den Hintergrund tiefblau" ueberhaupt bezog.
+     */
+    const referenceNames: string[] = [];
+    for (const image of inputImages) {
+        try {
+            referenceNames.push(await saveReferenceImage(uuidv4(), image.buffer));
+        } catch (error) {
+            // Ein nicht ablegbares Referenzbild darf die Generierung nicht
+            // verhindern — es ist nur Beiwerk.
+            console.warn('Referenzbild nicht ablegbar:', describeError(error));
+        }
+    }
+
     let providerImages: ProviderImage[];
     const errors: string[] = [];
 
@@ -99,7 +122,7 @@ export const generate = async (request: GenerationRequest): Promise<GenerationRe
             revisedPrompt: providerImage.revisedPrompt,
             seed: providerImage.seed,
         };
-        persistImage(image, createdAt, model, prompt, ratio);
+        persistImage(image, createdAt, model, prompt, ratio, referenceNames);
         await createBigThumbnail(fileName);
         await createThumbnail(fileName);
         images.push(image);

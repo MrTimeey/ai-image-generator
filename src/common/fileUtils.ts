@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import axios from 'axios';
+import sharp from 'sharp';
 import { DataImage, GeneratedImage, OutputFormat, ProviderImage } from '../types';
 import { getDataStore, saveDataStore } from './dataStore';
 import appConfig from './appConfig';
@@ -33,6 +34,16 @@ export const safeImageName = (name: string): string | null => {
 
 export const imagePath = (fileName: string): string => path.join(appConfig.baseFolder, fileName);
 
+/**
+ * Referenzbilder liegen in einem eigenen Ordner. Bewusst getrennt von den
+ * erzeugten Bildern: sonst tauchten sie in der Uebersicht auf und `cleanDataStore`
+ * wuerde sie loeschen, weil kein Eintrag auf sie zeigt.
+ */
+export const REFERENCE_DIR = 'references';
+
+export const referencePath = (fileName: string): string =>
+    path.join(appConfig.baseFolder, REFERENCE_DIR, fileName);
+
 const ensureBaseFolder = (): void => {
     if (!fs.existsSync(appConfig.baseFolder)) {
         fs.mkdirSync(appConfig.baseFolder, { recursive: true });
@@ -59,12 +70,29 @@ export const writeImage = (fileName: string, bytes: Buffer): void => {
     fs.writeFileSync(imagePath(fileName), bytes);
 };
 
+/**
+ * Legt ein Referenzbild verkleinert ab und gibt seinen Dateinamen zurueck.
+ * Verkleinert, weil es nur zur Erinnerung dient — das Original kann etliche
+ * Megabyte gross sein und wuerde den Bilderordner aufblaehen.
+ */
+export const saveReferenceImage = async (id: string, bytes: Buffer): Promise<string> => {
+    const dir = path.join(appConfig.baseFolder, REFERENCE_DIR);
+    fs.mkdirSync(dir, { recursive: true });
+    const fileName = `${id}.jpg`;
+    await sharp(bytes)
+        .resize(512, 512, { fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 82 })
+        .toFile(path.join(dir, fileName));
+    return fileName;
+};
+
 export const persistImage = (
     image: GeneratedImage,
     createdAt: string,
     model: ModelDefinition,
     description: string,
-    ratio: string
+    ratio: string,
+    referenceImages: string[] = []
 ): void => {
     const dataStore = getDataStore();
     const entry: DataImage = {
@@ -78,6 +106,7 @@ export const persistImage = (
         ratio,
         width: image.width,
         height: image.height,
+        referenceImages: referenceImages.length > 0 ? referenceImages : undefined,
     };
     dataStore.data.push(entry);
     dataStore.entries = dataStore.data.length;

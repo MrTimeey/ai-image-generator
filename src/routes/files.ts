@@ -5,7 +5,7 @@ import { cleanDataStore, getDataStore } from '../common/dataStore';
 import sharp from 'sharp';
 import path from 'path';
 import { fromFormated, READ_FORMAT } from '../common/timeUtils';
-import { modelNameOf, safeImageName } from '../common/fileUtils';
+import { modelNameOf, referencePath, safeImageName } from '../common/fileUtils';
 
 const files: express.Router = express.Router();
 
@@ -31,6 +31,22 @@ const resolveImage = (raw: string): { name: string; path: string } | null => {
     if (!fs.existsSync(filePath)) return null;
     return { name, path: filePath };
 };
+
+/**
+ * Referenzbilder liegen in einem eigenen Ordner und werden nur hier
+ * ausgeliefert — sie gehoeren nicht in die Uebersicht.
+ */
+files.get('/reference/:imageName', (req, res) => {
+    const name = safeImageName(req.params.imageName);
+    if (!name) {
+        return res.status(404).send({ error: 'not_found', message: 'Referenzbild nicht gefunden.' });
+    }
+    const filePath = referencePath(name);
+    if (!fs.existsSync(filePath)) {
+        return res.status(404).send({ error: 'not_found', message: 'Referenzbild nicht gefunden.' });
+    }
+    res.sendFile(path.resolve(filePath));
+});
 
 files.get('/download/:imageName', async (req, res) => {
     const image = resolveImage(req.params.imageName);
@@ -58,6 +74,7 @@ files.get('/get/:imageName', async (req, res) => {
         ratio: entry?.ratio ?? '',
         width: entry?.width,
         height: entry?.height,
+        referenceImages: entry?.referenceImages ?? [],
         // Der alte Feldname, damit bestehende Skripte weiterlesen koennen.
         languageModel: modelNameOf(entry),
     });

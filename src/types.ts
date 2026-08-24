@@ -91,6 +91,8 @@ export type DataImage = {
     ratio?: string;
     width?: number;
     height?: number;
+    /** Dateinamen der mitgegebenen Referenzbilder, klein abgelegt. */
+    referenceImages?: string[];
     /**
      * Der alte Feldname aus der Zeit von DALL-E. Wird nur noch **gelesen**,
      * damit vorhandene `data.json`-Eintraege ihr Modell behalten; neue

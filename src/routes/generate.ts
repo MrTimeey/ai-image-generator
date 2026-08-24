@@ -7,6 +7,7 @@ import { describeError, ProviderError, statusOf } from '../common/providerError'
 import { hasProvider } from '../common/appConfig';
 import { clampQuality, resolveSize } from '../common/aspectRatio';
 import { getCredits } from '../controller/creditsController';
+import { failJob, finishJob, getJob, isValidJobId, startJob } from '../common/jobStore';
 
 const generateRouter: express.Router = express.Router();
 
@@ -25,6 +26,12 @@ const GenerateSchema = z.object({
      * offensichtlichen Unfug.
      */
     inputImages: z.array(z.string().min(1)).max(8).optional(),
+    /**
+     * Vom Client vergebene Kennung. Reisst die Verbindung ab — in der PWA
+     * passiert das, sobald sie in den Hintergrund geht —, kann er das Ergebnis
+     * damit unter `GET /api/jobs/:id` nachholen.
+     */
+    requestId: z.string().regex(/^[A-Za-z0-9_-]{8,64}$/).optional(),
 });
 
 /**
@@ -63,6 +70,56 @@ generateRouter.get('/models', (_req, res) => {
     res.send({ defaultModel: findModel(DEFAULT_MODEL) && hasProvider.bfl ? DEFAULT_MODEL : models[0]?.id, models });
 });
 
+/** Damit die Antwort auf `/generate` und die auf `/jobs/:id` gleich aussehen. */
+const asPayload = (result: {
+    createdAt: string;
+    model: string;
+    provider: string;
+    width: number;
+    height: number;
+    images: { id: string; fileName: string; width: number; height: number; revisedPrompt?: string; seed?: number }[];
+    errors: string[];
+}) => ({
+    createdAt: result.createdAt,
+    model: result.model,
+    provider: result.provider,
+    width: result.width,
+    height: result.height,
+    images: result.images.map(image => ({
+        id: image.id,
+        fileName: image.fileName,
+        width: image.width,
+        height: image.height,
+        url: `/api/files/download/${image.fileName}`,
+        revisedPrompt: image.revisedPrompt,
+        seed: image.seed,
+    })),
+    errors: result.errors,
+});
+
+/**
+ * Den Stand eines Auftrags abfragen. Der Client kennt die Kennung, weil er sie
+ * selbst vergeben hat — er braucht die Antwort auf `/generate` dafuer nicht.
+ */
+generateRouter.get('/jobs/:id', (req, res) => {
+    if (!isValidJobId(req.params.id)) {
+        return res.status(400).send({ error: 'invalid_job_id', message: 'Ungültige Auftragskennung.' });
+    }
+    const job = getJob(req.params.id);
+    if (!job) {
+        // Unbekannt heisst hier auch: zu alt, oder der Container wurde neu
+        // gestartet. Beides ist fuer den Client dasselbe.
+        return res.status(404).send({ status: 'unknown', message: 'Auftrag nicht bekannt.' });
+    }
+    if (job.status === 'running') {
+        return res.send({ status: 'running', startedAt: job.startedAt });
+    }
+    if (job.status === 'error') {
+        return res.send({ status: 'error', error: job.code, message: job.error });
+    }
+    res.send({ status: 'done', ...asPayload(job.result) });
+});
+
 generateRouter.get('/credits', async (req, res) => {
     res.send({ providers: await getCredits(req.query.refresh === '1') });
 });
@@ -75,7 +132,7 @@ generateRouter.post('/generate', async (req, res) => {
             message: parsed.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join('; '),
         });
     }
-    const { prompt, ratio, quality, outputFormat, amount, revisePrompt, seed, inputImages } = parsed.data;
+    const { prompt, ratio, quality, outputFormat, amount, revisePrompt, seed, inputImages, requestId } = parsed.data;
 
     const model = findModel(parsed.data.model);
     if (!model) {
@@ -104,6 +161,8 @@ generateRouter.post('/generate', async (req, res) => {
     }
     const requestedAmount = Math.min(amount, model.maxAmount);
 
+    if (requestId) startJob(requestId);
+
     try {
         const result = await generate({
             prompt,
@@ -117,36 +176,21 @@ generateRouter.post('/generate', async (req, res) => {
             inputImages,
         });
         if (result.images.length === 0) {
-            return res.status(502).send({
-                error: 'generation_failed',
-                message: result.errors[0] ?? 'Es wurde kein Bild erzeugt.',
-                errors: result.errors,
-            });
+            const message = result.errors[0] ?? 'Es wurde kein Bild erzeugt.';
+            if (requestId) failJob(requestId, 'generation_failed', message);
+            return res.status(502).send({ error: 'generation_failed', message, errors: result.errors });
         }
-        res.status(200).send({
-            createdAt: result.createdAt,
-            model: result.model,
-            provider: result.provider,
-            width: result.width,
-            height: result.height,
-            images: result.images.map(image => ({
-                id: image.id,
-                fileName: image.fileName,
-                width: image.width,
-                height: image.height,
-                url: `/api/files/download/${image.fileName}`,
-                revisedPrompt: image.revisedPrompt,
-                seed: image.seed,
-            })),
-            errors: result.errors,
-        });
+        // **Vor dem Senden ablegen.** Ist die Verbindung schon tot, laeuft
+        // `res.send` ins Leere — der Auftrag muss trotzdem abholbar sein.
+        if (requestId) finishJob(requestId, result);
+        res.status(200).send(asPayload(result));
     } catch (error) {
         const status = statusOf(error);
-        console.error('Bildgenerierung fehlgeschlagen:', describeError(error));
-        res.status(status).send({
-            error: error instanceof ProviderError ? error.code : 'generation_failed',
-            message: describeError(error),
-        });
+        const message = describeError(error);
+        const code = error instanceof ProviderError ? error.code : 'generation_failed';
+        console.error('Bildgenerierung fehlgeschlagen:', message);
+        if (requestId) failJob(requestId, code, message);
+        res.status(status).send({ error: code, message });
     }
 });
 
