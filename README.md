@@ -367,6 +367,12 @@ dort ist der Nutzen am größten und der Aufwand am kleinsten:
 Gegengeprüft, dass sie etwas taugen: die Pfadprüfung entschärft und die
 Kantenrasterung verbogen — beides fällt sofort auf.
 
+Die Tests bringen ihre eigene Minimalkonfiguration mit (`test.env` in
+`vitest.config.mjs`). `appConfig` prüft beim Laden, ob ein Anbieter-Schlüssel
+gesetzt ist, und Module wie `fileUtils` ziehen es mit — lokal kam das
+unbemerkt aus der `.env`, in der CI gibt es keine. Wer das prüfen will,
+schiebt die `.env` kurz beiseite und lässt `npm test` laufen.
+
 Für den Betrieb im Container zieht `docker compose up -d` das Image aus der
 GitHub Registry. Lokal bauen geht mit `docker build -t ai-image-generator .`.
 
