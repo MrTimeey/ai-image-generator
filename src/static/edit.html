@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bearbeiten &middot; AI Image Generator</title>
+    <link rel="apple-touch-icon" sizes="180x180" href="/public/favicon_io/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/public/favicon_io/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/public/favicon_io/favicon-16x16.png" />
+    <link rel="manifest" href="/public/favicon_io/site.webmanifest" />
+    <meta name="theme-color" content="#2563eb">
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').catch((error) =>
+                    console.debug('Service Worker nicht registriert', error));
+            });
+        }
+    </script>
+    <script src="/js/main.js" defer></script>
+    <script src="/public/js/toast.js" defer></script>
+    <script src="/public/js/nav.js" defer></script>
+    <link href="/public/css/generated-tailwind.css" rel="stylesheet">
+    <link href="/public/css/style.css" rel="stylesheet">
+    <style>
+        /* Der Malbereich darf beim Zeichnen nicht mitscrollen. */
+        #canvas-wrap { touch-action: none; }
+        #canvas-wrap canvas { display: block; max-width: 100%; height: auto; }
+        #mask-canvas { position: absolute; inset: 0; opacity: 0.5; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+<div id="spinner-overlay" class="hidden fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center z-50">
+    <div class="text-center">
+        <div class="w-16 h-16 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto"></div>
+        <p id="spinner-text" class="text-white mt-4"></p>
+    </div>
+</div>
+
+<header class="bg-blue-600 text-white">
+    <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+        <div class="text-2xl font-bold"><a href="/index.html">AI Image Generator</a></div>
+        <nav id="nav-desktop" class="hidden md:flex space-x-6 items-center"></nav>
+        <div class="md:hidden">
+            <button id="burger-btn" class="focus:outline-none">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path>
+                </svg>
+            </button>
+        </div>
+    </div>
+    <nav id="mobile-menu" class="hidden bg-blue-600 md:hidden px-4 py-4"><div id="nav-mobile"></div></nav>
+</header>
+
+<div id="toast" class="toast"></div>
+
+<main class="max-w-5xl mx-auto py-6 px-4">
+    <h1 class="text-2xl font-semibold text-gray-800 mb-4">Bild bearbeiten</h1>
+
+    <!-- Modus -->
+    <div class="flex flex-wrap gap-2 mb-4">
+        <button data-mode="replace" class="mode-btn px-4 py-2 rounded-lg border border-gray-300 bg-white">Ersetzen</button>
+        <button data-mode="remove" class="mode-btn px-4 py-2 rounded-lg border border-gray-300 bg-white">Entfernen</button>
+        <button data-mode="expand" class="mode-btn px-4 py-2 rounded-lg border border-gray-300 bg-white">Erweitern</button>
+    </div>
+    <p id="mode-hint" class="text-sm text-gray-600 mb-4"></p>
+
+    <!-- Malbereich -->
+    <div id="paint-tools" class="bg-white rounded-lg shadow p-4 mb-4">
+        <div class="flex flex-wrap items-center gap-4">
+            <label class="flex items-center gap-2 text-sm text-gray-700">
+                <span>Pinsel</span>
+                <input type="range" id="brush-size" min="8" max="200" value="48" class="w-32">
+                <span id="brush-value" class="w-10 text-gray-500">48</span>
+            </label>
+            <div class="inline-flex rounded-lg border border-gray-300 overflow-hidden">
+                <button id="tool-brush" class="px-3 py-1 text-sm">Malen</button>
+                <button id="tool-eraser" class="px-3 py-1 text-sm border-l border-gray-300">Radieren</button>
+            </div>
+            <button id="mask-undo" class="text-sm text-blue-600 hover:underline">R&uuml;ckg&auml;ngig</button>
+            <button id="mask-clear" class="text-sm text-blue-600 hover:underline">Maske leeren</button>
+            <span class="text-sm text-gray-500">Markiere, was ge&auml;ndert werden soll.</span>
+        </div>
+    </div>
+
+    <!-- Erweitern -->
+    <div id="expand-tools" class="hidden bg-white rounded-lg shadow p-4 mb-4">
+        <p class="text-sm text-gray-600 mb-3">Wie viele Pixel soll das Bild je Seite dazubekommen?</p>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <label class="text-sm text-gray-700">Oben
+                <input type="number" id="expand-top" value="0" min="0" max="2048" step="64" class="w-full p-2 border border-gray-300 rounded mt-1"></label>
+            <label class="text-sm text-gray-700">Unten
+                <input type="number" id="expand-bottom" value="0" min="0" max="2048" step="64" class="w-full p-2 border border-gray-300 rounded mt-1"></label>
+            <label class="text-sm text-gray-700">Links
+                <input type="number" id="expand-left" value="0" min="0" max="2048" step="64" class="w-full p-2 border border-gray-300 rounded mt-1"></label>
+            <label class="text-sm text-gray-700">Rechts
+                <input type="number" id="expand-right" value="256" min="0" max="2048" step="64" class="w-full p-2 border border-gray-300 rounded mt-1"></label>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow p-4 mb-4 flex justify-center">
+        <div id="canvas-wrap" class="relative inline-block max-w-full">
+            <canvas id="image-canvas"></canvas>
+            <canvas id="mask-canvas"></canvas>
+        </div>
+    </div>
+
+    <!-- Prompt -->
+    <div class="mb-4">
+        <label for="edit-prompt" class="block text-sm font-medium text-gray-700 mb-2">
+            <span id="prompt-label">Was soll dort stehen?</span>
+        </label>
+        <textarea id="edit-prompt" rows="2" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600"
+                  placeholder="z. B. ein Korb mit &Auml;pfeln"></textarea>
+    </div>
+
+    <div class="flex flex-wrap justify-center gap-3">
+        <button id="apply" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700">&Uuml;bernehmen</button>
+        <a id="back-to-detail" class="bg-gray-200 text-gray-800 px-6 py-3 rounded-lg hover:bg-gray-300">Zur&uuml;ck</a>
+    </div>
+
+    <div id="result" class="hidden mt-8 text-center">
+        <h2 class="text-xl font-semibold text-gray-700 mb-3">Ergebnis</h2>
+        <a id="result-link"><img id="result-image" alt="Bearbeitetes Bild" class="mx-auto max-w-full rounded shadow"></a>
+        <p class="text-sm text-gray-600 mt-3">
+            Das Ergebnis liegt als neues Bild im Bestand &mdash; das Ausgangsbild ist als Vorlage vermerkt.
+        </p>
+    </div>
+</main>
+
+<script>
+    const bildCanvas = document.getElementById('image-canvas');
+    const maskeCanvas = document.getElementById('mask-canvas');
+    const bildKontext = bildCanvas.getContext('2d');
+    const maskeKontext = maskeCanvas.getContext('2d', { willReadFrequently: true });
+    const spinner = document.getElementById('spinner-overlay');
+
+    /** Signalfarbe für die Markierung — nur zur Anzeige. */
+    const MARKIER_FARBE = '#e11d48';
+
+    let modus = 'replace';
+    let werkzeug = 'brush';
+    let malend = false;
+    /** Für „Rückgängig" — je Strich ein Stand, höchstens zwanzig. */
+    const verlauf = [];
+    let dateiName = null;
+
+    const MODUS_TEXTE = {
+        replace: {
+            hinweis: 'Markiere den Bereich und beschreibe, was stattdessen dort sein soll.',
+            promptLabel: 'Was soll dort stehen?',
+            promptNoetig: true,
+        },
+        remove: {
+            hinweis: 'Markiere, was verschwinden soll. Der Bereich wird mit dem Hintergrund gefüllt.',
+            promptLabel: 'Optional: was stattdessen zu sehen sein soll',
+            promptNoetig: false,
+        },
+        expand: {
+            hinweis: 'Gib an, um wie viel das Bild wachsen soll. Der neue Rand wird passend weitergemalt.',
+            promptLabel: 'Optional: was im neuen Bereich zu sehen sein soll',
+            promptNoetig: false,
+        },
+    };
+
+    const setzeModus = (neu) => {
+        modus = neu;
+        for (const knopf of document.querySelectorAll('.mode-btn')) {
+            const aktiv = knopf.dataset.mode === neu;
+            knopf.classList.toggle('bg-blue-600', aktiv);
+            knopf.classList.toggle('text-white', aktiv);
+            knopf.classList.toggle('bg-white', !aktiv);
+        }
+        const texte = MODUS_TEXTE[neu];
+        document.getElementById('mode-hint').textContent = texte.hinweis;
+        document.getElementById('prompt-label').textContent = texte.promptLabel;
+        // Beim Erweitern gibt es nichts zu malen, dafür Kantenangaben.
+        document.getElementById('paint-tools').classList.toggle('hidden', neu === 'expand');
+        document.getElementById('expand-tools').classList.toggle('hidden', neu !== 'expand');
+        maskeCanvas.style.display = neu === 'expand' ? 'none' : 'block';
+    };
+
+    for (const knopf of document.querySelectorAll('.mode-btn')) {
+        knopf.addEventListener('click', () => setzeModus(knopf.dataset.mode));
+    }
+
+    // --- Malen ---------------------------------------------------------------
+
+    const setzeWerkzeug = (neu) => {
+        werkzeug = neu;
+        for (const [id, name] of [['tool-brush', 'brush'], ['tool-eraser', 'eraser']]) {
+            const aktiv = name === neu;
+            document.getElementById(id).classList.toggle('bg-blue-600', aktiv);
+            document.getElementById(id).classList.toggle('text-white', aktiv);
+        }
+    };
+    document.getElementById('tool-brush').addEventListener('click', () => setzeWerkzeug('brush'));
+    document.getElementById('tool-eraser').addEventListener('click', () => setzeWerkzeug('eraser'));
+
+    const pinselGroesse = () => Number(document.getElementById('brush-size').value);
+    document.getElementById('brush-size').addEventListener('input', (event) => {
+        document.getElementById('brush-value').textContent = event.target.value;
+    });
+
+    /**
+     * Bildschirmkoordinaten in Bildkoordinaten. Der Canvas wird per CSS
+     * kleingerechnet; ohne diese Umrechnung läge der Pinsel daneben, je
+     * kleiner das Fenster desto weiter.
+     */
+    const zuBildPunkt = (event) => {
+        const rahmen = maskeCanvas.getBoundingClientRect();
+        const punkt = event.touches?.[0] ?? event;
+        return {
+            x: (punkt.clientX - rahmen.left) * (maskeCanvas.width / rahmen.width),
+            y: (punkt.clientY - rahmen.top) * (maskeCanvas.height / rahmen.height),
+        };
+    };
+
+    const merkeStand = () => {
+        verlauf.push(maskeKontext.getImageData(0, 0, maskeCanvas.width, maskeCanvas.height));
+        if (verlauf.length > 20) verlauf.shift();
+    };
+
+    /**
+     * Der zuletzt gemalte Punkt. Ohne ihn entstünden Lücken: der Browser
+     * liefert bei schneller Bewegung nur wenige Ereignisse, und einzelne
+     * Kreise an diesen Stellen ergeben eine gepunktete statt einer
+     * durchgezogenen Spur.
+     */
+    let letzterPunkt = null;
+
+    const male = (event) => {
+        if (!malend) return;
+        event.preventDefault();
+        const punkt = zuBildPunkt(event);
+        maskeKontext.globalCompositeOperation = werkzeug === 'eraser' ? 'destination-out' : 'source-over';
+        // **Nicht weiß malen.** Auf einem hellen Bild wäre die Markierung
+        // unsichtbar — man sähe nicht, was man markiert hat. Beim Absenden
+        // wird daraus wieder Weiß, siehe `maskeAlsPng`.
+        maskeKontext.fillStyle = MARKIER_FARBE;
+        maskeKontext.strokeStyle = MARKIER_FARBE;
+        maskeKontext.lineWidth = pinselGroesse();
+        maskeKontext.lineCap = 'round';
+        maskeKontext.lineJoin = 'round';
+
+        if (letzterPunkt) {
+            maskeKontext.beginPath();
+            maskeKontext.moveTo(letzterPunkt.x, letzterPunkt.y);
+            maskeKontext.lineTo(punkt.x, punkt.y);
+            maskeKontext.stroke();
+        } else {
+            // Der erste Punkt eines Strichs hat noch keinen Vorgänger.
+            maskeKontext.beginPath();
+            maskeKontext.arc(punkt.x, punkt.y, pinselGroesse() / 2, 0, Math.PI * 2);
+            maskeKontext.fill();
+        }
+        letzterPunkt = punkt;
+    };
+
+    const beginne = (event) => {
+        if (modus === 'expand') return;
+        merkeStand();
+        malend = true;
+        letzterPunkt = null;
+        male(event);
+        try {
+            // Zeigerereignisse weiter empfangen, auch wenn der Finger das Bild
+            // verlässt — sonst bricht der Strich am Rand ab. Wirft, wenn der
+            // Zeiger nicht (mehr) aktiv ist; das Malen darf daran nicht scheitern.
+            maskeCanvas.setPointerCapture?.(event.pointerId);
+        } catch {
+            // Ohne Fangen funktioniert alles, nur eben nur innerhalb des Bildes.
+        }
+    };
+    const beende = () => {
+        malend = false;
+        letzterPunkt = null;
+    };
+
+    /**
+     * **Kein `pointerleave`.** Mit `setPointerCapture` feuert der Browser es
+     * sofort nach dem Fangen des Zeigers — der Strich wäre beendet, bevor er
+     * begonnen hat, und es ließe sich überhaupt nicht malen. Das Fangen sorgt
+     * ohnehin dafür, dass auch Bewegungen außerhalb des Bildes ankommen.
+     */
+    for (const [ereignis, behandler] of [
+        ['pointerdown', beginne], ['pointermove', male], ['pointerup', beende], ['pointercancel', beende],
+    ]) {
+        maskeCanvas.addEventListener(ereignis, behandler);
+    }
+
+    document.getElementById('mask-undo').addEventListener('click', () => {
+        const stand = verlauf.pop();
+        if (stand) maskeKontext.putImageData(stand, 0, 0);
+        else showToast('Nichts zum Rückgängigmachen');
+    });
+
+    document.getElementById('mask-clear').addEventListener('click', () => {
+        merkeStand();
+        maskeKontext.clearRect(0, 0, maskeCanvas.width, maskeCanvas.height);
+    });
+
+    /**
+     * Die Maske im Format des Servers: **weiß = ändern, schwarz = erhalten**,
+     * ohne Transparenz. Auf dem Canvas ist der markierte Bereich weiß und
+     * der Rest durchsichtig — das schwarz zu hinterlegen ist der ganze Schritt.
+     */
+    const maskeAlsPng = () => {
+        const aus = document.createElement('canvas');
+        aus.width = maskeCanvas.width;
+        aus.height = maskeCanvas.height;
+        const kontext = aus.getContext('2d');
+
+        // Aus der Signalfarbe wird das Format des Servers: markiert → weiß,
+        // alles andere → schwarz. Der Alphakanal entscheidet, nicht die Farbe.
+        const quelle = maskeKontext.getImageData(0, 0, maskeCanvas.width, maskeCanvas.height);
+        const ziel = kontext.createImageData(aus.width, aus.height);
+        for (let i = 0; i < quelle.data.length; i += 4) {
+            const markiert = quelle.data[i + 3] > 0 ? 255 : 0;
+            ziel.data[i] = markiert;
+            ziel.data[i + 1] = markiert;
+            ziel.data[i + 2] = markiert;
+            ziel.data[i + 3] = 255;
+        }
+        kontext.putImageData(ziel, 0, 0);
+        return aus.toDataURL('image/png');
+    };
+
+    const maskeIstLeer = () => {
+        const daten = maskeKontext.getImageData(0, 0, maskeCanvas.width, maskeCanvas.height).data;
+        // Nur den Alphakanal ansehen — schneller als jeden Farbwert zu prüfen.
+        for (let i = 3; i < daten.length; i += 4) {
+            if (daten[i] > 0) return false;
+        }
+        return true;
+    };
+
+    // --- Anwenden ------------------------------------------------------------
+
+    document.getElementById('apply').addEventListener('click', async () => {
+        const prompt = document.getElementById('edit-prompt').value.trim();
+        const texte = MODUS_TEXTE[modus];
+
+        if (modus !== 'expand' && maskeIstLeer()) {
+            showToast('Bitte erst markieren, was geändert werden soll.');
+            return;
+        }
+        if (texte.promptNoetig && !prompt) {
+            showToast('Bitte beschreiben, was dort stehen soll.');
+            return;
+        }
+
+        const anfrage = { fileName: dateiName, mode: modus, requestId: neueAuftragsKennung() };
+        if (prompt) anfrage.prompt = prompt;
+        if (modus === 'expand') {
+            anfrage.expand = {
+                top: Number(document.getElementById('expand-top').value) || 0,
+                bottom: Number(document.getElementById('expand-bottom').value) || 0,
+                left: Number(document.getElementById('expand-left').value) || 0,
+                right: Number(document.getElementById('expand-right').value) || 0,
+            };
+            if (Object.values(anfrage.expand).every(w => w === 0)) {
+                showToast('Bitte mindestens eine Seite größer als 0 angeben.');
+                return;
+            }
+        } else {
+            anfrage.mask = maskeAlsPng();
+        }
+
+        document.getElementById('spinner-text').textContent = 'Das kann eine Minute dauern…';
+        spinner.classList.remove('hidden');
+        try {
+            const antwort = await fetch('/api/edit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(anfrage),
+            });
+            const daten = await antwort.json().catch(() => ({}));
+            if (!antwort.ok) {
+                showToast(daten.message ?? `Fehler ${antwort.status}`);
+                return;
+            }
+            zeigeErgebnis(daten.images[0]);
+        } catch (error) {
+            // Abgerissene Verbindung: das Ergebnis über die Kennung nachholen.
+            const namen = await ergebnisNachholen(anfrage.requestId, null);
+            if (namen.length > 0) zeigeErgebnis({ fileName: namen[0] });
+        } finally {
+            spinner.classList.add('hidden');
+        }
+    });
+
+    const zeigeErgebnis = (bild) => {
+        document.getElementById('result-image').src = `/big-thumbnails/${bild.fileName}`;
+        document.getElementById('result-link').href = `/detail.html?filename=${encodeURIComponent(bild.fileName)}`;
+        document.getElementById('result').classList.remove('hidden');
+        document.getElementById('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        showToast('Fertig — das Ergebnis liegt im Bestand');
+    };
+
+    // --- Start ---------------------------------------------------------------
+
+    document.addEventListener('DOMContentLoaded', () => {
+        dateiName = new URLSearchParams(window.location.search).get('filename');
+        if (!dateiName) {
+            window.location.href = '/overview.html';
+            return;
+        }
+        document.getElementById('back-to-detail').href =
+            `/detail.html?filename=${encodeURIComponent(dateiName)}`;
+
+        const bild = new Image();
+        bild.onload = () => {
+            for (const canvas of [bildCanvas, maskeCanvas]) {
+                canvas.width = bild.naturalWidth;
+                canvas.height = bild.naturalHeight;
+            }
+            bildKontext.drawImage(bild, 0, 0);
+        };
+        bild.onerror = () => showToast('Das Bild ließ sich nicht laden.');
+        // Das Original, nicht das Vorschaubild: die Maske muss zur vollen
+        // Auflösung passen.
+        bild.src = `/api/files/download/${encodeURIComponent(dateiName)}`;
+
+        setzeModus('replace');
+        setzeWerkzeug('brush');
+    });
+</script>
+</body>
+</html>

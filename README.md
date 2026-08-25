@@ -77,6 +77,7 @@ Alles unter `/api` verlangt eine Anmeldung und antwortet bei fehlender mit
 | `POST /api/files/delete` | mehrere auf einmal löschen |
 | `PUT /api/files/:name/favorite` | markieren / Markierung aufheben |
 | `POST /api/exchange/selection` | eine Auswahl als ZIP |
+| `POST /api/edit` | Bild mit Maske bearbeiten |
 | `GET /api/credits` | Guthaben der Anbieter (`?refresh=1` umgeht den 60-s-Cache) |
 | `GET /api/jobs/:id` | Stand eines Auftrags (siehe unten) |
 | `GET /api/files/reference/:name` | mitgegebenes Referenzbild |
@@ -130,6 +131,34 @@ Kennung nach, sobald die Seite wieder sichtbar wird.
 
 Aufträge liegen im Speicher (30 Minuten, höchstens 200). Ein Neustart des
 Containers verliert sie; die Bilder stehen dann in der Übersicht.
+
+### Bearbeiten mit Maske
+
+`/edit.html?filename=<name>` — eine eigene Seite, kein Dialog: der Malbereich
+braucht die ganze Fläche. Drei Modi, und sie liegen **nicht bei einem
+Anbieter** (am 25.08.2026 gegen beide APIs gemessen):
+
+| Modus | Anbieter | Endpunkt | warum |
+|---|---|---|---|
+| Ersetzen | BFL | `/v1/flux-pro-1.0-fill` | trifft den Prompt sauber im Maskenfeld |
+| Entfernen | OpenAI | `/v1/images/edits` | BFL malt stattdessen etwas Neues hinein |
+| Erweitern | BFL | `/v1/flux-pro-1.0-expand` | OpenAI kann kein Outpainting |
+
+Beim Entfernen war das der entscheidende Unterschied: BFL füllt die Maske mit
+dem, was es für plausibel hält — bei einem freigestellten Objekt also wieder
+einem ähnlichen. Ein leerer Prompt macht es nur schlimmer.
+
+**Die Maskenkonventionen sind gegensätzlich.** Unser Format ist BFLs:
+weiß = ändern, schwarz = erhalten. OpenAI erwartet das Gegenteil als
+Alphakanal; umgerechnet wird an einer Stelle (`toOpenAiMask`).
+
+Nach dem Entfernen wird das Ergebnis auf die Ausgangsgröße zurückskaliert —
+OpenAI wählt bei `size: auto` sonst eine eigene Auflösung (aus 512×290 wurden
+1667×943).
+
+Auf dem Canvas wird in einer **Signalfarbe** markiert, nicht in Weiß: auf
+hellen Bildern wäre die Markierung sonst unsichtbar. Beim Absenden entsteht
+daraus das Schwarz-Weiß-Format des Servers.
 
 ### Referenzbilder in der Detailansicht
 

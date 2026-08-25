@@ -278,6 +278,40 @@ def cmd_rm(args):
         print(f"  nicht gefunden: {uebersprungen}", file=sys.stderr)
 
 
+def cmd_edit(args):
+    """Bearbeitet ein Bild aus dem Bestand mit einer Maske.
+
+    Die Maske ist hier eine **vorbereitete Datei**, kein Pinsel: weiß = ändern,
+    schwarz = erhalten, gleiche Größe wie das Bild. Wer malen will, nimmt
+    /edit.html in der Weboberfläche.
+    """
+    payload = {"fileName": args.name, "mode": args.mode}
+    if args.prompt:
+        payload["prompt"] = args.prompt
+
+    if args.mode == "expand":
+        kanten = {"top": args.top, "bottom": args.bottom, "left": args.left, "right": args.right}
+        if not any(kanten.values()):
+            die("Beim Erweitern muss mindestens eine Kante größer als 0 sein (--right 256).")
+        payload["expand"] = kanten
+    else:
+        if not args.mask:
+            die(f"Der Modus '{args.mode}' braucht eine Maske (--mask maske.png).")
+        payload["mask"] = as_data_url(args.mask)
+
+    data = request("POST", "/api/edit", payload)
+    if args.json:
+        print(json.dumps(data, indent=2, ensure_ascii=False))
+        return
+    image = data["images"][0]
+    zusatz = f"  [{format_cost(image['cost'])}]" if image.get("cost") else ""
+    print(f"{image['fileName']}  {image['width']}x{image['height']}{zusatz}")
+    if args.out:
+        name = image["fileName"]
+        ziel = download(f"/api/files/download/{name}", pathlib.Path(args.out), name)
+        print(f"  gespeichert: {ziel}")
+
+
 def cmd_favorite(args):
     request("PUT", f"/api/files/{args.name}/favorite", {"favorite": not args.off})
     print(f"{args.name} {'nicht mehr markiert' if args.off else 'als Favorit markiert'}")
@@ -322,6 +356,17 @@ def main():
     rm = sub.add_parser("rm", help="Bild(er) löschen (endgültig)")
     rm.add_argument("names", nargs="+", metavar="DATEINAME")
 
+    bearbeiten = sub.add_parser("edit", help="Bild mit Maske bearbeiten")
+    bearbeiten.add_argument("name", help="Dateiname im Bestand")
+    bearbeiten.add_argument("--mode", choices=["replace", "remove", "expand"], default="replace")
+    bearbeiten.add_argument("--mask", help="Maske als PNG: weiß = ändern, schwarz = erhalten")
+    bearbeiten.add_argument("--prompt", help="bei 'replace' Pflicht, sonst optional")
+    bearbeiten.add_argument("--top", type=int, default=0, help="nur bei 'expand': Pixel oben")
+    bearbeiten.add_argument("--bottom", type=int, default=0)
+    bearbeiten.add_argument("--left", type=int, default=0)
+    bearbeiten.add_argument("--right", type=int, default=0)
+    bearbeiten.add_argument("--out", help="Verzeichnis für das Ergebnis")
+
     fav = sub.add_parser("favorite", help="Bild als Favorit markieren")
     fav.add_argument("name")
     fav.add_argument("--off", action="store_true", help="Markierung aufheben")
@@ -329,7 +374,7 @@ def main():
     args = parser.parse_args()
     {"models": cmd_models, "gen": cmd_gen, "list": cmd_list, "get": cmd_get,
      "costs": cmd_costs, "download": cmd_download, "rm": cmd_rm,
-     "favorite": cmd_favorite}[args.command](args)
+     "favorite": cmd_favorite, "edit": cmd_edit}[args.command](args)
 
 
 if __name__ == "__main__":
