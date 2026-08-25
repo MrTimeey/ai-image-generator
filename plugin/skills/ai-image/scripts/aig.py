@@ -295,7 +295,8 @@ def main():
     gen.add_argument("--model", default="flux-2-pro")
     gen.add_argument("--ratio", default="1:1")
     gen.add_argument("--amount", type=int, default=1)
-    gen.add_argument("--quality", choices=["low", "medium", "high"])
+    gen.add_argument("--quality", choices=["low", "medium", "high", "max"],
+                     help="max = größtmögliche Auflösung des Modells (nur wo angeboten, deutlich teurer)")
     gen.add_argument("--format", choices=["png", "jpeg", "webp"])
     gen.add_argument("--seed", type=int)
     gen.add_argument("--revise", action="store_true", help="Prompt vom Anbieter ausformulieren lassen")

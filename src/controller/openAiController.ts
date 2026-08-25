@@ -38,7 +38,12 @@ export const generateImages = async (
             // `size` ist bei den festen Modellen einer von drei Werten, bei
             // gpt-image-2 eine freie Größe mit Kanten als Vielfache von 16.
             size: size.size,
-            quality,
+            /**
+             * `max` ist unser Begriff für „so groß, wie das Modell kann" — die
+             * API kennt ihn nicht. Dort steuert `size` die Auflösung, `quality`
+             * nur den Rechenaufwand; also die höchste Stufe, die es gibt.
+             */
+            quality: quality === 'max' ? 'high' : quality,
             output_format: format,
             // Bewusst **kein** `response_format`: die gpt-image-Familie lehnt
             // das Feld ab und liefert immer `b64_json`.

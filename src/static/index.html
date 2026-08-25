@@ -94,6 +94,7 @@
         <div>
             <label for="quality" class="block text-sm font-medium text-gray-700 mb-2">Qualit&auml;t</label>
             <select id="quality" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent"></select>
+            <p id="quality-hint" class="hidden text-xs text-amber-700 mt-1"></p>
         </div>
         <div>
             <label for="amount" class="block text-sm font-medium text-gray-700 mb-2">Anzahl</label>
@@ -156,6 +157,7 @@
     const modelSelect = document.getElementById('model');
     const ratioSelect = document.getElementById('ratio');
     const qualitySelect = document.getElementById('quality');
+    const qualityHint = document.getElementById('quality-hint');
     const amountSelect = document.getElementById('amount');
     const formatSelect = document.getElementById('format');
     const referenceBlock = document.getElementById('reference-block');
@@ -199,6 +201,22 @@
      * CSS-Klasse versteckt wurden — und die am `click`-Ereignis haengte, also
      * immer mit dem vorherigen Modell rechnete.
      */
+    /**
+     * Die Maße hängen an der Qualitätsstufe — `max` liefert 3840×2160, `low`
+     * dieselben Verhältnisse in 1328×752. Eine feste Tabelle zeigte immer die
+     * falschen Zahlen.
+     */
+    const renderRatioOptions = (model, gewuenscht) => {
+        const stufe = qualitySelect.value || model.qualities[0];
+        const groessen = model.sizes?.[stufe] ?? null;
+        ratioSelect.replaceChildren(
+            ...model.ratios.map(r => option(r, groessen?.[r] ? `${r} — ${groessen[r]}` : r))
+        );
+        ratioSelect.value = model.ratios.includes(gewuenscht)
+            ? gewuenscht
+            : (model.ratios.includes('1:1') ? '1:1' : model.ratios[0]);
+    };
+
     const renderModelOptions = () => {
         const model = selectedModel();
         if (!model) return;
@@ -207,9 +225,7 @@
         modelHint.textContent = model.hint;
 
         const previousRatio = ratioSelect.value;
-        ratioSelect.replaceChildren(
-            ...model.ratios.map(r => option(r, model.sizes ? `${r} — ${model.sizes[r]}` : r))
-        );
+        renderRatioOptions(model, previousRatio);
         // Das gewaehlte Verhaeltnis behalten, wenn das neue Modell es kann.
         ratioSelect.value = model.ratios.includes(previousRatio) ? previousRatio : (model.ratios.includes('1:1') ? '1:1' : model.ratios[0]);
         ratioHint.textContent = model.sizes ? '' : 'Die Kantenlängen bestimmt der Anbieter.';
@@ -220,11 +236,14 @@
             qualitySelect.disabled = true;
         } else {
             qualitySelect.disabled = false;
-            qualitySelect.replaceChildren(...model.qualities.map(q => option(q, q)));
+            qualitySelect.replaceChildren(
+                ...model.qualities.map(q => option(q, q === 'max' ? 'max (größtmöglich)' : q))
+            );
             qualitySelect.value = model.qualities.includes(previousQuality)
                 ? previousQuality
                 : (model.qualities.includes('medium') ? 'medium' : model.qualities[0]);
         }
+        zeigeQualitaetsHinweis(model);
 
         const previousAmount = amountSelect.value;
         amountSelect.replaceChildren(
@@ -276,6 +295,28 @@
 
         renderModelOptions();
     };
+
+    /**
+     * `max` ist deutlich teurer als die übrigen Stufen — ein 4K-Bild kostet
+     * rund 0,40 $ gegenüber gut einem Cent bei `low`. Wer das wählt, soll es
+     * vorher wissen und nicht erst auf der Kontoseite.
+     */
+    const zeigeQualitaetsHinweis = () => {
+        const maximal = qualitySelect.value === 'max';
+        // Die Maße stehen schon im Verhältnis-Feld — hier zählt der Preis.
+        qualityHint.textContent = maximal
+            ? 'Deutlich teurer: ein Bild in dieser Größe kostet rund 0,40 $ statt weniger Cent.'
+            : '';
+        qualityHint.classList.toggle('hidden', !maximal);
+    };
+
+    qualitySelect.addEventListener('change', () => {
+        const model = selectedModel();
+        if (!model) return;
+        // Die Maße im Verhältnis-Feld hängen an der Stufe.
+        renderRatioOptions(model, ratioSelect.value);
+        zeigeQualitaetsHinweis();
+    });
 
     // `change`, nicht `click`: beim Klick steht im Select noch der alte Wert.
     modelSelect.addEventListener('change', renderModelOptions);

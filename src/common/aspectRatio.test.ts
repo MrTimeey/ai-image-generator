@@ -31,16 +31,27 @@ describe('resolveSize — width_height (FLUX.2)', () => {
         }
     });
 
+    /**
+     * Bei FLUX.2 zählt die **Fläche**, nicht die einzelne Kante: 3040×1360
+     * wird angenommen, 3072×1728 nicht. Die Grenze liegt bei 4.194.304 Pixeln
+     * — wer sie überschreitet, bekommt den ganzen Auftrag abgelehnt.
+     */
     it('bleibt in den Grenzen des Modells', () => {
         for (const stufe of ['low', 'medium', 'high'] as const) {
             for (const ratio of ASPECT_RATIOS) {
                 const { width, height } = resolveSize(flux, ratio, stufe);
                 expect(width).toBeGreaterThanOrEqual(256);
                 expect(height).toBeGreaterThanOrEqual(256);
-                expect(width).toBeLessThanOrEqual(2048);
-                expect(height).toBeLessThanOrEqual(2048);
+                expect(width * height).toBeLessThanOrEqual(4_194_304);
             }
         }
+    });
+
+    it('bietet keine `max`-Stufe an, weil `high` dort schon am Limit ist', () => {
+        // Fünf Prozent mehr wären ein Versprechen, das die Stufe nicht hält.
+        expect(flux.qualities).not.toContain('max');
+        const hoch = resolveSize(flux, '16:9', 'high');
+        expect(hoch.width * hoch.height).toBeGreaterThan(3_900_000);
     });
 
     it('liefert für höhere Stufen mehr Pixel', () => {
@@ -79,6 +90,15 @@ describe('resolveSize — width_height mit engen Grenzen (flux-pro-1.1)', () => 
 });
 
 describe('resolveSize — pixel_size (OpenAI)', () => {
+    it('kommt bei gpt-image-2 mit `max` auf 4K-Format', () => {
+        const { width, height, size } = resolveSize(modell('gpt-image-2'), '16:9', 'max');
+        // 8.294.400 Pixel sind erlaubt; 3840×2160 ist genau das.
+        expect(width * height).toBeLessThanOrEqual(8_294_400);
+        expect(width * height).toBeGreaterThan(8_294_400 * 0.9);
+        expect(width).toBeLessThanOrEqual(3840);
+        expect(size).toBe(`${width}x${height}`);
+    });
+
     it('gibt bei gpt-image-2 einen size-String mit Vielfachen von 16', () => {
         const { size, width, height } = resolveSize(modell('gpt-image-2'), '16:9', 'medium');
         expect(size).toBe(`${width}x${height}`);

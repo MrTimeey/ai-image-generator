@@ -28,6 +28,33 @@ eine eigene zu führen.
 DALL·E ist am 12. Mai 2026 abgeschaltet worden; `dall-e-2` und `dall-e-3`
 antworten mit 400 und sind entsprechend entfernt.
 
+### Auflösung und Wallpaper
+
+Die Qualitätsstufe bestimmt die Auflösung. `max` reizt aus, was das Modell
+hergibt — angeboten wird sie nur, wo das spürbar mehr ist als `high`:
+
+| Modell | `high` (16:9) | `max` (16:9) | Grenze |
+|---|---|---|---|
+| `gpt-image-2` | 2672×1504 | **3840×2160** | 8.294.400 Pixel, Kante ≤ 3840 |
+| FLUX.2 (alle) | 2672×1504 | — | 4.194.304 Pixel |
+| `flux-pro-1.1-ultra` | — | — | 4 MP, Kanten vom Anbieter |
+
+**Für Wallpaper in 4K führt kein Weg an `gpt-image-2` vorbei.** FLUX.2 endet
+bei 4 Megapixeln; dort wäre eine `max`-Stufe nur fünf Prozent über `high` und
+damit ein Versprechen, das sie nicht hält.
+
+Bei FLUX.2 zählt die **Fläche**, nicht die einzelne Kante: 3040×1360 wird
+angenommen, 3072×1728 nicht (am 25.08.2026 nachgemessen). Deshalb hat `edge`
+neben `max` auch `maxPixels`.
+
+Ein 4K-Bild kostet rund **0,40 $** gegenüber gut einem Cent bei `low` — die
+Oberfläche weist beim Umschalten darauf hin.
+
+Ein Upscale gibt es nicht: BFL bietet dafür keinen Endpunkt an (nur für
+Video), und alle Varianten antworten mit 404. Wer größer will, erzeugt gleich
+größer — das liefert ohnehin bessere Ergebnisse als nachträgliches
+Vergrößern.
+
 ### Referenzbilder
 
 `POST /api/generate` nimmt `inputImages: string[]` — base64, roh oder als
@@ -130,6 +157,33 @@ Kennung nach, sobald die Seite wieder sichtbar wird.
 
 Aufträge liegen im Speicher (30 Minuten, höchstens 200). Ein Neustart des
 Containers verliert sie; die Bilder stehen dann in der Übersicht.
+
+### Auflösung und Wallpaper
+
+Die Qualitätsstufe bestimmt die Auflösung. `max` reizt aus, was das Modell
+hergibt — angeboten wird sie nur, wo das spürbar mehr ist als `high`:
+
+| Modell | `high` (16:9) | `max` (16:9) | Grenze |
+|---|---|---|---|
+| `gpt-image-2` | 2672×1504 | **3840×2160** | 8.294.400 Pixel, Kante ≤ 3840 |
+| FLUX.2 (alle) | 2672×1504 | — | 4.194.304 Pixel |
+| `flux-pro-1.1-ultra` | — | — | 4 MP, Kanten vom Anbieter |
+
+**Für Wallpaper in 4K führt kein Weg an `gpt-image-2` vorbei.** FLUX.2 endet
+bei 4 Megapixeln; dort wäre eine `max`-Stufe nur fünf Prozent über `high` und
+damit ein Versprechen, das sie nicht hält.
+
+Bei FLUX.2 zählt die **Fläche**, nicht die einzelne Kante: 3040×1360 wird
+angenommen, 3072×1728 nicht (am 25.08.2026 nachgemessen). Deshalb hat `edge`
+neben `max` auch `maxPixels`.
+
+Ein 4K-Bild kostet rund **0,40 $** gegenüber gut einem Cent bei `low` — die
+Oberfläche weist beim Umschalten darauf hin.
+
+Ein Upscale gibt es nicht: BFL bietet dafür keinen Endpunkt an (nur für
+Video), und alle Varianten antworten mit 404. Wer größer will, erzeugt gleich
+größer — das liefert ohnehin bessere Ergebnisse als nachträgliches
+Vergrößern.
 
 ### Referenzbilder in der Detailansicht
 

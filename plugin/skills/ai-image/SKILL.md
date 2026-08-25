@@ -101,6 +101,13 @@ Kantenlängen selbst; das Verhältnis stimmt, die Pixelzahl ist nicht vorhersagb
 `low` ist für Entwürfe völlig ausreichend und deutlich billiger. `high` erst,
 wenn das Bild wirklich verwendet wird.
 
+**Für Wallpaper und große Bildschirme:** `--model gpt-image-2 --quality max`
+liefert bei 16:9 echte **3840×2160**. Nur dieses Modell kann das — FLUX.2
+endet bei 4 Megapixeln (2672×1504), deshalb gibt es die Stufe dort nicht.
+Ein 4K-Bild kostet rund **0,40 $**, also nicht beiläufig verwenden.
+
+Einen Upscale gibt es nicht; wer größer will, erzeugt gleich größer.
+
 ## Prompts
 
 - **Deutsch geht**, Englisch trifft bei FLUX oft genauer.

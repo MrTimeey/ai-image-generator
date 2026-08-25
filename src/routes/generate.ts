@@ -59,13 +59,24 @@ generateRouter.get('/models', (_req, res) => {
          * `aspect_ratio` waehlt der Anbieter sie — eine Zahl hier waere
          * geraten, und die UI wuerde etwas anderes anzeigen als herauskommt.
          */
+        /**
+         * Nach Qualitätsstufe geschachtelt, denn die Stufe bestimmt die
+         * Auflösung mit: bei `max` sind es 3840×2160, bei `low` 1328×752.
+         * Eine einzelne Tabelle zeigte in der Oberfläche immer die Maße
+         * einer Stufe, die gerade nicht gewählt war.
+         */
         sizes: model.sizeMode === 'aspect_ratio'
             ? null
             : Object.fromEntries(
-                  model.ratios.map(ratio => {
-                      const size = resolveSize(model, ratio, clampQuality(model, undefined));
-                      return [ratio, `${size.width}x${size.height}`];
-                  })
+                  (model.qualities.length > 0 ? model.qualities : [clampQuality(model, undefined)]).map(quality => [
+                      quality,
+                      Object.fromEntries(
+                          model.ratios.map(ratio => {
+                              const size = resolveSize(model, ratio, quality);
+                              return [ratio, `${size.width}x${size.height}`];
+                          })
+                      ),
+                  ])
               ),
     }));
     res.send({ defaultModel: findModel(DEFAULT_MODEL) && hasProvider.bfl ? DEFAULT_MODEL : models[0]?.id, models });

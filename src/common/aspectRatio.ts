@@ -24,6 +24,9 @@ const TARGET_PIXELS: Record<Quality, number> = {
     low: 1_000_000,
     medium: 2_000_000,
     high: 4_000_000,
+    // `max` heisst „so gross, wie das Modell kann"; der echte Wert kommt aus
+    // dessen `maxPixels`.
+    max: Number.POSITIVE_INFINITY,
 };
 
 const ratioValue = (ratio: AspectRatio): number => {
@@ -41,10 +44,13 @@ const roundTo = (value: number, multiple: number): number => Math.round(value / 
 const edgesFor = (
     ratio: AspectRatio,
     pixels: number,
-    edge: { multiple: number; min: number; max: number }
+    edge: { multiple: number; min: number; max: number; maxPixels?: number }
 ): { width: number; height: number } => {
     const r = ratioValue(ratio);
-    let height = Math.sqrt(pixels / r);
+    // Die Flaeche ist bei den meisten Anbietern die eigentliche Grenze — eine
+    // einzelne Kante darf bei FLUX.2 durchaus ueber 2048 liegen.
+    const zielFlaeche = Math.min(pixels, edge.maxPixels ?? pixels);
+    let height = Math.sqrt(zielFlaeche / r);
     let width = height * r;
 
     if (width > edge.max) {
@@ -67,7 +73,22 @@ const edgesFor = (
     const clamp = (v: number): number =>
         Math.min(edge.max, Math.max(edge.min, roundTo(v, edge.multiple)));
 
-    return { width: clamp(width), height: clamp(height) };
+    let breite = clamp(width);
+    let hoehe = clamp(height);
+
+    /**
+     * Nach dem Runden kann die Flaeche knapp ueber die Grenze rutschen — dann
+     * lehnt der Anbieter den ganzen Auftrag ab. Also notfalls je ein Raster
+     * kleiner, bis es passt.
+     */
+    if (edge.maxPixels) {
+        while (breite * hoehe > edge.maxPixels && breite > edge.min && hoehe > edge.min) {
+            if (breite >= hoehe) breite -= edge.multiple;
+            else hoehe -= edge.multiple;
+        }
+    }
+
+    return { width: breite, height: hoehe };
 };
 
 /** Die feste OpenAI-Groesse, deren Verhaeltnis dem gewuenschten am naechsten kommt. */

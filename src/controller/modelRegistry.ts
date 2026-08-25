@@ -29,7 +29,15 @@ export type ModelDefinition = {
     formats: readonly OutputFormat[];
     maxAmount: number;
     /** Nur für `width_height`: Kantenraster und Grenzen. */
-    edge?: { multiple: number; min: number; max: number };
+    /**
+     * Kantenraster und Grenzen. `max` ist die größte erlaubte **Kante**,
+     * `maxPixels` die größte erlaubte **Fläche**.
+     *
+     * Beides ist nötig, weil die Anbieter verschieden begrenzen: FLUX.2
+     * akzeptiert 3040×1360, obwohl eine Kante über 2048 liegt — dort zählt
+     * allein die Fläche (am 25.08.2026 nachgemessen). OpenAI begrenzt beides.
+     */
+    edge?: { multiple: number; min: number; max: number; maxPixels?: number };
     /** Nur für `pixel_size`: feste Groessen; fehlt = freie Größe. */
     fixedSizes?: readonly string[];
     /** BFL schreibt den Prompt auf Wunsch um (`prompt_upsampling`). */
@@ -62,7 +70,7 @@ export const MODELS: readonly ModelDefinition[] = [
         qualities: ['low', 'medium', 'high'],
         formats: ['png', 'jpeg'],
         maxAmount: 4,
-        edge: { multiple: 16, min: 256, max: 2048 },
+        edge: { multiple: 16, min: 256, max: 4096, maxPixels: 4_194_304 },
         supportsRevisePrompt: true,
         maxInputImages: 4,
         supportsSeed: true,
@@ -79,7 +87,7 @@ export const MODELS: readonly ModelDefinition[] = [
         qualities: ['low', 'medium', 'high'],
         formats: ['png', 'jpeg'],
         maxAmount: 4,
-        edge: { multiple: 16, min: 256, max: 2048 },
+        edge: { multiple: 16, min: 256, max: 4096, maxPixels: 4_194_304 },
         supportsRevisePrompt: true,
         maxInputImages: 4,
         supportsSeed: true,
@@ -96,7 +104,7 @@ export const MODELS: readonly ModelDefinition[] = [
         qualities: ['low', 'medium', 'high'],
         formats: ['png', 'jpeg'],
         maxAmount: 4,
-        edge: { multiple: 16, min: 256, max: 2048 },
+        edge: { multiple: 16, min: 256, max: 4096, maxPixels: 4_194_304 },
         supportsRevisePrompt: true,
         maxInputImages: 4,
         supportsSeed: true,
@@ -113,7 +121,7 @@ export const MODELS: readonly ModelDefinition[] = [
         qualities: ['low', 'medium', 'high'],
         formats: ['png', 'jpeg'],
         maxAmount: 4,
-        edge: { multiple: 16, min: 256, max: 2048 },
+        edge: { multiple: 16, min: 256, max: 4096, maxPixels: 4_194_304 },
         supportsRevisePrompt: true,
         maxInputImages: 4,
         supportsSeed: true,
@@ -192,10 +200,10 @@ export const MODELS: readonly ModelDefinition[] = [
         endpoint: 'gpt-image-2',
         sizeMode: 'pixel_size',
         ratios: ALL_RATIOS,
-        qualities: ['low', 'medium', 'high'],
+        qualities: ['low', 'medium', 'high', 'max'],
         formats: ['png', 'jpeg', 'webp'],
         maxAmount: 4,
-        edge: { multiple: 16, min: 256, max: 3840 },
+        edge: { multiple: 16, min: 256, max: 3840, maxPixels: 8_294_400 },
         supportsRevisePrompt: false,
         maxInputImages: 4,
         supportsSeed: false,
