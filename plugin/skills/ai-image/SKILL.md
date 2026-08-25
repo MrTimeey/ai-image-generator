@@ -131,6 +131,11 @@ rechnet jedes Referenzbild extra ab — vier Vorlagen kosten spürbar mehr als e
 
 Erlaubt sind PNG, JPEG und WebP bis 8 MB je Bild.
 
+In der Weboberfläche geht es auch ohne Umweg über die Festplatte: In der
+Detailansicht eines Bildes führt **„Als Referenz nutzen"** zurück in den
+Generator, mit dem Bild schon als Vorlage. Solange eine gesetzt ist, stehen
+dort nur Modelle zur Wahl, die Vorlagen auswerten.
+
 ```bash
 aig.py gen "mach den Hintergrund tiefblau" \
   --model flux-2-pro --image ./vorlage.png --out .

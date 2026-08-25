@@ -80,6 +80,7 @@
             <div class="flex-1">
                 <p id="model-title" class="text-sm font-medium text-gray-700"></p>
                 <p id="model-hint" class="text-sm text-gray-600"></p>
+                <p id="model-note" class="hidden text-sm text-amber-700 mt-1"></p>
             </div>
         </div>
     </div>
@@ -159,6 +160,7 @@
     const reviseCheckbox = document.getElementById('revise-prompt');
     const reviseLabel = document.getElementById('revise-label');
     const modelTitle = document.getElementById('model-title');
+    const modelNote = document.getElementById('model-note');
     const modelHint = document.getElementById('model-hint');
     const ratioHint = document.getElementById('ratio-hint');
     const imageContainer = document.getElementById('image-container');
@@ -236,6 +238,33 @@
         renderReferences();
     };
 
+    /** Der Standard aus der Registry — Rückfallwert beim Umschalten. */
+    let standardModell = null;
+
+    /**
+     * Baut die Modell-Liste. Sobald eine Referenz gesetzt ist, bleiben nur
+     * Modelle übrig, die Vorlagen auch auswerten — `flux-pro-1.1` etwa nimmt
+     * ein Referenzbild zwar entgegen und erzeugt trotzdem ein völlig neues.
+     * Ohne Referenz stehen wieder alle zur Wahl.
+     */
+    const renderModelSelect = () => {
+        const mitReferenz = references.length > 0;
+        const auswahl = mitReferenz ? models.filter(m => m.maxInputImages > 0) : models;
+        const vorher = modelSelect.value;
+
+        modelSelect.replaceChildren(...auswahl.map(m => option(m.id, m.label)));
+        modelSelect.value = auswahl.some(m => m.id === vorher)
+            ? vorher
+            : (auswahl.some(m => m.id === standardModell) ? standardModell : auswahl[0]?.id);
+
+        modelNote.textContent = mitReferenz
+            ? `Nur Modelle, die Referenzbilder auswerten (${auswahl.length} von ${models.length}).`
+            : '';
+        modelNote.classList.toggle('hidden', !mitReferenz);
+
+        renderModelOptions();
+    };
+
     // `change`, nicht `click`: beim Klick steht im Select noch der alte Wert.
     modelSelect.addEventListener('change', renderModelOptions);
 
@@ -275,12 +304,56 @@
                     'absolute -top-2 -right-2 h-6 w-6 rounded-full bg-white border border-gray-300 text-gray-700 leading-none hover:bg-red-50';
                 remove.addEventListener('click', () => {
                     references.splice(index, 1);
-                    renderReferences();
+                    // Über renderModelSelect, damit die Modellauswahl wieder
+                    // aufgeht, sobald die letzte Referenz weg ist.
+                    renderModelSelect();
                 });
                 figure.append(img, remove);
                 return figure;
             })
         );
+    };
+
+    /**
+     * Ein bereits erzeugtes Bild als Vorlage übernehmen — der Weg von der
+     * Detailansicht hierher („damit will ich weitermachen").
+     *
+     * Vorher auf 1536 px verkleinert: Anbieter rechnen die Eingabefläche mit
+     * ab (BFL über `input_mp`), und ein 4-Megapixel-Original als base64 im
+     * Rumpf kostet Zeit wie Geld, ohne sichtbar mehr zu bringen.
+     */
+    const MAX_REFERENZ_KANTE = 1536;
+
+    const verkleinern = async (blob) => {
+        if (!window.createImageBitmap) return await readAsDataUrl(blob);
+        let bitmap;
+        try {
+            bitmap = await createImageBitmap(blob);
+        } catch {
+            return await readAsDataUrl(blob);
+        }
+        const skala = Math.min(1, MAX_REFERENZ_KANTE / Math.max(bitmap.width, bitmap.height));
+        if (skala === 1 && blob.size <= 4 * 1024 * 1024) {
+            bitmap.close?.();
+            return await readAsDataUrl(blob);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(bitmap.width * skala);
+        canvas.height = Math.round(bitmap.height * skala);
+        canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+        bitmap.close?.();
+        return canvas.toDataURL('image/jpeg', 0.9);
+    };
+
+    const referenzAusBibliothek = async (fileName) => {
+        try {
+            const response = await fetch(`/api/files/download/${encodeURIComponent(fileName)}`);
+            if (!response.ok) throw new Error(`Fehler ${response.status}`);
+            references.push({ name: fileName, dataUrl: await verkleinern(await response.blob()) });
+            showToast('Als Referenz übernommen');
+        } catch (error) {
+            showToast(`Referenzbild nicht ladbar: ${error.message}`);
+        }
     };
 
     const readAsDataUrl = (file) =>
@@ -308,12 +381,12 @@
         }
         // Zurücksetzen, damit dieselbe Datei erneut gewählt werden kann.
         referenceInput.value = '';
-        renderReferences();
+        renderModelSelect();
     });
 
     referenceClear.addEventListener('click', () => {
         references = [];
-        renderReferences();
+        renderModelSelect();
     });
 
     const createImage = (imageName) => {
@@ -360,9 +433,10 @@
             const description = document.getElementById('description');
             if (description.value === '') {
                 description.value = image.prompt ?? '';
-                // Nur wenn das Modell noch existiert — die DALL-E-Eintraege in
-                // alten Daten zeigen auf abgeschaltete Modelle.
-                if (image.model && models.some(m => m.id === image.model)) {
+                // Gegen die *Optionen* prüfen, nicht gegen die volle Liste:
+                // bei gesetzter Referenz stehen nur i2i-fähige Modelle darin,
+                // und alte Daten zeigen ohnehin teils auf abgeschaltete.
+                if (image.model && [...modelSelect.options].some(o => o.value === image.model)) {
                     modelSelect.value = image.model;
                     renderModelOptions();
                 }
@@ -415,9 +489,23 @@
         try {
             const registry = await loadModels();
             models = registry.models;
-            modelSelect.replaceChildren(...models.map(m => option(m.id, m.label)));
-            modelSelect.value = registry.defaultModel ?? models[0]?.id;
-            renderModelOptions();
+            standardModell = registry.defaultModel ?? models[0]?.id;
+            modelSelect.value = standardModell;
+
+            // `?reference=` kommt aus der Detailansicht.
+            const gewuenschteReferenz = new URLSearchParams(window.location.search).get('reference');
+            if (gewuenschteReferenz) {
+                spinnerOverlay.classList.remove('hidden');
+                await referenzAusBibliothek(gewuenschteReferenz);
+                spinnerOverlay.classList.add('hidden');
+                // Aus der Adresse nehmen, sonst hängt die Vorlage nach einem
+                // Neuladen ein zweites Mal daran.
+                const url = new URL(window.location.href);
+                url.searchParams.delete('reference');
+                window.history.replaceState(null, '', url.pathname + url.search);
+            }
+
+            renderModelSelect();
         } catch (error) {
             msgField.textContent = 'Die Modellliste ließ sich nicht laden.';
             showToast(String(error));

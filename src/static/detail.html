@@ -64,8 +64,14 @@
 <!-- Bild Detailansicht -->
 <main class="max-w-4xl mx-auto py-10 px-4 bg-white shadow-lg rounded-lg">
     <!-- Bildanzeige -->
-    <div class="text-center mb-6">
-        <a id="anchor"><img id="image" src="https://via.placeholder.com/512x512" alt="Generiertes Bild" class="w-512 mx-auto"></a>
+    <div class="text-center mb-4">
+        <a id="anchor"><img id="image" alt="Generiertes Bild" class="w-512 mx-auto"></a>
+    </div>
+
+    <div class="flex flex-wrap justify-center gap-3 mb-6">
+        <a id="use-as-reference"
+           class="bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700">Als Referenz nutzen</a>
+        <a id="download-link" class="bg-gray-200 text-gray-800 px-5 py-2 rounded-lg hover:bg-gray-300">Herunterladen</a>
     </div>
 
     <div id="msg-container" class="hidden w-full flex items-center justify-center">
@@ -168,6 +174,10 @@
             document.getElementById('filename').textContent = image.filename;
             document.getElementById('created').textContent = image.createdAt;
             document.getElementById('anchor').href = `/api/files/download/${image.filename}`
+            document.getElementById('download-link').href = `/api/files/download/${image.filename}`
+            // Der Generator holt sich das Bild anhand des Namens selbst.
+            document.getElementById('use-as-reference').href =
+                `/index.html?reference=${encodeURIComponent(image.filename)}`
 
             const groesse = image.width && image.height ? ` · ${image.width}×${image.height}` : '';
             const verhaeltnis = image.ratio ? ` · ${image.ratio}` : '';

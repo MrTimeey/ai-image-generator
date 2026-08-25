@@ -138,6 +138,17 @@ Vorlagen weg, auf die kein Eintrag mehr zeigt.
 Der Export (`/api/exchange/all`) enthält sie **nicht**; nach einem Import
 fehlen sie und die Detailansicht blendet den Block aus.
 
+Aus der Detailansicht führt **„Als Referenz nutzen"** zurück in den Generator
+(`/index.html?reference=<dateiname>`) und setzt das Bild dort als Vorlage.
+Es wird beim Übernehmen auf 1536 px verkleinert — Anbieter rechnen die
+Eingabefläche mit ab (BFL über `input_mp`), und ein Original in voller Größe
+bringt als Vorlage nichts Sichtbares.
+
+Solange eine Vorlage gesetzt ist, stehen nur Modelle zur Wahl, die sie auch
+auswerten (`maxInputImages > 0`) — sonst könnte man `flux-pro-1.1` wählen, das
+die Vorlage entgegennimmt und trotzdem ein völlig neues Bild erzeugt. Wird die
+letzte Vorlage entfernt, sind wieder alle wählbar.
+
 ### Kontoseite
 
 `/account.html` zeigt das BFL-Guthaben und verlinkt die Stellen, die man sonst
