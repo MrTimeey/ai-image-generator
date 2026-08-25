@@ -111,6 +111,17 @@
             <p id="model">...</p>
         </div>
 
+        <!-- Einstellungen und Kosten -->
+        <div>
+            <h3 class="font-semibold text-lg">Erzeugung:</h3>
+            <p id="settings">...</p>
+            <p id="seed-line" class="hidden mt-1">
+                <span class="text-gray-600">Seed:</span>
+                <code id="seed-value"></code>
+                <a id="seed-again" class="ml-2 text-blue-600 hover:underline" href="#">nochmal mit diesem Seed</a>
+            </p>
+        </div>
+
         <!-- Erstellungsdatum -->
         <div>
             <h3 class="font-semibold text-lg">Erstellt am:</h3>
@@ -121,6 +132,41 @@
 
 <script>
     const spinnerOverlay = document.getElementById('spinner-overlay');
+
+    /** Kosten lesbar: Credits ganzzahlig genug, Dollar in Cent-Genauigkeit. */
+    const kostenText = (kosten) => {
+        if (!kosten || kosten.amount === undefined || kosten.amount === null) return null;
+        if (kosten.unit === 'credits') return `${kosten.amount.toLocaleString('de-DE')} Credits`;
+        if (kosten.unit === 'usd') {
+            // Unter einem Cent sonst nur „0,00 $".
+            const stellen = kosten.amount < 0.01 ? 4 : 2;
+            return `${kosten.amount.toLocaleString('de-DE', { minimumFractionDigits: stellen, maximumFractionDigits: stellen })} $`;
+        }
+        return String(kosten.amount);
+    };
+
+    const zeigeEinstellungen = (image) => {
+        const teile = [];
+        if (image.quality) teile.push(`Qualität ${image.quality}`);
+        if (image.outputFormat) teile.push(image.outputFormat);
+        const kosten = kostenText(image.cost);
+        if (kosten) teile.push(`Kosten ${kosten}`);
+        if (image.durationMs) teile.push(`${(image.durationMs / 1000).toFixed(1)} s`);
+        // Altdaten kennen nichts davon — dann eine ehrliche Zeile statt einer
+        // leeren.
+        document.getElementById('settings').textContent = teile.length
+            ? teile.join(' · ')
+            : 'Für dieses Bild wurden keine Einstellungen aufgezeichnet.';
+
+        if (image.seed === undefined || image.seed === null) return;
+        document.getElementById('seed-value').textContent = image.seed;
+        // Derselbe Weg wie „Als Referenz nutzen", nur mit Seed und Prompt.
+        const ziel = new URLSearchParams({ prompt: image.prompt ?? '', seed: String(image.seed) });
+        if (image.model) ziel.set('model', image.model);
+        if (image.ratio) ziel.set('ratio', image.ratio);
+        document.getElementById('seed-again').href = `/index.html?${ziel.toString()}`;
+        document.getElementById('seed-line').classList.remove('hidden');
+    };
 
     /**
      * Ohne die Vorlage ist ein Prompt wie „mach den Hintergrund tiefblau" nicht
@@ -184,6 +230,7 @@
             document.getElementById('model').textContent = (image.model || 'unbekannt') + verhaeltnis + groesse;
 
             zeigeReferenzbilder(image.referenceImages);
+            zeigeEinstellungen(image);
         }
         spinnerOverlay.classList.add('hidden')
     });

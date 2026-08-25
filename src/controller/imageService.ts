@@ -84,6 +84,7 @@ export const generate = async (request: GenerationRequest): Promise<GenerationRe
 
     let providerImages: ProviderImage[];
     const errors: string[] = [];
+    const begonnen = Date.now();
 
     if (model.provider === 'openai') {
         providerImages = await openAi.generateImages(prompt, model, size, quality, outputFormat, amount, inputImages);
@@ -93,6 +94,7 @@ export const generate = async (request: GenerationRequest): Promise<GenerationRe
         errors.push(...result.errors);
     }
 
+    const dauerMs = Date.now() - begonnen;
     const createdAt = currentTimestamp();
     const images: GeneratedImage[] = [];
 
@@ -134,8 +136,14 @@ export const generate = async (request: GenerationRequest): Promise<GenerationRe
             height: measured.height ?? size.height,
             revisedPrompt: providerImage.revisedPrompt,
             seed: providerImage.seed,
+            cost: providerImage.cost,
         };
-        persistImage(image, createdAt, model, prompt, ratio, referenceNames);
+        persistImage(image, createdAt, model, prompt, ratio, {
+            referenceImages: referenceNames,
+            quality: model.qualities.length > 0 ? quality : undefined,
+            outputFormat: format,
+            durationMs: dauerMs,
+        });
         // Vorschaubilder sind Beiwerk: das Bild ist bezahlt und liegt bereits,
         // ein Fehler hier darf es nicht mehr in Frage stellen.
         try {

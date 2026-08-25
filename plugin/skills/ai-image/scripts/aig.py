@@ -135,7 +135,13 @@ def cmd_gen(args):
     else:
         print(f"{data['model']} · {data['width']}x{data['height']}")
         for image in data["images"]:
-            print(f"  {image['fileName']}  {image['width']}x{image['height']}")
+            zusatz = []
+            if image.get("seed") is not None:
+                zusatz.append(f"seed {image['seed']}")
+            if image.get("cost"):
+                zusatz.append(format_cost(image["cost"]))
+            print(f"  {image['fileName']}  {image['width']}x{image['height']}"
+                  + (f"  [{', '.join(zusatz)}]" if zusatz else ""))
             if image.get("revisedPrompt") and image["revisedPrompt"] != args.prompt:
                 print(f"    umgeschrieben: {image['revisedPrompt']}")
         for error in data.get("errors", []):
@@ -173,14 +179,78 @@ def cmd_list(args):
         print(f"{image['fileName']}  {image.get('model', ''):18} {prompt}")
 
 
+def format_cost(cost) -> str:
+    """Credits und Dollar bleiben getrennt — ein Kurs dazwischen wäre geraten."""
+    if not cost or cost.get("amount") is None:
+        return "unbekannt"
+    betrag, einheit = cost["amount"], cost.get("unit")
+    if einheit == "credits":
+        return f"{betrag:g} Credits"
+    if einheit == "usd":
+        # Unter einem Cent sonst nur "0.00 $".
+        return f"{betrag:.4f} $" if betrag < 0.01 else f"{betrag:.2f} $"
+    return str(betrag)
+
+
 def cmd_get(args):
     data = request("GET", f"/api/files/get/{args.name}")
     if args.json:
         print(json.dumps(data, indent=2, ensure_ascii=False))
         return
-    for key in ("filename", "createdAt", "model", "ratio", "width", "height", "prompt", "revisedPrompt"):
+    for key in ("filename", "createdAt", "model", "ratio", "width", "height",
+                "quality", "outputFormat", "seed", "prompt", "revisedPrompt"):
         if data.get(key) not in (None, "", "unknown"):
             print(f"{key:14} {data[key]}")
+    if data.get("cost"):
+        print(f"{'cost':14} {format_cost(data['cost'])}")
+    if data.get("durationMs"):
+        print(f"{'duration':14} {data['durationMs'] / 1000:.1f} s")
+    if data.get("seed") is not None:
+        print(f"\nNochmal mit demselben Seed:")
+        print(f"  aig.py gen {json.dumps(data.get('prompt', ''), ensure_ascii=False)} "
+              f"--model {data.get('model')} --ratio {data.get('ratio')} --seed {data['seed']}")
+
+
+def cmd_costs(args):
+    """Was hier ausgegeben wurde — nicht zu verwechseln mit dem Restguthaben."""
+    data = request("GET", "/api/credits")
+    if args.json:
+        print(json.dumps(data, indent=2, ensure_ascii=False))
+        return
+
+    print("Guthaben bei den Anbietern")
+    for provider in data.get("providers", []):
+        if provider["kind"] == "unavailable":
+            print(f"  {provider['label']:20} — {provider.get('hint', 'nicht abrufbar')[:60]}")
+        else:
+            art = "Restguthaben" if provider["kind"] == "balance" else "Ausgaben (Monat)"
+            print(f"  {provider['label']:20} {provider['value']:g} {provider['unit']}  ({art})")
+
+    spending = data.get("spending")
+    if not spending or spending["total"]["images"] == 0:
+        print("\nNoch keine eigenen Kosten aufgezeichnet.")
+        return
+
+    def zeile(bucket):
+        teile = []
+        if bucket["credits"]:
+            teile.append(f"{bucket['credits']:g} Credits")
+        if bucket["usd"]:
+            teile.append(f"{bucket['usd']:.4f} $" if bucket["usd"] < 0.01 else f"{bucket['usd']:.2f} $")
+        return " + ".join(teile) or "—"
+
+    print("\nEigene Ausgaben nach Monat")
+    for monat in spending["byMonth"]:
+        print(f"  {monat['key']:10} {zeile(monat):24} {monat['images']} Bild(er)")
+    print(f"  {'gesamt':10} {zeile(spending['total']):24} {spending['total']['images']} Bild(er)")
+
+    print("\nNach Modell")
+    for modell in spending["byModel"]:
+        print(f"  {modell['key']:22} {zeile(modell):24} {modell['images']} Bild(er)")
+
+    if spending["total"]["unknown"]:
+        print(f"\n{spending['total']['unknown']} aeltere Bilder ohne Kostenangabe — "
+              "die Anbieter liefern sie nicht rueckwirkend.")
 
 
 def cmd_download(args):
@@ -219,6 +289,8 @@ def main():
     get = sub.add_parser("get", help="Metadaten eines Bildes")
     get.add_argument("name")
 
+    sub.add_parser("costs", help="Guthaben und was hier bereits ausgegeben wurde")
+
     dl = sub.add_parser("download", help="Bild herunterladen")
     dl.add_argument("name")
     dl.add_argument("--out", default=".")
@@ -227,8 +299,8 @@ def main():
     rm.add_argument("name")
 
     args = parser.parse_args()
-    {"models": cmd_models, "gen": cmd_gen, "list": cmd_list,
-     "get": cmd_get, "download": cmd_download, "rm": cmd_rm}[args.command](args)
+    {"models": cmd_models, "gen": cmd_gen, "list": cmd_list, "get": cmd_get,
+     "costs": cmd_costs, "download": cmd_download, "rm": cmd_rm}[args.command](args)
 
 
 if __name__ == "__main__":

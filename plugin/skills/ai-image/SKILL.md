@@ -110,8 +110,10 @@ wenn das Bild wirklich verwendet wird.
   hilft bei kurzen, vagen Prompts und **schadet bei präzisen Vorgaben** — der
   umgeschriebene Prompt steht danach in den Metadaten. Standardmäßig aus.
   OpenAI-Modelle können das nicht.
-- Gleicher `--seed` plus gleicher Prompt ergibt bei FLUX dasselbe Bild — nützlich,
-  um eine Variante gezielt zu wiederholen. OpenAI kennt keinen Seed.
+- Gleicher `--seed` plus gleicher Prompt ergibt bei FLUX **praktisch** dasselbe
+  Bild — sichtbar identisch, aber nicht bitgenau. Nützlich, um eine Variante
+  gezielt zu wiederholen und dann nur eine Kleinigkeit am Prompt zu ändern.
+  OpenAI kennt keinen Seed.
 
 ## Referenzbilder
 
@@ -191,18 +193,30 @@ Unter `/api` antwortet die App bei fehlender Anmeldung mit **401 JSON**, nie mit
 einer Weiterleitung — ein `401` heißt also immer Token, ein `5xx` immer Dienst.
 `GET /api/health` geht ohne Schlüssel.
 
-## Guthaben
-
-`https://ai.mrtimeey.com/account.html` zeigt das BFL-Guthaben und verlinkt die
-Aufladeseiten. Per API:
+## Kosten und Guthaben
 
 ```bash
-curl -s https://ai.mrtimeey.com/api/credits -H "Authorization: Bearer $AIG_TOKEN"
+aig.py costs
 ```
 
-BFL liefert echte Credits. **OpenAI gibt den Kontostand über keine API heraus** —
-dort steht bestenfalls der Verbrauch des Monats, und auch das nur mit einem
-hinterlegten Admin-Key.
+zeigt beides: das **Restguthaben** bei den Anbietern und die **eigenen
+Ausgaben** je Monat und Modell, aufsummiert aus dem, was die Anbieter je
+Auftrag gemeldet haben.
+
+BFL rechnet in Credits, OpenAI in Dollar — beides bleibt getrennt, ein
+Umrechnungskurs wäre geraten. **OpenAI gibt den Kontostand über keine API
+heraus**; dort steht bestenfalls der Monatsverbrauch, und auch das nur mit
+hinterlegtem Admin-Key.
+
+Jedes einzelne Bild führt seine Kosten mit — `aig.py gen` zeigt sie direkt nach
+dem Erzeugen an, `aig.py get <datei>` später. Was vor dieser Änderung entstand,
+führt keine; rückwirkend liefern die Anbieter sie nicht.
+
+### Ein Bild gezielt wiederholen
+
+`aig.py get <datei>` gibt am Ende einen fertigen Befehl aus, der Prompt, Modell,
+Verhältnis und Seed übernimmt. So ändert man eine Kleinigkeit am Prompt und
+behält den Rest.
 
 ## Wenn die Verbindung abreißt
 

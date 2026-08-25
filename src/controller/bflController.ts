@@ -27,7 +27,18 @@ const TERMINAL_STATUS: Record<string, string> = {
     'Task not found': 'Der Auftrag ist beim Anbieter nicht mehr bekannt.',
 };
 
-type BflSubmitResponse = { id?: string; polling_url?: string };
+type BflSubmitResponse = {
+    id?: string;
+    polling_url?: string;
+    /**
+     * Kosten in BFL-Credits, plus die verrechnete Ein- und Ausgabeflaeche in
+     * Megapixeln. Kommt **beim Absenden** zurueck, nicht beim Abholen — deshalb
+     * muss der Wert bis zum fertigen Bild durchgereicht werden.
+     */
+    cost?: number | null;
+    input_mp?: number | null;
+    output_mp?: number | null;
+};
 type BflResultResponse = {
     status?: string;
     result?: { sample?: string; prompt?: string; seed?: number };
@@ -89,7 +100,10 @@ const buildBody = (
     return body;
 };
 
-const submit = async (model: ModelDefinition, body: Record<string, unknown>): Promise<string> => {
+const submit = async (
+    model: ModelDefinition,
+    body: Record<string, unknown>
+): Promise<{ pollingUrl: string; cost?: number }> => {
     try {
         const response = await axios.post<BflSubmitResponse>(`${BASE_URL}/${model.endpoint}`, body, {
             headers: bflHeaders(),
@@ -101,7 +115,9 @@ const submit = async (model: ModelDefinition, body: Record<string, unknown>): Pr
             // in axios — die Ursache stand dann nirgends.
             throw new ProviderError(502, 'bfl_no_polling_url', 'BFL hat keine Polling-URL geliefert.');
         }
-        return pollingUrl;
+        // Die aeltere Generation (`flux-pro-1.1`) liefert hier `null`.
+        const cost = typeof response.data?.cost === 'number' ? response.data.cost : undefined;
+        return { pollingUrl, cost };
     } catch (error) {
         throw toProviderError(error, 'bfl_submit_failed');
     }
@@ -174,7 +190,10 @@ export const generateImages = async (
 
     const settled = await Promise.allSettled(
         Array.from({ length: amount }, (_, index) =>
-            submit(model, body(index)).then(url => pollForResult(url))
+            submit(model, body(index)).then(async ({ pollingUrl, cost }) => {
+                const image = await pollForResult(pollingUrl);
+                return cost === undefined ? image : { ...image, cost: { amount: cost, unit: 'credits' as const } };
+            })
         )
     );
 

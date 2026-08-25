@@ -43,6 +43,13 @@ export enum Sorting {
     DESCENDING = 'DESC',
 }
 
+/**
+ * Was ein Bild gekostet hat. Zwei Waehrungen, weil die Anbieter verschieden
+ * abrechnen: BFL in eigenen Credits, OpenAI in Dollar (aus Tokens gerechnet).
+ * Eine Umrechnung waere geraten — also bleiben sie getrennt.
+ */
+export type Cost = { amount: number; unit: 'credits' | 'usd' };
+
 /** Was ein Provider-Controller zurueckgibt: entweder eine URL oder Bytes. */
 export type ProviderImage = {
     /** Von BFL; laeuft nach ~10 Minuten ab und muss sofort geladen werden. */
@@ -51,6 +58,7 @@ export type ProviderImage = {
     buffer?: Buffer;
     revisedPrompt?: string;
     seed?: number;
+    cost?: Cost;
 };
 
 export type GeneratedImage = {
@@ -61,6 +69,7 @@ export type GeneratedImage = {
     height: number;
     revisedPrompt?: string;
     seed?: number;
+    cost?: Cost;
 };
 
 export type GenerationResult = {
@@ -95,6 +104,17 @@ export type DataImage = {
     referenceImages?: string[];
     /** Vom Nutzer markiert. Fehlt bei allem, was nie angefasst wurde. */
     favorite?: boolean;
+    /**
+     * Die Einstellungen des Laufs — damit „nochmal genauso, nur anders"
+     * moeglich wird. Fehlen bei allem, was vor dieser Aenderung entstand.
+     */
+    seed?: number;
+    quality?: string;
+    outputFormat?: string;
+    cost?: number;
+    costUnit?: string;
+    /** Wie lange der Anbieter gebraucht hat, in Millisekunden. */
+    durationMs?: number;
     /**
      * Der alte Feldname aus der Zeit von DALL-E. Wird nur noch **gelesen**,
      * damit vorhandene `data.json`-Eintraege ihr Modell behalten; neue

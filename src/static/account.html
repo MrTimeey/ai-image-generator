@@ -60,6 +60,15 @@
         <div class="bg-white rounded-lg shadow p-6 text-gray-500">wird geladen&hellip;</div>
     </div>
 
+    <h2 class="text-lg font-semibold text-gray-800 mb-3">Eigene Ausgaben</h2>
+    <p class="text-sm text-gray-600 mb-3">
+        Aufsummiert aus dem, was die Anbieter je Auftrag gemeldet haben &mdash; Credits und
+        Dollar bleiben getrennt, ein Umrechnungskurs w&auml;re geraten.
+    </p>
+    <div id="spending" class="bg-white rounded-lg shadow p-6 mb-8">
+        <p class="text-gray-500">wird geladen&hellip;</p>
+    </div>
+
     <h2 class="text-lg font-semibold text-gray-800 mb-3">Schnellzugriff</h2>
     <div class="bg-white rounded-lg shadow divide-y divide-gray-100 mb-8">
         <a href="https://dashboard.bfl.ai/" target="_blank" rel="noopener"
@@ -168,6 +177,76 @@
         return box;
     };
 
+    const betrag = (bucket) => {
+        const teile = [];
+        if (bucket.credits) teile.push(`${bucket.credits.toLocaleString('de-DE')} Credits`);
+        if (bucket.usd) {
+            // Unter einem Cent sonst nur „0,00 $" — und damit die Aussage,
+            // es habe nichts gekostet.
+            const stellen = bucket.usd < 0.01 ? 4 : 2;
+            teile.push(`${bucket.usd.toLocaleString('de-DE', { minimumFractionDigits: stellen, maximumFractionDigits: stellen })} $`);
+        }
+        return teile.join(' + ') || '—';
+    };
+
+    const zeile = (label, bucket, fett) => {
+        const tr = document.createElement('tr');
+        tr.className = fett ? 'border-t border-gray-200 font-medium' : 'border-t border-gray-100';
+        for (const [text, klasse] of [
+            [label, 'px-2 py-2'],
+            [betrag(bucket), 'px-2 py-2 text-right'],
+            [`${bucket.images} Bild(er)`, 'px-2 py-2 text-right text-gray-500 text-sm'],
+        ]) {
+            const td = document.createElement('td');
+            td.className = klasse;
+            td.textContent = text;
+            tr.appendChild(td);
+        }
+        return tr;
+    };
+
+    const zeigeAusgaben = (spending) => {
+        const box = document.getElementById('spending');
+        if (!spending || spending.total.images === 0) {
+            box.replaceChildren(Object.assign(document.createElement('p'), {
+                className: 'text-gray-500',
+                textContent: 'Noch keine Kosten aufgezeichnet — Bilder von vor dieser Änderung führen keine.',
+            }));
+            return;
+        }
+
+        const tabelle = document.createElement('table');
+        tabelle.className = 'w-full text-sm';
+        const body = document.createElement('tbody');
+
+        for (const monat of spending.byMonth) body.appendChild(zeile(monat.key, monat));
+        body.appendChild(zeile('Gesamt', spending.total, true));
+        tabelle.appendChild(body);
+
+        const modelle = document.createElement('div');
+        modelle.className = 'mt-5';
+        const titel = document.createElement('p');
+        titel.className = 'text-sm font-medium text-gray-700 mb-1';
+        titel.textContent = 'Nach Modell';
+        modelle.appendChild(titel);
+        const t2 = document.createElement('table');
+        t2.className = 'w-full text-sm';
+        const b2 = document.createElement('tbody');
+        for (const m of spending.byModel) b2.appendChild(zeile(m.key, m));
+        t2.appendChild(b2);
+        modelle.appendChild(t2);
+
+        box.replaceChildren(tabelle, modelle);
+
+        if (spending.total.unknown > 0) {
+            const hinweis = document.createElement('p');
+            hinweis.className = 'text-xs text-gray-500 mt-4';
+            hinweis.textContent =
+                `${spending.total.unknown} ältere Bilder ohne Kostenangabe — die Anbieter liefern sie nicht rückwirkend.`;
+            box.appendChild(hinweis);
+        }
+    };
+
     const loadCredits = async (refresh) => {
         creditsBox.replaceChildren(Object.assign(document.createElement('div'), {
             className: 'bg-white rounded-lg shadow p-6 text-gray-500',
@@ -178,6 +257,7 @@
             if (!response.ok) throw new Error(`Fehler ${response.status}`);
             const data = await response.json();
             creditsBox.replaceChildren(...data.providers.map(card));
+            zeigeAusgaben(data.spending);
         } catch (error) {
             creditsBox.replaceChildren(Object.assign(document.createElement('div'), {
                 className: 'bg-white rounded-lg shadow p-6 text-red-600',

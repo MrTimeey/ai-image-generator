@@ -237,6 +237,45 @@ export const MODELS: readonly ModelDefinition[] = [
     },
 ];
 
+/**
+ * OpenAI rechnet Bilder ueber Tokens ab — Dollar je Million, getrennt nach
+ * Text-Eingabe, Bild-Eingabe und Bild-Ausgabe. Die Antwort liefert die
+ * Tokenzahlen genau aufgeschlüsselt, damit ist der Betrag exakt und nicht
+ * geschätzt.
+ *
+ * **Stand 25.08.2026** von der OpenAI-Preisseite. Preise ändern sich; wenn die
+ * Beträge auf der Kontoseite von der Abrechnung abweichen, ist das hier die
+ * erste Stelle zum Nachsehen. BFL braucht so eine Tabelle nicht — dort steht
+ * `cost` in Credits schon in der Antwort.
+ */
+export type TokenPrice = { textInput: number; imageInput: number; imageOutput: number };
+
+export const OPENAI_PRICES_USD_PER_MILLION: Record<string, TokenPrice> = {
+    'gpt-image-2': { textInput: 5, imageInput: 8, imageOutput: 30 },
+    'gpt-image-1.5': { textInput: 5, imageInput: 8, imageOutput: 32 },
+    'gpt-image-1': { textInput: 5, imageInput: 10, imageOutput: 40 },
+    'gpt-image-1-mini': { textInput: 2, imageInput: 2.5, imageOutput: 8 },
+};
+
+export type TokenUsage = {
+    textInput: number;
+    imageInput: number;
+    imageOutput: number;
+};
+
+/** Dollarbetrag aus den Tokenzahlen. `null`, wenn das Modell unbekannt ist. */
+export const openAiCost = (modelId: string, usage: TokenUsage): number | null => {
+    const price = OPENAI_PRICES_USD_PER_MILLION[modelId];
+    if (!price) return null;
+    const betrag =
+        (usage.textInput * price.textInput +
+            usage.imageInput * price.imageInput +
+            usage.imageOutput * price.imageOutput) /
+        1_000_000;
+    // Auf einen Zehntelcent runden — darunter ist die Zahl Rauschen.
+    return Math.round(betrag * 10_000) / 10_000;
+};
+
 export type ModelId = string;
 
 export const DEFAULT_MODEL = 'flux-2-pro';

@@ -193,6 +193,43 @@ Beim Löschen eines einzelnen Bildes wird gezielt dessen Eintrag entfernt —
 sonst hätte das Aufräumen ein zeitgleich frisch erzeugtes, noch nicht
 eingetragenes Bild mitgelöscht.
 
+### Was ein Bild gekostet hat
+
+Beide Anbieter liefern die Kosten mit, sie wurden bisher nur weggeworfen:
+
+- **BFL** schickt `cost` in Credits schon in der Antwort auf das Absenden —
+  nicht erst beim Abholen, deshalb wird der Wert bis zum fertigen Bild
+  durchgereicht. Die ältere Generation (`flux-pro-1.1`) liefert dort `null`.
+- **OpenAI** rechnet über Tokens ab und schlüsselt sie genau auf
+  (`usage.input_tokens_details`, `usage.output_tokens_details`). Der Betrag ist
+  damit gerechnet, nicht geschätzt. Die Preistabelle steht in
+  `src/controller/modelRegistry.ts` (`OPENAI_PRICES_USD_PER_MILLION`, Stand
+  25.08.2026) — die erste Stelle zum Nachsehen, wenn die Beträge von der
+  Abrechnung abweichen. Bei `n > 1` gilt der Betrag für den ganzen Aufruf und
+  wird gleichmäßig aufgeteilt; feiner gibt OpenAI es nicht her.
+
+`DataImage` führt jetzt `seed`, `quality`, `outputFormat`, `cost`, `costUnit`
+und `durationMs`. `GET /api/credits` liefert neben dem Guthaben der Anbieter
+einen eigenen `spending`-Block: Summen je Monat und je Modell.
+
+**Credits und Dollar bleiben getrennt** — einen Umrechnungskurs zwischen
+BFL-Credits und Dollar zu erfinden hieße, eine Zahl zu zeigen, der man nicht
+trauen kann.
+
+Alles, was vor dieser Änderung entstand, führt keine Kosten; die Anbieter
+liefern sie nicht rückwirkend. Die Anzeige weist das als „unbekannt" aus.
+
+### Seed
+
+Der Seed wurde schon immer ausgelesen und angezeigt — nur nie gespeichert.
+Jetzt steht er in den Metadaten, die Detailansicht zeigt ihn, und „nochmal mit
+diesem Seed" führt zurück in den Generator (`/index.html?prompt=…&model=…&ratio=…&seed=…`).
+
+Gleicher Seed und gleicher Prompt ergeben **praktisch** dasselbe Bild — bei
+einer Gegenprobe lagen zwei Läufe bei 0,2 % mittlerer Pixelabweichung, also
+sichtbar identisch, aber nicht bitgenau. OpenAI kennt keinen Seed; dort ist das
+Feld ausgeblendet.
+
 ### Kontoseite
 
 `/account.html` zeigt das BFL-Guthaben und verlinkt die Stellen, die man sonst

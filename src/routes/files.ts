@@ -85,6 +85,11 @@ files.get('/get/:imageName', async (req, res) => {
         width: entry?.width,
         height: entry?.height,
         referenceImages: entry?.referenceImages ?? [],
+        seed: entry?.seed,
+        quality: entry?.quality,
+        outputFormat: entry?.outputFormat,
+        cost: entry?.cost !== undefined ? { amount: entry.cost, unit: entry.costUnit ?? '' } : null,
+        durationMs: entry?.durationMs,
         // Der alte Feldname, damit bestehende Skripte weiterlesen koennen.
         languageModel: modelNameOf(entry),
     });

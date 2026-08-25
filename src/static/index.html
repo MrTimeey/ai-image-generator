@@ -117,10 +117,16 @@
         <div id="reference-preview" class="flex flex-wrap gap-3 mt-3"></div>
     </div>
 
-    <div class="mb-6">
+    <div class="flex flex-wrap items-center gap-6 mb-6">
         <label class="flex items-center gap-2 text-sm text-gray-700">
             <input type="checkbox" id="revise-prompt" class="rounded border-gray-300">
             <span id="revise-label">Prompt vom Anbieter ausformulieren lassen</span>
+        </label>
+        <label id="seed-field" class="flex items-center gap-2 text-sm text-gray-700">
+            <span>Seed</span>
+            <input type="number" id="seed" placeholder="zufällig"
+                   class="w-36 p-1 border border-gray-300 rounded" title="Gleicher Seed und gleicher Prompt ergeben dasselbe Bild">
+            <button id="seed-clear" class="hidden text-blue-600 hover:underline">zurücksetzen</button>
         </label>
     </div>
 
@@ -158,6 +164,8 @@
     const referenceClear = document.getElementById('reference-clear');
     const referenceCount = document.getElementById('reference-count');
     const reviseCheckbox = document.getElementById('revise-prompt');
+    const seedField = document.getElementById('seed-field');
+    const seedInput = document.getElementById('seed');
     const reviseLabel = document.getElementById('revise-label');
     const modelTitle = document.getElementById('model-title');
     const modelNote = document.getElementById('model-note');
@@ -234,6 +242,10 @@
             ? 'Prompt vom Anbieter ausformulieren lassen'
             : 'Dieses Modell formuliert den Prompt nicht um';
         if (!model.supportsRevisePrompt) reviseCheckbox.checked = false;
+
+        // OpenAI kennt keinen Seed — dann hat das Feld dort nichts zu suchen.
+        seedField.classList.toggle('hidden', !model.supportsSeed);
+        if (!model.supportsSeed) seedInput.value = '';
 
         renderReferences();
     };
@@ -389,6 +401,16 @@
         renderModelSelect();
     });
 
+    const seedClear = document.getElementById('seed-clear');
+    seedClear.addEventListener('click', (event) => {
+        event.preventDefault();
+        seedInput.value = '';
+        seedClear.classList.add('hidden');
+    });
+    seedInput.addEventListener('input', () => {
+        seedClear.classList.toggle('hidden', seedInput.value === '');
+    });
+
     const createImage = (imageName) => {
         const imageElement = document.createElement('img');
         imageElement.src = `/big-thumbnails/${imageName}`;
@@ -474,6 +496,9 @@
         };
         if (qualitySelect.value) request.quality = qualitySelect.value;
         if (references.length) request.inputImages = references.map(r => r.dataUrl);
+        if (seedInput.value !== '' && !seedField.classList.contains('hidden')) {
+            request.seed = Number(seedInput.value);
+        }
 
         const imageNames = await generateImage(request);
         if (imageNames.length !== 0) {
@@ -492,8 +517,17 @@
             standardModell = registry.defaultModel ?? models[0]?.id;
             modelSelect.value = standardModell;
 
+            /**
+             * Aus der Detailansicht: „nochmal mit diesem Seed" bringt Prompt,
+             * Modell, Verhältnis und Seed mit. Vor `renderModelSelect`, damit
+             * die abhängigen Felder gleich zum richtigen Modell passen.
+             */
+            const parameter = new URLSearchParams(window.location.search);
+            if (parameter.has('prompt')) {
+                document.getElementById('description').value = parameter.get('prompt');
+            }
             // `?reference=` kommt aus der Detailansicht.
-            const gewuenschteReferenz = new URLSearchParams(window.location.search).get('reference');
+            const gewuenschteReferenz = parameter.get('reference');
             if (gewuenschteReferenz) {
                 spinnerOverlay.classList.remove('hidden');
                 await referenzAusBibliothek(gewuenschteReferenz);
@@ -506,6 +540,30 @@
             }
 
             renderModelSelect();
+
+            /**
+             * **Erst jetzt** das Modell setzen: vorher ist das Select noch
+             * leer, und eine Zuweisung darauf verpufft wirkungslos — die Wahl
+             * fiel dann still auf das Standardmodell zurück.
+             */
+            if (parameter.has('model') && [...modelSelect.options].some(o => o.value === parameter.get('model'))) {
+                modelSelect.value = parameter.get('model');
+                renderModelOptions();
+            }
+
+            // Nach dem Modell, weil dessen Felder die Auswahl bestimmen.
+            if (parameter.has('ratio') && [...ratioSelect.options].some(o => o.value === parameter.get('ratio'))) {
+                ratioSelect.value = parameter.get('ratio');
+            }
+            if (parameter.has('seed') && !seedField.classList.contains('hidden')) {
+                seedInput.value = parameter.get('seed');
+                seedClear.classList.remove('hidden');
+            }
+            if ([...parameter.keys()].some(k => ['prompt', 'model', 'ratio', 'seed'].includes(k))) {
+                const url = new URL(window.location.href);
+                for (const k of ['prompt', 'model', 'ratio', 'seed']) url.searchParams.delete(k);
+                window.history.replaceState(null, '', url.pathname + url.search);
+            }
         } catch (error) {
             msgField.textContent = 'Die Modellliste ließ sich nicht laden.';
             showToast(String(error));

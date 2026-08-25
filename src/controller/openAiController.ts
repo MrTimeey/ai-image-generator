@@ -1,7 +1,7 @@
 import OpenAI, { toFile } from 'openai';
 import appConfig from '../common/appConfig';
 import { OutputFormat, ProviderImage, Quality } from '../types';
-import { ModelDefinition } from './modelRegistry';
+import { ModelDefinition, openAiCost } from './modelRegistry';
 import { ResolvedSize } from '../common/aspectRatio';
 import { ProviderError } from '../common/providerError';
 import { InputImage } from '../common/inputImage';
@@ -63,12 +63,38 @@ export const generateImages = async (
             : await openAiClient().images.generate(common);
 
         const data = response.data ?? [];
+
+        /**
+         * Die Antwort schlüsselt die Tokens genau auf — damit ist der Betrag
+         * gerechnet, nicht geschätzt. Er gilt für den **ganzen Aufruf**, also
+         * für alle `n` Bilder zusammen; aufgeteilt wird gleichmäßig, denn
+         * feiner gibt OpenAI es nicht her.
+         */
+        const usage = response.usage;
+        const gesamt = usage
+            ? openAiCost(model.endpoint, {
+                  textInput: usage.input_tokens_details?.text_tokens ?? usage.input_tokens ?? 0,
+                  imageInput: usage.input_tokens_details?.image_tokens ?? 0,
+                  imageOutput: usage.output_tokens_details?.image_tokens ?? usage.output_tokens ?? 0,
+              })
+            : null;
+
         const images = data
             .filter(item => Boolean(item.b64_json))
             .map(item => ({
                 buffer: Buffer.from(item.b64_json as string, 'base64'),
                 revisedPrompt: item.revised_prompt,
             }));
+
+        const proBild = gesamt !== null && images.length > 0 ? gesamt / images.length : null;
+        if (proBild !== null) {
+            for (const image of images) {
+                (image as { cost?: { amount: number; unit: 'usd' } }).cost = {
+                    amount: Math.round(proBild * 10_000) / 10_000,
+                    unit: 'usd',
+                };
+            }
+        }
 
         if (images.length === 0) {
             throw new ProviderError(502, 'openai_empty_response', 'OpenAI hat kein Bild zurückgegeben.');

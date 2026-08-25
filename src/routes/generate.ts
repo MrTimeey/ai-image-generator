@@ -7,6 +7,7 @@ import { describeError, ProviderError, statusOf } from '../common/providerError'
 import { hasProvider } from '../common/appConfig';
 import { clampQuality, resolveSize } from '../common/aspectRatio';
 import { getCredits } from '../controller/creditsController';
+import { spendingReport } from '../common/spending';
 import { failJob, finishJob, getJob, isValidJobId, startJob } from '../common/jobStore';
 
 const generateRouter: express.Router = express.Router();
@@ -77,7 +78,15 @@ const asPayload = (result: {
     provider: string;
     width: number;
     height: number;
-    images: { id: string; fileName: string; width: number; height: number; revisedPrompt?: string; seed?: number }[];
+    images: {
+        id: string;
+        fileName: string;
+        width: number;
+        height: number;
+        revisedPrompt?: string;
+        seed?: number;
+        cost?: { amount: number; unit: string };
+    }[];
     errors: string[];
 }) => ({
     createdAt: result.createdAt,
@@ -93,6 +102,7 @@ const asPayload = (result: {
         url: `/api/files/download/${image.fileName}`,
         revisedPrompt: image.revisedPrompt,
         seed: image.seed,
+        cost: image.cost,
     })),
     errors: result.errors,
 });
@@ -121,7 +131,9 @@ generateRouter.get('/jobs/:id', (req, res) => {
 });
 
 generateRouter.get('/credits', async (req, res) => {
-    res.send({ providers: await getCredits(req.query.refresh === '1') });
+    // Guthaben der Anbieter **und** die eigene Rechnung: was hier tatsächlich
+    // ausgegeben wurde, weiß nur dieser Dienst.
+    res.send({ providers: await getCredits(req.query.refresh === '1'), spending: spendingReport() });
 });
 
 generateRouter.post('/generate', async (req, res) => {

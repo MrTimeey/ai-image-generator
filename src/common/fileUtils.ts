@@ -86,13 +86,20 @@ export const saveReferenceImage = async (id: string, bytes: Buffer): Promise<str
     return fileName;
 };
 
+export type PersistOptions = {
+    referenceImages?: string[];
+    quality?: string;
+    outputFormat?: string;
+    durationMs?: number;
+};
+
 export const persistImage = (
     image: GeneratedImage,
     createdAt: string,
     model: ModelDefinition,
     description: string,
     ratio: string,
-    referenceImages: string[] = []
+    options: PersistOptions = {}
 ): void => {
     const dataStore = getDataStore();
     const entry: DataImage = {
@@ -106,7 +113,14 @@ export const persistImage = (
         ratio,
         width: image.width,
         height: image.height,
-        referenceImages: referenceImages.length > 0 ? referenceImages : undefined,
+        referenceImages: options.referenceImages?.length ? options.referenceImages : undefined,
+        // Was den Lauf ausmachte — damit „nochmal genauso" moeglich ist.
+        seed: image.seed,
+        quality: options.quality,
+        outputFormat: options.outputFormat,
+        cost: image.cost?.amount,
+        costUnit: image.cost?.unit,
+        durationMs: options.durationMs,
     };
     dataStore.data.push(entry);
     dataStore.entries = dataStore.data.length;
