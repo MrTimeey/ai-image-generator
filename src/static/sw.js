@@ -4,7 +4,7 @@
  * gecachte Antwort waere dort im besten Fall veraltet und im schlechtesten
  * eine fremde Sitzung.
  */
-const CACHE = 'aig-shell-v8';
+const CACHE = 'aig-shell-v7';
 
 /**
  * Nur Bausteine, nie HTML. Eine Seite, die ohne Sitzung abgerufen wird,

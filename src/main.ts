@@ -8,7 +8,6 @@ import { requireAuth } from './common/authUtils';
 import authRoutes from './routes/authRoutes';
 import apiKeys from './routes/apiKeys';
 import generateRouter from './routes/generate';
-import edit from './routes/edit';
 import skill from './routes/skill';
 import legacy from './routes/legacy';
 import thumbnails from './routes/thumbnails';
@@ -40,7 +39,6 @@ if (appConfig.enableAuth) {
 const apiRouter: express.Router = express.Router();
 apiRouter.use(generateRouter);
 apiRouter.use(legacy);
-apiRouter.use('/edit', edit);
 apiRouter.use('/keys', apiKeys);
 apiRouter.use('/skill', skill);
 apiRouter.use('/images', images);

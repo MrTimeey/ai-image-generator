@@ -143,29 +143,6 @@ aig.py gen "mach den Hintergrund tiefblau" \
   --model flux-2-pro --image ./vorlage.png --out .
 ```
 
-## Ein vorhandenes Bild ändern
-
-Nicht ein neues Bild aus einer Vorlage, sondern **dieses** Bild bearbeiten:
-
-```bash
-aig.py edit <datei> --mode replace --mask maske.png --prompt "ein Korb mit Äpfeln"
-aig.py edit <datei> --mode remove  --mask maske.png
-aig.py edit <datei> --mode expand  --right 256 --top 128
-```
-
-Die Maske ist auf der Kommandozeile eine **vorbereitete PNG-Datei**, kein
-Pinsel: **weiß = ändern, schwarz = erhalten**, gleiche Größe wie das Bild. Wer
-malen statt Dateien bauen will, nimmt `/edit.html` in der Weboberfläche — dort
-gibt es Pinsel, Radierer und Rückgängig, auch mit dem Finger.
-
-Welcher Anbieter das übernimmt, entscheidet der Modus (gemessen, nicht
-geraten): **Ersetzen** und **Erweitern** gehen an FLUX, **Entfernen** an
-OpenAI — FLUX malt sonst etwas Neues in die Lücke, statt sie zu schließen.
-
-Das Ergebnis ist ein **neues** Bild im Bestand; das Ausgangsbild steht darin
-als Vorlage, die Herkunft bleibt also nachvollziehbar. Entfernen ist mit rund
-0,14 $ je Aufruf deutlich teurer als eine normale Erzeugung.
-
 ## Rezepte
 
 Ein Bild, gleich lokal:
