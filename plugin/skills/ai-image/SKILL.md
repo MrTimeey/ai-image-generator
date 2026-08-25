@@ -26,6 +26,19 @@ braucht, legt sich einen Alias an:
 alias aig="python3 $(find ~/.claude -path '*ai-image*/scripts/aig.py' | head -1)"
 ```
 
+### Alle Befehle
+
+| Befehl | Zweck |
+|---|---|
+| `models` | verfügbare Modelle mit Verhältnissen, Stufen, Grenzen |
+| `gen "<prompt>"` | Bild erzeugen |
+| `list` | Bestand durchsuchen und filtern |
+| `get <datei>` | Metadaten eines Bildes |
+| `download <datei>` | Bild herunterladen |
+| **`rm <datei> [...]`** | **Bild(er) löschen — auch mehrere auf einmal** |
+| `favorite <datei>` | markieren (`--off` hebt auf) |
+| `costs` | Guthaben und bisherige Ausgaben |
+
 ## Ersteinrichtung (einmalig)
 
 1. `https://ai.mrtimeey.com/api-keys.html` öffnen, Namen und Gültigkeit wählen
@@ -199,9 +212,17 @@ aig.py list --ratio 16:9 --favorite       # kombinierbar
 aig.py rm bild-a.png bild-b.png bild-c.png
 ```
 
-Das ist **endgültig** — es gibt keinen Papierkorb. Vor einem Sammellöschen
-also erst mit `list` ansehen, was die Auswahl trifft, und im Zweifel
-nachfragen. Markieren geht mit `aig.py favorite <datei>` (bzw. `--off`).
+**Räum hinter dir auf.** Wer vier Varianten erzeugt und eine davon verwendet,
+löscht die anderen drei — jedes Bild belegt Platz, und ein Bestand voller
+verworfener Zwischenschritte macht das Wiederfinden schwer. Für die eigenen,
+in dieser Sitzung erzeugten Bilder braucht es dafür keine Rückfrage.
+
+**Fremde Bilder sind etwas anderes.** Alles, was schon vorher da war, wird nur
+auf ausdrückliche Anweisung gelöscht. `rm` ist endgültig, es gibt keinen
+Papierkorb — vor einem Sammellöschen also erst mit `list` ansehen, was die
+Auswahl trifft.
+
+Markieren geht mit `aig.py favorite <datei>` (bzw. `--off`).
 
 `--json` gibt bei jedem Befehl die Rohantwort aus — für eigene Skripte.
 
@@ -213,6 +234,20 @@ Das CLI ist nur eine Hülle um die API:
 curl -s https://ai.mrtimeey.com/api/generate \
   -H "Authorization: Bearer $AIG_TOKEN" -H 'Content-Type: application/json' \
   -d '{"prompt":"…","model":"flux-2-pro","ratio":"16:9","quality":"medium"}'
+```
+
+Aufräumen geht genauso über die API — ein Tool kann seine eigenen Werke also
+ohne Umweg über das CLI wieder loswerden:
+
+```bash
+# ein einzelnes Bild
+curl -s -X DELETE "$AIG_URL/api/files/<dateiname>" \
+  -H "Authorization: Bearer $AIG_TOKEN"
+
+# mehrere in einem Aufruf — schont data.json, das sonst je Bild neu geschrieben wird
+curl -s "$AIG_URL/api/files/delete" -H "Authorization: Bearer $AIG_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"fileNames":["a.png","b.png"]}'
 ```
 
 Unter `/api` antwortet die App bei fehlender Anmeldung mit **401 JSON**, nie mit
@@ -276,8 +311,10 @@ npm run lint       # TS-Dateien und die Inline-Skripte der Seiten
 
 - **Kosten:** jedes Bild kostet echtes Geld bei BFL bzw. OpenAI. Bei größeren
   Serien vorher fragen, nicht einfach vierzig Varianten erzeugen.
-- **`rm` ist endgültig** — Bild und Metadaten sind weg, es gibt keinen Papierkorb.
-  Nur löschen, wenn ausdrücklich darum gebeten wurde.
-- Bildbearbeitung mit Maske (Inpaint, Outpaint, Erase) ist nicht eingebunden —
-  nur ganze Referenzbilder. Die mitgegebenen Vorlagen sind später in der
+- **`rm` ist endgültig** — Bild und Metadaten sind weg, es gibt keinen
+  Papierkorb. Eigene Zwischenergebnisse aufzuräumen ist erwünscht; alles, was
+  vorher schon da war, nur auf ausdrückliche Anweisung.
+- Bildbearbeitung mit Maske (Inpaint, Outpaint, Erase) gibt es nicht — nur
+  ganze Referenzbilder. Die mitgegebenen Vorlagen sind später in der
   Detailansicht des Bildes zu sehen.
+- Einen Upscale gibt es nicht; wer größer will, erzeugt gleich größer.

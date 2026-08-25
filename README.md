@@ -101,7 +101,7 @@ Alles unter `/api` verlangt eine Anmeldung und antwortet bei fehlender mit
 | `GET /api/files/get/:name` | Metadaten |
 | `GET /api/files/download/:name` | Datei |
 | `DELETE /api/files/:name` | löschen |
-| `POST /api/files/delete` | mehrere auf einmal löschen |
+| `POST /api/files/delete` | mehrere auf einmal löschen (ein Aufruf statt vieler) |
 | `PUT /api/files/:name/favorite` | markieren / Markierung aufheben |
 | `POST /api/exchange/selection` | eine Auswahl als ZIP |
 | `GET /api/credits` | Guthaben der Anbieter (`?refresh=1` umgeht den 60-s-Cache) |
@@ -241,8 +241,13 @@ lässt sich als ZIP laden oder in einem Zug löschen.
 **Auf dem Handy** startet langes Drücken auf eine Kachel den Auswahlmodus —
 Umschalt-Klick gibt es dort nicht. Der `click`, den der Browser nach dem
 `touchend` nachschiebt, wird unterdrückt: sonst hätte er die eben gewählte
-Kachel sofort wieder abgewählt. Der Favoritenstern ist **immer** sichtbar
-(ungesetzt nur blasser), denn ohne Hover führte auf Touch kein Weg zu ihm.
+Kachel sofort wieder abgewählt.
+
+Der Favoritenstern erscheint mit Mauszeiger nur beim Überfahren der Kachel;
+gesetzt bleibt er immer stehen. Auf Touch-Geräten gibt es kein Hover — dort
+steht er dauerhaft, sonst führte kein Weg zu ihm. Geregelt über
+`@media (hover: hover)`, nicht über die Bildschirmbreite: ein iPad im
+Querformat ist breit und hat trotzdem keinen Mauszeiger.
 
 Mehrere Bilder gehen über **einen** Aufruf (`POST /api/files/delete`) statt
 über viele einzelne — sonst würde `data.json` je Bild neu geschrieben.

@@ -74,11 +74,23 @@
         #confirm-modal {
             display: none; /* Initially hidden */
         }
-        /* Ohne Mauszeiger gibt es kein Hover — dort muss das Symbol stehen. */
+        /* Ohne Mauszeiger gibt es kein Hover — dort müssen die Symbole stehen. */
         @media (hover: none) {
             .action-icon {
                 display: block !important;
             }
+        }
+
+        /**
+         * Der Favoritenstern: gesetzt bleibt er immer sichtbar, ungesetzt
+         * erscheint er nur unter dem Mauszeiger. Auf Touch-Geräten gibt es
+         * kein Hover — dort steht er dauerhaft, sonst führte kein Weg zu ihm.
+         */
+        .favorite-icon { opacity: 1; transition: opacity 0.12s; }
+        @media (hover: hover) {
+            .favorite-icon:not(.is-favorite) { opacity: 0; }
+            .thumbnail:hover .favorite-icon:not(.is-favorite) { opacity: 1; }
+            .favorite-icon:focus-visible { opacity: 1; }
         }
     </style>
 </head>
@@ -292,6 +304,7 @@
          * Markierung bleibt er dezent, damit er das Bild nicht überlagert.
          */
         stern.className = 'favorite-icon absolute bottom-1 left-1 h-7 w-7 rounded-full bg-white/85 shadow text-base leading-none';
+        stern.type = 'button';
         zeichneStern(stern, Boolean(image.favorite));
         stern.addEventListener('click', async (event) => {
             event.preventDefault();
@@ -370,9 +383,8 @@
         stern.title = gesetzt ? 'Favorit aufheben' : 'Als Favorit markieren';
         stern.classList.toggle('text-amber-500', gesetzt);
         stern.classList.toggle('text-gray-500', !gesetzt);
-        // Ungesetzt blasser, aber sichtbar — auf Touch führt sonst kein Weg hin.
-        stern.classList.toggle('opacity-60', !gesetzt);
-        stern.classList.toggle('hover:opacity-100', !gesetzt);
+        // Ob er zu sehen ist, entscheidet das CSS oben — hier nur der Zustand.
+        stern.classList.toggle('is-favorite', gesetzt);
     };
 
     const favoritUmschalten = async (image, stern) => {
