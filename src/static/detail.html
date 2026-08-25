@@ -68,10 +68,18 @@
         <a id="anchor"><img id="image" alt="Generiertes Bild" class="w-512 mx-auto"></a>
     </div>
 
+    <!-- Bl&auml;ttern -->
+    <div class="flex items-center justify-between mb-4">
+        <a id="prev-image" class="hidden text-blue-600 hover:underline">&larr; neueres Bild</a>
+        <div class="flex-1"></div>
+        <a id="next-image" class="hidden text-blue-600 hover:underline">&auml;lteres Bild &rarr;</a>
+    </div>
+
     <div class="flex flex-wrap justify-center gap-3 mb-6">
         <a id="use-as-reference"
            class="bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700">Als Referenz nutzen</a>
         <a id="download-link" class="bg-gray-200 text-gray-800 px-5 py-2 rounded-lg hover:bg-gray-300">Herunterladen</a>
+        <button id="delete-image" class="bg-white border border-red-300 text-red-700 px-5 py-2 rounded-lg hover:bg-red-50">L&ouml;schen</button>
     </div>
 
     <div id="msg-container" class="hidden w-full flex items-center justify-center">
@@ -82,7 +90,10 @@
     <div class="space-y-4 text-gray-700">
         <!-- Prompt -->
         <div>
-            <h3 class="font-semibold text-lg">Prompt:</h3>
+            <div class="flex items-center gap-3">
+                <h3 class="font-semibold text-lg">Prompt:</h3>
+                <button id="copy-prompt" class="text-sm text-blue-600 hover:underline">kopieren</button>
+            </div>
             <p id="prompt">...</p>
         </div>
 
@@ -201,6 +212,32 @@
         document.getElementById('reference-block').classList.remove('hidden');
     };
 
+    /**
+     * Nachbarn über denselben Endpunkt wie die Übersicht: `cursor` liefert das,
+     * was *nach* einem Namen kommt — dreht man die Sortierung um, ist das der
+     * Vorgänger. So bleibt die Reihenfolge dieselbe wie im Raster.
+     */
+    const zeigeNachbarn = async (fileName) => {
+        const hole = async (sorting) => {
+            try {
+                const params = new URLSearchParams({ limit: '1', sorting, cursor: fileName });
+                const response = await fetch(`/api/images?${params}`);
+                if (!response.ok) return null;
+                return (await response.json()).images[0] ?? null;
+            } catch {
+                return null;
+            }
+        };
+        const [aelter, neuer] = await Promise.all([hole('DESC'), hole('ASC')]);
+        for (const [element, bild] of [['next-image', aelter], ['prev-image', neuer]]) {
+            if (!bild) continue;
+            const a = document.getElementById(element);
+            a.href = `/detail.html?filename=${encodeURIComponent(bild.fileName)}`;
+            a.title = bild.prompt || bild.fileName;
+            a.classList.remove('hidden');
+        }
+    };
+
     document.addEventListener('DOMContentLoaded', async () => {
         const urlParams = new URLSearchParams(window.location.search);
         const filename = urlParams.get('filename');
@@ -231,6 +268,29 @@
 
             zeigeReferenzbilder(image.referenceImages);
             zeigeEinstellungen(image);
+            zeigeNachbarn(image.filename ?? filename);
+
+            document.getElementById('copy-prompt').addEventListener('click', async () => {
+                try {
+                    await navigator.clipboard.writeText(image.prompt ?? '');
+                    showToast('Prompt kopiert');
+                } catch {
+                    // In unsicheren Kontexten (http) gibt es keine Zwischenablage.
+                    showToast('Kopieren ging nicht — bitte von Hand markieren');
+                }
+            });
+
+            document.getElementById('delete-image').addEventListener('click', async () => {
+                if (!window.confirm('Dieses Bild wirklich löschen? Das lässt sich nicht rückgängig machen.')) return;
+                try {
+                    const response = await fetch(`/api/files/${encodeURIComponent(image.filename)}`, { method: 'DELETE' });
+                    if (!response.ok) throw new Error(`Fehler ${response.status}`);
+                    // Zurück in die Übersicht — hier gibt es nichts mehr zu sehen.
+                    window.location.href = '/overview.html';
+                } catch (error) {
+                    showToast(`Löschen fehlgeschlagen: ${error.message}`);
+                }
+            });
         }
         spinnerOverlay.classList.add('hidden')
     });

@@ -138,6 +138,16 @@ const clearReferences = (entries: DataImage[]) => {
     }
 };
 
+/** Ändert ein Feld eines Eintrags. Gibt zurück, ob es den Eintrag gab. */
+export const updateEntry = (fileName: string, patch: Partial<DataImage>): boolean => {
+    const store = getDataStore();
+    const entry = index.get(fileName);
+    if (!entry) return false;
+    Object.assign(entry, patch);
+    saveDataStore(store);
+    return true;
+};
+
 /**
  * Entfernt genau einen Eintrag samt seiner Vorschaubilder und der Vorlagen,
  * die sonst niemand mehr braucht.

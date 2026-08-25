@@ -74,6 +74,9 @@ Alles unter `/api` verlangt eine Anmeldung und antwortet bei fehlender mit
 | `GET /api/files/get/:name` | Metadaten |
 | `GET /api/files/download/:name` | Datei |
 | `DELETE /api/files/:name` | löschen |
+| `POST /api/files/delete` | mehrere auf einmal löschen |
+| `PUT /api/files/:name/favorite` | markieren / Markierung aufheben |
+| `POST /api/exchange/selection` | eine Auswahl als ZIP |
 | `GET /api/credits` | Guthaben der Anbieter (`?refresh=1` umgeht den 60-s-Cache) |
 | `GET /api/jobs/:id` | Stand eines Auftrags (siehe unten) |
 | `GET /api/files/reference/:name` | mitgegebenes Referenzbild |
@@ -173,6 +176,20 @@ für Suche und Filter:
 
 `GET /api/thumbnails/all` liefert weiterhin die volle Liste der Dateinamen und
 bleibt für ältere Skripte bestehen — neue Aufrufe gehören an `/api/images`.
+
+### Übersicht
+
+Suche über die Prompts, Filter nach Modell, Verhältnis und Favoriten,
+Nachladen beim Scrollen statt aller Bilder auf einmal. Im Auswahlmodus wählt
+ein Klick auf die Kachel aus, Umschalt-Klick eine ganze Spanne; die Auswahl
+lässt sich als ZIP laden oder in einem Zug löschen.
+
+Mehrere Bilder gehen über **einen** Aufruf (`POST /api/files/delete`) statt
+über viele einzelne — sonst würde `data.json` je Bild neu geschrieben.
+
+Gelöschte Kacheln verschwinden **erst nach der Antwort des Servers**. Vorher
+wurde die Kachel unbedingt entfernt und ein Fehler verschluckt: schlug das
+Löschen fehl, war das Bild optisch weg und nach dem Neuladen wieder da.
 
 ### Speicherschicht
 

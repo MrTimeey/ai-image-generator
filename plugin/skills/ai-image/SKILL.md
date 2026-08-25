@@ -177,6 +177,25 @@ aig.py get <dateiname>
 aig.py download <dateiname> --out .
 ```
 
+**Ein bestimmtes Bild wiederfinden** — der Bestand ist vierstellig, Blättern
+lohnt nicht:
+
+```bash
+aig.py list -q leuchtturm                 # Volltext im Prompt
+aig.py list --model flux-2-pro --limit 50 # nur ein Modell
+aig.py list --ratio 16:9 --favorite       # kombinierbar
+```
+
+**Aufräumen.** `rm` nimmt mehrere Namen auf einmal:
+
+```bash
+aig.py rm bild-a.png bild-b.png bild-c.png
+```
+
+Das ist **endgültig** — es gibt keinen Papierkorb. Vor einem Sammellöschen
+also erst mit `list` ansehen, was die Auswahl trifft, und im Zweifel
+nachfragen. Markieren geht mit `aig.py favorite <datei>` (bzw. `--off`).
+
 `--json` gibt bei jedem Befehl die Rohantwort aus — für eigene Skripte.
 
 ## Direkt per curl

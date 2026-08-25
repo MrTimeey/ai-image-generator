@@ -59,6 +59,42 @@ exchange.get('/all', async (req, res) => {
     archive.pipe(output);
 });
 
+/**
+ * Nur die ausgewählten Bilder als ZIP — im Unterschied zu `/all`, das den
+ * ganzen Bestand samt `data.json` für einen Umzug packt. Hier geht es darum,
+ * eine Handvoll Bilder mitzunehmen, also ohne Metadatendatei.
+ */
+exchange.post('/selection', async (req, res) => {
+    const namen: unknown = req.body?.fileNames;
+    if (!Array.isArray(namen) || namen.length === 0 || namen.length > 500) {
+        return res.status(400).send({ error: 'invalid_request', message: 'Feld `fileNames` fehlt, ist leer oder zu lang.' });
+    }
+
+    const dateien = namen
+        .map(name => (typeof name === 'string' ? safeImageName(name) : null))
+        .filter((name): name is string => Boolean(name))
+        .map(name => ({ name, pfad: path.join(imageDir, name) }))
+        .filter(datei => fs.existsSync(datei.pfad));
+
+    if (dateien.length === 0) {
+        return res.status(404).send({ error: 'not_found', message: 'Keines der Bilder existiert.' });
+    }
+
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="auswahl-${dateien.length}.zip"`);
+
+    const archive = archiver('zip', { zlib: { level: 9 } });
+    archive.on('error', error => {
+        console.error('Auswahl-Export fehlgeschlagen:', error);
+        res.destroy();
+    });
+    // Direkt in die Antwort statt über eine temporäre Datei: bei einer Auswahl
+    // ist das Archiv klein genug, und es bleibt nichts liegen.
+    archive.pipe(res);
+    for (const datei of dateien) archive.file(datei.pfad, { name: datei.name });
+    await archive.finalize();
+});
+
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
         const uploadPath = path.join(imageDir, 'uploads');

@@ -20,41 +20,6 @@ async function getDetailInformation(imageName) {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-async function getAllThumbnails(sorting) {
-    try {
-        const response = await fetch(`/api/thumbnails/all?sorting=${sorting}`, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        });
-
-        if (!response.ok) {
-            console.error('That image could not be generated');
-            return []
-        }
-        return await response.json();
-    } catch (error) {
-        console.error('That image could not be generated', error);
-        return [];
-    }
-}
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-async function deleteImage(imageName) {
-    try {
-        await fetch(`/api/files/${imageName}`, {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        });
-    } catch (error) {
-        console.error('Failed deletion')
-    }
-}
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function getExportZip() {
     try {
         const response = await fetch(`/api/exchange/all`, {

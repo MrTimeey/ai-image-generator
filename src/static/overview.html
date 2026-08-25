@@ -117,15 +117,44 @@
 
 <main class="max-w-6xl mx-auto py-6 px-4">
 
+    <!-- Suche und Filter -->
+    <div class="bg-white rounded-lg shadow p-4 mb-4">
+        <div class="flex flex-wrap gap-3 items-end">
+            <div class="flex-1 min-w-[14rem]">
+                <label for="search" class="block text-sm font-medium text-gray-700 mb-1">Suche</label>
+                <input id="search" type="search" placeholder="im Prompt suchen&hellip;"
+                       class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600">
+            </div>
+            <div>
+                <label for="filter-model" class="block text-sm font-medium text-gray-700 mb-1">Modell</label>
+                <select id="filter-model" class="p-2 border border-gray-300 rounded-lg"><option value="">alle</option></select>
+            </div>
+            <div>
+                <label for="filter-ratio" class="block text-sm font-medium text-gray-700 mb-1">Verh&auml;ltnis</label>
+                <select id="filter-ratio" class="p-2 border border-gray-300 rounded-lg"><option value="">alle</option></select>
+            </div>
+            <label class="flex items-center gap-2 text-sm text-gray-700 pb-2">
+                <input type="checkbox" id="filter-favorite" class="rounded border-gray-300">
+                nur Favoriten
+            </label>
+            <button id="filter-reset" class="hidden text-sm text-blue-600 hover:underline pb-2">zur&uuml;cksetzen</button>
+        </div>
+    </div>
+
+    <!-- Werkzeugleiste -->
     <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
-        <button id="sort-toggle" class="flex items-center gap-1 text-blue-600 hover:underline">
-            <span id="sort-label"></span>
-            <svg id="sort-icon" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd" d="M5.293 9.293a1 1 0 011.414 0L10 12.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
-            </svg>
-        </button>
+        <div class="flex items-center gap-4">
+            <button id="sort-toggle" class="flex items-center gap-1 text-blue-600 hover:underline">
+                <span id="sort-label"></span>
+                <svg id="sort-icon" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M5.293 9.293a1 1 0 011.414 0L10 12.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                </svg>
+            </button>
+            <span id="result-count" class="text-sm text-gray-600"></span>
+        </div>
 
         <div class="flex items-center gap-2">
+            <button id="select-mode" class="text-sm text-blue-600 hover:underline">Ausw&auml;hlen</button>
             <span class="text-sm text-gray-600">Raster</span>
             <div id="tile-size" class="inline-flex rounded-lg border border-gray-300 overflow-hidden bg-white">
                 <button data-tile="90" class="px-3 py-1 text-sm hover:bg-gray-100" title="viele kleine Bilder">S</button>
@@ -135,107 +164,57 @@
         </div>
     </div>
 
-    <div id="thumbnail-grid">
-        <div class="dummy-entry thumbnail"></div>
-        <div class="dummy-entry thumbnail">
-        </div>
-        <div class="dummy-entry thumbnail">
-        </div>
-        <div class="dummy-entry thumbnail">
-        </div>
-        <div class="dummy-entry thumbnail">
-        </div>
-        <div class="dummy-entry thumbnail">
-        </div>
-        <div class="dummy-entry thumbnail">
-        </div>
-        <div class="dummy-entry thumbnail">
-        </div>
-        <div class="dummy-entry thumbnail">
-        </div>
-        <div class="dummy-entry thumbnail">
-        </div>
+    <!-- Auswahlleiste, bleibt beim Scrollen sichtbar -->
+    <div id="selection-bar" class="hidden sticky top-0 z-30 bg-blue-600 text-white rounded-lg px-4 py-3 mb-4 flex flex-wrap items-center gap-3">
+        <span id="selection-count" class="font-medium"></span>
+        <button id="select-page" class="text-sm underline hover:no-underline">alle auf dieser Seite</button>
+        <button id="select-none" class="text-sm underline hover:no-underline">Auswahl aufheben</button>
+        <div class="flex-1"></div>
+        <button id="selection-download" class="bg-white text-blue-700 px-3 py-1 rounded text-sm hover:bg-blue-50">Herunterladen</button>
+        <button id="selection-delete" class="bg-red-600 px-3 py-1 rounded text-sm hover:bg-red-700">L&ouml;schen</button>
+        <button id="select-exit" class="text-sm underline hover:no-underline">Fertig</button>
     </div>
+
+    <div id="thumbnail-grid"></div>
+
+    <p id="empty-hint" class="hidden text-center text-gray-500 py-10">Keine Bilder gefunden.</p>
+    <div id="load-more" class="h-16 flex items-center justify-center text-sm text-gray-500"></div>
 </main>
 
 <!-- Bestätigungsdialog -->
 <div id="confirm-modal" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75 z-50">
     <div class="bg-white rounded-lg p-6 w-96">
-        <h2 class="text-xl font-bold mb-4">Confirmation Required</h2>
-        <p>Are you sure you want to delete this item?</p>
+        <h2 class="text-xl font-bold mb-4">Wirklich löschen?</h2>
+        <p id="confirm-text">Dieses Bild wirklich löschen?</p>
         <div class="flex justify-end mt-4">
-            <button id="cancel-delete" class="bg-gray-300 text-gray-800 px-4 py-2 rounded mr-2">Cancel</button>
-            <button id="confirm-delete" class="bg-red-600 text-white px-4 py-2 rounded">Delete</button>
+            <button id="cancel-delete" class="bg-gray-300 text-gray-800 px-4 py-2 rounded mr-2">Abbrechen</button>
+            <button id="confirm-delete" class="bg-red-600 text-white px-4 py-2 rounded">Löschen</button>
         </div>
     </div>
 </div>
 
 <script>
-    const confirmModal = document.getElementById('confirm-modal');
-    let currentImage = null;
-    let currentThumbnailDiv = null;
-
-    const createImage = (imageName) => {
-        const imageElement = document.createElement('img');
-        imageElement.src = `/thumbnails/${imageName}`;
-        imageElement.title = imageName;
-        imageElement.alt = imageName;
-        // Der Bilderordner hat inzwischen ueber 700 Eintraege — ohne das hier
-        // laedt das Handy sie alle auf einmal.
-        imageElement.loading = 'lazy';
-        imageElement.decoding = 'async';
-
-        const anchorElement = document.createElement('a');
-        anchorElement.href = `/detail.html?filename=${imageName}`;
-        anchorElement.appendChild(imageElement);
-
-        const deleteIcon = document.createElement('div');
-        deleteIcon.className = 'action-icon hidden group-hover:block absolute top-1 right-1 bg-white/90 rounded-full p-0.5 cursor-pointer shadow';
-        deleteIcon.title = 'Bild löschen';
-        deleteIcon.innerHTML = `
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-red-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-        `;
-
-
-        const divElement = document.createElement('div');
-        divElement.className = 'thumbnail relative group'; // 'group' is added here
-        divElement.appendChild(anchorElement);
-        divElement.appendChild(deleteIcon);
-
-        deleteIcon.addEventListener('click', (event) => {
-            event.stopPropagation();
-            confirmModal.style.display = 'flex'
-            currentImage = imageName;
-            currentThumbnailDiv = divElement
-        });
-        return divElement;
-    };
-
-    document.getElementById('confirm-delete').addEventListener('click', () => {
-        if (currentImage) {
-            deleteImage(currentImage)
-            currentThumbnailDiv.remove();
-            currentImage = null;
-            currentThumbnailDiv = null;
-        }
-        confirmModal.style.display = 'none';
-    });
-
-    document.getElementById('cancel-delete').addEventListener('click', () => {
-        confirmModal.style.display = 'none';
-        currentImage = null;
-        currentThumbnailDiv = null;
-    });
-
+    const grid = document.getElementById('thumbnail-grid');
     const spinnerOverlay = document.getElementById('spinner-overlay');
-    const thumbnailGrid = document.getElementById('thumbnail-grid');
+    const confirmModal = document.getElementById('confirm-modal');
+    const ladeBereich = document.getElementById('load-more');
+    const leerHinweis = document.getElementById('empty-hint');
+    const trefferAnzeige = document.getElementById('result-count');
+    const auswahlLeiste = document.getElementById('selection-bar');
+    const auswahlAnzahl = document.getElementById('selection-count');
 
-    /**
-     * Kachelgroesse. Die Wahl gehoert dem Geraet — auf dem Handy will man
-     * andere Kacheln als am Monitor —, deshalb localStorage statt der URL.
-     */
+    /** Alles, was die aktuelle Ansicht ausmacht. */
+    let abfrage = { q: '', model: '', ratio: '', favorite: false, sorting: 'DESC' };
+    let cursor = null;
+    let ladend = false;
+    let auswahlModus = false;
+    const ausgewaehlt = new Set();
+    /** Reihenfolge im Raster — für die Bereichsauswahl mit Umschalt. */
+    let reihenfolge = [];
+    let letzteKachel = null;
+
+    // --- Kachelgröße (unverändert) -----------------------------------------
+
     const TILE_KEY = 'aig.tileSize';
     const DEFAULT_TILE = '150';
 
@@ -271,35 +250,379 @@
         }
     });
 
-    function updateUrl(newSorting) {
-        const currentUrl = window.location.href;
-        const url = new URL(currentUrl);
-        const params = new URLSearchParams(url.search);
-        params.set('sorting', newSorting);
-        const newUrl = `${url.origin}${url.pathname}?${params.toString()}`;
-        window.history.replaceState(null, '', newUrl);
-    }
-    spinnerOverlay.classList.add('hidden')
+    // --- Kacheln ------------------------------------------------------------
 
-    document.addEventListener('DOMContentLoaded', async () => {
-        const urlParams = new URLSearchParams(window.location.search);
-        let sortingParam = urlParams.get('sorting');
-        if (sortingParam !== 'ASC' && sortingParam !== 'DESC') {
-            updateUrl('DESC')
-            sortingParam = 'DESC'
-        }
-        const ascending = sortingParam === 'ASC';
-        document.getElementById('sort-label').textContent = ascending ? 'Älteste zuerst' : 'Neueste zuerst';
-        document.getElementById('sort-icon').style.transform = ascending ? 'rotate(180deg)' : '';
-        document.getElementById('sort-toggle').addEventListener('click', () => {
-            window.location.href = `/overview.html?sorting=${ascending ? 'DESC' : 'ASC'}`;
+    const kachel = (image) => {
+        const div = document.createElement('div');
+        div.className = 'thumbnail relative group';
+        div.dataset.name = image.fileName;
+
+        const img = document.createElement('img');
+        img.src = `/thumbnails/${image.fileName}`;
+        img.alt = image.prompt || image.fileName;
+        // Der Prompt als Tooltip — beim Suchen will man sehen, was man gefunden hat.
+        img.title = image.prompt || image.fileName;
+        img.loading = 'lazy';
+        img.decoding = 'async';
+
+        const link = document.createElement('a');
+        link.href = `/detail.html?filename=${encodeURIComponent(image.fileName)}`;
+        link.appendChild(img);
+        div.appendChild(link);
+
+        // Favoritenstern
+        const stern = document.createElement('button');
+        stern.className = 'favorite-icon absolute bottom-1 left-1 h-6 w-6 rounded-full bg-white/90 shadow text-sm leading-none';
+        stern.textContent = image.favorite ? '★' : '☆';
+        stern.title = image.favorite ? 'Favorit aufheben' : 'Als Favorit markieren';
+        stern.classList.toggle('text-amber-500', Boolean(image.favorite));
+        stern.classList.toggle('text-gray-400', !image.favorite);
+        stern.classList.toggle('opacity-0', !image.favorite);
+        stern.classList.toggle('group-hover:opacity-100', !image.favorite);
+        stern.addEventListener('click', async (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            await favoritUmschalten(image, stern);
         });
-        const images = await getAllThumbnails(sortingParam);
-        Array.from(document.getElementsByClassName('dummy-entry')).forEach(e => e.remove())
-        spinnerOverlay.classList.add('hidden')
-        images.map(createImage).forEach(i => thumbnailGrid.appendChild(i))
+        div.appendChild(stern);
+
+        // Löschen einzeln
+        const loeschen = document.createElement('div');
+        loeschen.className = 'action-icon hidden group-hover:block absolute top-1 right-1 bg-white/90 rounded-full p-0.5 cursor-pointer shadow';
+        loeschen.title = 'Bild löschen';
+        loeschen.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-red-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>`;
+        loeschen.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            frageLoeschen([image.fileName]);
+        });
+        div.appendChild(loeschen);
+
+        const auswahlHaken = document.createElement('div');
+        auswahlHaken.className = 'select-mark hidden absolute inset-0 items-center justify-center bg-blue-600/40';
+        auswahlHaken.innerHTML = '<span class="bg-white text-blue-700 rounded-full h-7 w-7 flex items-center justify-center font-bold">✓</span>';
+        div.appendChild(auswahlHaken);
+
+        div.addEventListener('click', (event) => {
+            if (!auswahlModus) return;
+            // Im Auswahlmodus wählt der Klick aus, statt zu öffnen.
+            event.preventDefault();
+            waehle(div, event.shiftKey);
+        });
+
+        return div;
+    };
+
+    const favoritUmschalten = async (image, stern) => {
+        const neu = !image.favorite;
+        try {
+            const response = await fetch(`/api/files/${encodeURIComponent(image.fileName)}/favorite`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ favorite: neu }),
+            });
+            if (!response.ok) {
+                const daten = await response.json().catch(() => ({}));
+                showToast(daten.message ?? 'Markieren fehlgeschlagen');
+                return;
+            }
+            image.favorite = neu;
+            stern.textContent = neu ? '★' : '☆';
+            stern.classList.toggle('text-amber-500', neu);
+            stern.classList.toggle('text-gray-400', !neu);
+            stern.classList.toggle('opacity-0', !neu);
+            stern.classList.toggle('group-hover:opacity-100', !neu);
+        } catch (error) {
+            showToast(`Markieren fehlgeschlagen: ${error.message}`);
+        }
+    };
+
+    // --- Laden --------------------------------------------------------------
+
+    const abfrageParameter = () => {
+        const params = new URLSearchParams({ limit: '100', sorting: abfrage.sorting });
+        if (abfrage.q) params.set('q', abfrage.q);
+        if (abfrage.model) params.set('model', abfrage.model);
+        if (abfrage.ratio) params.set('ratio', abfrage.ratio);
+        if (abfrage.favorite) params.set('favorite', 'true');
+        if (cursor) params.set('cursor', cursor);
+        return params;
+    };
+
+    const ladeSeite = async () => {
+        if (ladend) return;
+        ladend = true;
+        ladeBereich.textContent = 'lädt…';
+        try {
+            const response = await fetch(`/api/images?${abfrageParameter()}`);
+            if (response.status === 401) {
+                window.location.href = `/auth/login?next=${encodeURIComponent(window.location.pathname)}`;
+                return;
+            }
+            if (!response.ok) throw new Error(`Fehler ${response.status}`);
+            const daten = await response.json();
+
+            for (const image of daten.images) {
+                reihenfolge.push(image.fileName);
+                grid.appendChild(kachel(image));
+            }
+            cursor = daten.nextCursor;
+            trefferAnzeige.textContent = `${daten.total} Bild${daten.total === 1 ? '' : 'er'}`;
+            leerHinweis.classList.toggle('hidden', daten.total > 0);
+            // Ohne Cursor ist der Bestand durch — dann verschwindet der Hinweis.
+            ladeBereich.textContent = cursor ? 'mehr laden…' : '';
+        } catch (error) {
+            ladeBereich.textContent = `Nicht ladbar: ${error.message}`;
+        } finally {
+            ladend = false;
+            spinnerOverlay.classList.add('hidden');
+        }
+    };
+
+    const neuLaden = () => {
+        cursor = null;
+        reihenfolge = [];
+        ausgewaehlt.clear();
+        zeigeAuswahl();
+        grid.replaceChildren();
+        ladeSeite();
+    };
+
+    /**
+     * Nachladen, sobald der Bereich unter dem Raster in Sicht kommt. Ein
+     * Beobachter statt eines Scroll-Handlers: der feuert nur, wenn es nötig ist.
+     */
+    new IntersectionObserver((eintraege) => {
+        if (eintraege.some(e => e.isIntersecting) && cursor && !ladend) ladeSeite();
+    }, { rootMargin: '400px' }).observe(ladeBereich);
+
+    // --- Suche und Filter ---------------------------------------------------
+
+    let tippPause;
+    document.getElementById('search').addEventListener('input', (event) => {
+        // Entprellt: sonst löst jeder Tastendruck eine Abfrage aus.
+        clearTimeout(tippPause);
+        tippPause = setTimeout(() => {
+            abfrage.q = event.target.value.trim();
+            zeigeZuruecksetzen();
+            neuLaden();
+        }, 300);
     });
 
+    for (const [id, feld] of [['filter-model', 'model'], ['filter-ratio', 'ratio']]) {
+        document.getElementById(id).addEventListener('change', (event) => {
+            abfrage[feld] = event.target.value;
+            zeigeZuruecksetzen();
+            neuLaden();
+        });
+    }
+
+    document.getElementById('filter-favorite').addEventListener('change', (event) => {
+        abfrage.favorite = event.target.checked;
+        zeigeZuruecksetzen();
+        neuLaden();
+    });
+
+    const zeigeZuruecksetzen = () => {
+        const aktiv = Boolean(abfrage.q || abfrage.model || abfrage.ratio || abfrage.favorite);
+        document.getElementById('filter-reset').classList.toggle('hidden', !aktiv);
+    };
+
+    document.getElementById('filter-reset').addEventListener('click', () => {
+        abfrage = { ...abfrage, q: '', model: '', ratio: '', favorite: false };
+        document.getElementById('search').value = '';
+        document.getElementById('filter-model').value = '';
+        document.getElementById('filter-ratio').value = '';
+        document.getElementById('filter-favorite').checked = false;
+        zeigeZuruecksetzen();
+        neuLaden();
+    });
+
+    document.getElementById('sort-toggle').addEventListener('click', () => {
+        abfrage.sorting = abfrage.sorting === 'DESC' ? 'ASC' : 'DESC';
+        zeigeSortierung();
+        neuLaden();
+    });
+
+    const zeigeSortierung = () => {
+        const aufsteigend = abfrage.sorting === 'ASC';
+        document.getElementById('sort-label').textContent = aufsteigend ? 'Älteste zuerst' : 'Neueste zuerst';
+        document.getElementById('sort-icon').style.transform = aufsteigend ? 'rotate(180deg)' : '';
+    };
+
+    // --- Mehrfachauswahl ----------------------------------------------------
+
+    const waehle = (div, mitBereich) => {
+        const name = div.dataset.name;
+        if (mitBereich && letzteKachel) {
+            // Umschalt-Klick wählt die Spanne dazwischen — wie im Dateimanager.
+            const von = reihenfolge.indexOf(letzteKachel);
+            const bis = reihenfolge.indexOf(name);
+            if (von !== -1 && bis !== -1) {
+                for (const n of reihenfolge.slice(Math.min(von, bis), Math.max(von, bis) + 1)) ausgewaehlt.add(n);
+                zeigeAuswahl();
+                return;
+            }
+        }
+        if (ausgewaehlt.has(name)) ausgewaehlt.delete(name);
+        else ausgewaehlt.add(name);
+        letzteKachel = name;
+        zeigeAuswahl();
+    };
+
+    const zeigeAuswahl = () => {
+        for (const div of grid.children) {
+            const gewaehlt = ausgewaehlt.has(div.dataset.name);
+            div.querySelector('.select-mark')?.classList.toggle('hidden', !gewaehlt);
+            div.querySelector('.select-mark')?.classList.toggle('flex', gewaehlt);
+        }
+        auswahlAnzahl.textContent = `${ausgewaehlt.size} ausgewählt`;
+        for (const id of ['selection-download', 'selection-delete']) {
+            document.getElementById(id).disabled = ausgewaehlt.size === 0;
+            document.getElementById(id).classList.toggle('opacity-50', ausgewaehlt.size === 0);
+        }
+    };
+
+    const setzeAuswahlModus = (an) => {
+        auswahlModus = an;
+        auswahlLeiste.classList.toggle('hidden', !an);
+        grid.classList.toggle('cursor-pointer', an);
+        document.getElementById('select-mode').textContent = an ? 'Auswahl beenden' : 'Auswählen';
+        if (!an) {
+            ausgewaehlt.clear();
+            letzteKachel = null;
+        }
+        zeigeAuswahl();
+    };
+
+    document.getElementById('select-mode').addEventListener('click', () => setzeAuswahlModus(!auswahlModus));
+    document.getElementById('select-exit').addEventListener('click', () => setzeAuswahlModus(false));
+    document.getElementById('select-none').addEventListener('click', () => {
+        ausgewaehlt.clear();
+        zeigeAuswahl();
+    });
+    document.getElementById('select-page').addEventListener('click', () => {
+        for (const name of reihenfolge) ausgewaehlt.add(name);
+        zeigeAuswahl();
+    });
+
+    document.getElementById('selection-download').addEventListener('click', async () => {
+        if (ausgewaehlt.size === 0) return;
+        showToast(`${ausgewaehlt.size} Bild(er) werden gepackt…`);
+        try {
+            const response = await fetch('/api/exchange/selection', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fileNames: [...ausgewaehlt] }),
+            });
+            if (!response.ok) throw new Error(`Fehler ${response.status}`);
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `auswahl-${ausgewaehlt.size}.zip`;
+            a.click();
+            URL.revokeObjectURL(url);
+        } catch (error) {
+            showToast(`Herunterladen fehlgeschlagen: ${error.message}`);
+        }
+    });
+
+    document.getElementById('selection-delete').addEventListener('click', () => {
+        if (ausgewaehlt.size > 0) frageLoeschen([...ausgewaehlt]);
+    });
+
+    // --- Löschen ------------------------------------------------------------
+
+    let zuLoeschen = [];
+
+    const frageLoeschen = (namen) => {
+        zuLoeschen = namen;
+        document.getElementById('confirm-text').textContent =
+            namen.length === 1
+                ? 'Dieses Bild wirklich löschen? Das lässt sich nicht rückgängig machen.'
+                : `${namen.length} Bilder wirklich löschen? Das lässt sich nicht rückgängig machen.`;
+        confirmModal.style.display = 'flex';
+    };
+
+    document.getElementById('cancel-delete').addEventListener('click', () => {
+        confirmModal.style.display = 'none';
+        zuLoeschen = [];
+    });
+
+    document.getElementById('confirm-delete').addEventListener('click', async () => {
+        confirmModal.style.display = 'none';
+        if (zuLoeschen.length === 0) return;
+        const namen = zuLoeschen;
+        zuLoeschen = [];
+        try {
+            const response = await fetch('/api/files/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fileNames: namen }),
+            });
+            const daten = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(daten.message ?? `Fehler ${response.status}`);
+
+            /**
+             * **Erst nach der Antwort** aus dem Raster nehmen. Vorher wurde die
+             * Kachel unbedingt entfernt und der Fehler verschluckt — schlug das
+             * Löschen fehl, war das Bild optisch weg und nach dem Neuladen
+             * wieder da.
+             */
+            for (const name of namen) {
+                grid.querySelector(`[data-name="${CSS.escape(name)}"]`)?.remove();
+                ausgewaehlt.delete(name);
+                reihenfolge = reihenfolge.filter(n => n !== name);
+            }
+            zeigeAuswahl();
+            showToast(`${daten.deleted ?? namen.length} Bild(er) gelöscht`);
+        } catch (error) {
+            showToast(`Löschen fehlgeschlagen: ${error.message}`);
+        }
+    });
+
+    // --- Start --------------------------------------------------------------
+
+    const fuelleFilter = async () => {
+        try {
+            const registry = await (await fetch('/api/models')).json();
+            const modelle = document.getElementById('filter-model');
+            for (const model of registry.models) {
+                const option = document.createElement('option');
+                option.value = model.id;
+                option.textContent = model.label;
+                modelle.appendChild(option);
+            }
+            // Die Verhältnisse aller Modelle, ohne Doppelte.
+            const verhaeltnisse = [...new Set(registry.models.flatMap(m => m.ratios))];
+            const ratios = document.getElementById('filter-ratio');
+            for (const ratio of verhaeltnisse) {
+                const option = document.createElement('option');
+                option.value = ratio;
+                option.textContent = ratio;
+                ratios.appendChild(option);
+            }
+        } catch (error) {
+            console.debug('Filterwerte nicht ladbar', error);
+        }
+    };
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        const params = new URLSearchParams(window.location.search);
+        abfrage.sorting = params.get('sorting') === 'ASC' ? 'ASC' : 'DESC';
+        if (params.get('q')) {
+            abfrage.q = params.get('q');
+            document.getElementById('search').value = abfrage.q;
+        }
+        zeigeSortierung();
+        zeigeZuruecksetzen();
+        await fuelleFilter();
+        await ladeSeite();
+    });
 </script>
 
 </body>

@@ -1,7 +1,8 @@
 import express from 'express';
 import fs from 'fs-extra';
 import appConfig from '../common/appConfig';
-import { findEntry, removeEntry } from '../common/dataStore';
+import { findEntry, removeEntry, updateEntry } from '../common/dataStore';
+import { z } from 'zod';
 import sharp from 'sharp';
 import path from 'path';
 import { fromFormated, READ_FORMAT } from '../common/timeUtils';
@@ -93,6 +94,50 @@ files.get('/get/:imageName', async (req, res) => {
         // Der alte Feldname, damit bestehende Skripte weiterlesen koennen.
         languageModel: modelNameOf(entry),
     });
+});
+
+/** Markieren und wieder abwählen. */
+files.put('/:imageName/favorite', (req, res) => {
+    const name = safeImageName(req.params.imageName);
+    if (!name) {
+        return res.status(404).send({ error: 'not_found', message: 'Bild nicht gefunden.' });
+    }
+    const parsed = z.object({ favorite: z.boolean() }).safeParse(req.body);
+    if (!parsed.success) {
+        return res.status(400).send({ error: 'invalid_request', message: 'Feld `favorite` (true/false) fehlt.' });
+    }
+    if (!updateEntry(name, { favorite: parsed.data.favorite || undefined })) {
+        // Ein Bild ohne Eintrag lässt sich nicht markieren — das betrifft
+        // Dateien, die von Hand in den Ordner gelegt wurden.
+        return res.status(404).send({ error: 'no_entry', message: 'Zu diesem Bild gibt es keine Metadaten.' });
+    }
+    res.send({ fileName: name, favorite: parsed.data.favorite });
+});
+
+/**
+ * Mehrere auf einmal löschen. Bewusst ein eigener Endpunkt statt vieler
+ * einzelner Aufrufe: `data.json` wird sonst je Bild neu geschrieben, und bei
+ * fünfzig ausgewählten Bildern sind das fünfzig Schreibvorgänge.
+ */
+files.post('/delete', (req, res) => {
+    const parsed = z.object({ fileNames: z.array(z.string()).min(1).max(500) }).safeParse(req.body);
+    if (!parsed.success) {
+        return res.status(400).send({ error: 'invalid_request', message: 'Feld `fileNames` fehlt oder ist leer.' });
+    }
+
+    const geloescht: string[] = [];
+    const uebersprungen: string[] = [];
+    for (const raw of parsed.data.fileNames) {
+        const image = resolveImage(raw);
+        if (!image) {
+            uebersprungen.push(raw);
+            continue;
+        }
+        fs.rmSync(image.path);
+        removeEntry(image.name);
+        geloescht.push(image.name);
+    }
+    res.send({ deleted: geloescht.length, skipped: uebersprungen });
 });
 
 files.delete('/:imageName', async (req, res) => {

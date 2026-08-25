@@ -162,6 +162,14 @@ def cmd_list(args):
     cursor = None
     while len(gesammelt) < args.limit:
         params = {"limit": min(args.limit - len(gesammelt), 500), "sorting": "DESC"}
+        if args.query:
+            params["q"] = args.query
+        if args.model:
+            params["model"] = args.model
+        if args.ratio:
+            params["ratio"] = args.ratio
+        if args.favorite:
+            params["favorite"] = "true"
         if cursor:
             params["cursor"] = cursor
         data = request("GET", "/api/images?" + urlencode(params))
@@ -259,8 +267,20 @@ def cmd_download(args):
 
 
 def cmd_rm(args):
-    request("DELETE", f"/api/files/{args.name}")
-    print(f"{args.name} gelöscht")
+    """Löscht ein oder mehrere Bilder. Endgültig — es gibt keinen Papierkorb."""
+    if len(args.names) == 1:
+        request("DELETE", f"/api/files/{args.names[0]}")
+        print(f"{args.names[0]} gelöscht")
+        return
+    data = request("POST", "/api/files/delete", {"fileNames": args.names})
+    print(f"{data['deleted']} Bild(er) gelöscht")
+    for uebersprungen in data.get("skipped", []):
+        print(f"  nicht gefunden: {uebersprungen}", file=sys.stderr)
+
+
+def cmd_favorite(args):
+    request("PUT", f"/api/files/{args.name}/favorite", {"favorite": not args.off})
+    print(f"{args.name} {'nicht mehr markiert' if args.off else 'als Favorit markiert'}")
 
 
 def main():
@@ -285,6 +305,10 @@ def main():
 
     listing = sub.add_parser("list", help="vorhandene Bilder, neueste zuerst")
     listing.add_argument("--limit", type=int, default=20)
+    listing.add_argument("--query", "-q", help="Volltext im Prompt")
+    listing.add_argument("--model", help="nur dieses Modell")
+    listing.add_argument("--ratio", help="nur dieses Seitenverhältnis")
+    listing.add_argument("--favorite", action="store_true", help="nur Favoriten")
 
     get = sub.add_parser("get", help="Metadaten eines Bildes")
     get.add_argument("name")
@@ -295,12 +319,17 @@ def main():
     dl.add_argument("name")
     dl.add_argument("--out", default=".")
 
-    rm = sub.add_parser("rm", help="Bild löschen (endgültig)")
-    rm.add_argument("name")
+    rm = sub.add_parser("rm", help="Bild(er) löschen (endgültig)")
+    rm.add_argument("names", nargs="+", metavar="DATEINAME")
+
+    fav = sub.add_parser("favorite", help="Bild als Favorit markieren")
+    fav.add_argument("name")
+    fav.add_argument("--off", action="store_true", help="Markierung aufheben")
 
     args = parser.parse_args()
     {"models": cmd_models, "gen": cmd_gen, "list": cmd_list, "get": cmd_get,
-     "costs": cmd_costs, "download": cmd_download, "rm": cmd_rm}[args.command](args)
+     "costs": cmd_costs, "download": cmd_download, "rm": cmd_rm,
+     "favorite": cmd_favorite}[args.command](args)
 
 
 if __name__ == "__main__":
