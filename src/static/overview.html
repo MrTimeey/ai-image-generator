@@ -165,14 +165,28 @@
     </div>
 
     <!-- Auswahlleiste, bleibt beim Scrollen sichtbar -->
-    <div id="selection-bar" class="hidden sticky top-0 z-30 bg-blue-600 text-white rounded-lg px-4 py-3 mb-4 flex flex-wrap items-center gap-3">
+    <!--
+      Auf dem Handy kurze Beschriftungen: mit den langen brach die Leiste auf
+      drei Zeilen um und nahm 128 px vom Bildschirm — bei einer Leiste, die
+      beim Scrollen stehen bleibt, ist das zu viel.
+    -->
+    <div id="selection-bar" class="hidden sticky top-0 z-30 bg-blue-600 text-white rounded-lg px-3 py-2 mb-4 flex flex-wrap items-center gap-x-3 gap-y-2">
         <span id="selection-count" class="font-medium"></span>
-        <button id="select-page" class="text-sm underline hover:no-underline">alle auf dieser Seite</button>
-        <button id="select-none" class="text-sm underline hover:no-underline">Auswahl aufheben</button>
-        <div class="flex-1"></div>
-        <button id="selection-download" class="bg-white text-blue-700 px-3 py-1 rounded text-sm hover:bg-blue-50">Herunterladen</button>
+        <button id="select-page" class="text-sm underline hover:no-underline">
+            <span class="sm:hidden">alle</span><span class="hidden sm:inline">alle auf dieser Seite</span>
+        </button>
+        <button id="select-none" class="text-sm underline hover:no-underline">
+            <span class="sm:hidden">keine</span><span class="hidden sm:inline">Auswahl aufheben</span>
+        </button>
+        <!-- Der Abstandhalter schiebt die Aktionen nur dort nach rechts, wo Platz ist. -->
+        <div class="hidden sm:block flex-1"></div>
+        <button id="selection-download" class="bg-white text-blue-700 px-3 py-1 rounded text-sm hover:bg-blue-50">
+            <span class="sm:hidden">ZIP</span><span class="hidden sm:inline">Herunterladen</span>
+        </button>
         <button id="selection-delete" class="bg-red-600 px-3 py-1 rounded text-sm hover:bg-red-700">L&ouml;schen</button>
-        <button id="select-exit" class="text-sm underline hover:no-underline">Fertig</button>
+        <button id="select-exit" class="text-sm underline hover:no-underline" title="Auswahlmodus beenden">
+            <span class="sm:hidden">&times;</span><span class="hidden sm:inline">Fertig</span>
+        </button>
     </div>
 
     <div id="thumbnail-grid"></div>
@@ -272,13 +286,13 @@
 
         // Favoritenstern
         const stern = document.createElement('button');
-        stern.className = 'favorite-icon absolute bottom-1 left-1 h-6 w-6 rounded-full bg-white/90 shadow text-sm leading-none';
-        stern.textContent = image.favorite ? '★' : '☆';
-        stern.title = image.favorite ? 'Favorit aufheben' : 'Als Favorit markieren';
-        stern.classList.toggle('text-amber-500', Boolean(image.favorite));
-        stern.classList.toggle('text-gray-400', !image.favorite);
-        stern.classList.toggle('opacity-0', !image.favorite);
-        stern.classList.toggle('group-hover:opacity-100', !image.favorite);
+        /**
+         * **Immer sichtbar, nicht nur bei Hover.** Auf Touch-Geräten gibt es
+         * kein Hover — dort war der Stern vorher gar nicht erreichbar. Ohne
+         * Markierung bleibt er dezent, damit er das Bild nicht überlagert.
+         */
+        stern.className = 'favorite-icon absolute bottom-1 left-1 h-7 w-7 rounded-full bg-white/85 shadow text-base leading-none';
+        zeichneStern(stern, Boolean(image.favorite));
         stern.addEventListener('click', async (event) => {
             event.preventDefault();
             event.stopPropagation();
@@ -306,14 +320,59 @@
         auswahlHaken.innerHTML = '<span class="bg-white text-blue-700 rounded-full h-7 w-7 flex items-center justify-center font-bold">✓</span>';
         div.appendChild(auswahlHaken);
 
+        // Nach einem langen Drücken feuert der Browser noch ein `click` — ohne
+        // diese Sperre würde er die gerade gewählte Kachel sofort wieder
+        // abwählen, und das Auswählen ginge auf dem Handy überhaupt nicht.
+        let clickUnterdruecken = false;
+
         div.addEventListener('click', (event) => {
+            if (clickUnterdruecken) {
+                clickUnterdruecken = false;
+                event.preventDefault();
+                return;
+            }
             if (!auswahlModus) return;
             // Im Auswahlmodus wählt der Klick aus, statt zu öffnen.
             event.preventDefault();
             waehle(div, event.shiftKey);
         });
 
+        /**
+         * Langes Drücken startet die Auswahl — auf dem Handy gibt es weder
+         * Umschalt-Klick noch einen bequemen Weg zum Knopf in der Leiste.
+         * Das Muster kennt man aus jeder Galerie-App.
+         */
+        let druckTimer;
+        const starteDruck = () => {
+            druckTimer = setTimeout(() => {
+                if (!auswahlModus) setzeAuswahlModus(true);
+                waehle(div, false);
+                clickUnterdruecken = true;
+                // Kurze Rückmeldung, sonst wirkt es wie ein Fehlgriff.
+                if (navigator.vibrate) navigator.vibrate(15);
+            }, 450);
+        };
+        const beendeDruck = () => clearTimeout(druckTimer);
+        div.addEventListener('touchstart', starteDruck, { passive: true });
+        for (const ereignis of ['touchend', 'touchmove', 'touchcancel']) {
+            div.addEventListener(ereignis, beendeDruck, { passive: true });
+        }
+        // Das Kontextmenü würde das lange Drücken sonst überlagern.
+        div.addEventListener('contextmenu', (event) => {
+            if (auswahlModus) event.preventDefault();
+        });
+
         return div;
+    };
+
+    const zeichneStern = (stern, gesetzt) => {
+        stern.textContent = gesetzt ? '★' : '☆';
+        stern.title = gesetzt ? 'Favorit aufheben' : 'Als Favorit markieren';
+        stern.classList.toggle('text-amber-500', gesetzt);
+        stern.classList.toggle('text-gray-500', !gesetzt);
+        // Ungesetzt blasser, aber sichtbar — auf Touch führt sonst kein Weg hin.
+        stern.classList.toggle('opacity-60', !gesetzt);
+        stern.classList.toggle('hover:opacity-100', !gesetzt);
     };
 
     const favoritUmschalten = async (image, stern) => {
@@ -330,11 +389,7 @@
                 return;
             }
             image.favorite = neu;
-            stern.textContent = neu ? '★' : '☆';
-            stern.classList.toggle('text-amber-500', neu);
-            stern.classList.toggle('text-gray-400', !neu);
-            stern.classList.toggle('opacity-0', !neu);
-            stern.classList.toggle('group-hover:opacity-100', !neu);
+            zeichneStern(stern, neu);
         } catch (error) {
             showToast(`Markieren fehlgeschlagen: ${error.message}`);
         }

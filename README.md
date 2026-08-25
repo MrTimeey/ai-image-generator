@@ -184,6 +184,12 @@ Nachladen beim Scrollen statt aller Bilder auf einmal. Im Auswahlmodus wählt
 ein Klick auf die Kachel aus, Umschalt-Klick eine ganze Spanne; die Auswahl
 lässt sich als ZIP laden oder in einem Zug löschen.
 
+**Auf dem Handy** startet langes Drücken auf eine Kachel den Auswahlmodus —
+Umschalt-Klick gibt es dort nicht. Der `click`, den der Browser nach dem
+`touchend` nachschiebt, wird unterdrückt: sonst hätte er die eben gewählte
+Kachel sofort wieder abgewählt. Der Favoritenstern ist **immer** sichtbar
+(ungesetzt nur blasser), denn ohne Hover führte auf Touch kein Weg zu ihm.
+
 Mehrere Bilder gehen über **einen** Aufruf (`POST /api/files/delete`) statt
 über viele einzelne — sonst würde `data.json` je Bild neu geschrieben.
 

@@ -86,6 +86,7 @@ files.get('/get/:imageName', async (req, res) => {
         width: entry?.width,
         height: entry?.height,
         referenceImages: entry?.referenceImages ?? [],
+        favorite: entry?.favorite === true,
         seed: entry?.seed,
         quality: entry?.quality,
         outputFormat: entry?.outputFormat,

@@ -79,6 +79,9 @@
         <a id="use-as-reference"
            class="bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700">Als Referenz nutzen</a>
         <a id="download-link" class="bg-gray-200 text-gray-800 px-5 py-2 rounded-lg hover:bg-gray-300">Herunterladen</a>
+        <button id="favorite-toggle" class="bg-white border border-gray-300 px-5 py-2 rounded-lg hover:bg-gray-50">
+            <span id="favorite-icon">&#9734;</span> <span id="favorite-label">Favorit</span>
+        </button>
         <button id="delete-image" class="bg-white border border-red-300 text-red-700 px-5 py-2 rounded-lg hover:bg-red-50">L&ouml;schen</button>
     </div>
 
@@ -99,7 +102,10 @@
 
         <!-- Revised Prompt -->
         <div>
-            <h3 class="font-semibold text-lg">Revised Prompt:</h3>
+            <div class="flex items-center gap-3">
+                <h3 class="font-semibold text-lg">Revised Prompt:</h3>
+                <button id="copy-revised" class="text-sm text-blue-600 hover:underline">kopieren</button>
+            </div>
             <p id="revised-prompt">...</p>
         </div>
 
@@ -143,6 +149,39 @@
 
 <script>
     const spinnerOverlay = document.getElementById('spinner-overlay');
+
+    /** Favorit auch hier setzen — nicht nur im Raster. */
+    const zeigeFavorit = (image) => {
+        const knopf = document.getElementById('favorite-toggle');
+        const zeichne = (gesetzt) => {
+            document.getElementById('favorite-icon').textContent = gesetzt ? '★' : '☆';
+            document.getElementById('favorite-label').textContent = gesetzt ? 'Favorit' : 'Als Favorit';
+            knopf.classList.toggle('text-amber-600', gesetzt);
+            knopf.classList.toggle('border-amber-300', gesetzt);
+            knopf.title = gesetzt ? 'Markierung aufheben' : 'Als Favorit markieren';
+        };
+        let gesetzt = Boolean(image.favorite);
+        zeichne(gesetzt);
+
+        knopf.addEventListener('click', async () => {
+            try {
+                const response = await fetch(`/api/files/${encodeURIComponent(image.filename)}/favorite`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ favorite: !gesetzt }),
+                });
+                if (!response.ok) {
+                    const daten = await response.json().catch(() => ({}));
+                    showToast(daten.message ?? 'Markieren fehlgeschlagen');
+                    return;
+                }
+                gesetzt = !gesetzt;
+                zeichne(gesetzt);
+            } catch (error) {
+                showToast(`Markieren fehlgeschlagen: ${error.message}`);
+            }
+        });
+    };
 
     /** Kosten lesbar: Credits ganzzahlig genug, Dollar in Cent-Genauigkeit. */
     const kostenText = (kosten) => {
@@ -270,15 +309,29 @@
             zeigeEinstellungen(image);
             zeigeNachbarn(image.filename ?? filename);
 
-            document.getElementById('copy-prompt').addEventListener('click', async () => {
+            const kopiere = (text, name) => async () => {
                 try {
-                    await navigator.clipboard.writeText(image.prompt ?? '');
-                    showToast('Prompt kopiert');
+                    await navigator.clipboard.writeText(text ?? '');
+                    showToast(`${name} kopiert`);
                 } catch {
                     // In unsicheren Kontexten (http) gibt es keine Zwischenablage.
                     showToast('Kopieren ging nicht — bitte von Hand markieren');
                 }
-            });
+            };
+            document.getElementById('copy-prompt')
+                .addEventListener('click', kopiere(image.prompt, 'Prompt'));
+
+            const revidiert = image.revisedPrompt;
+            const revidiertKnopf = document.getElementById('copy-revised');
+            // Ohne eigenen revidierten Prompt gibt es nichts zu kopieren, was
+            // nicht schon oben stünde.
+            if (!revidiert || revidiert === 'unknown' || revidiert === image.prompt) {
+                revidiertKnopf.classList.add('hidden');
+            } else {
+                revidiertKnopf.addEventListener('click', kopiere(revidiert, 'Revidierter Prompt'));
+            }
+
+            zeigeFavorit(image);
 
             document.getElementById('delete-image').addEventListener('click', async () => {
                 if (!window.confirm('Dieses Bild wirklich löschen? Das lässt sich nicht rückgängig machen.')) return;
