@@ -2,7 +2,7 @@
     "name": "ai-image",
     "displayName": "AI Image Generator",
     "description": "Bilder über die eigene Instanz des AI Image Generators erzeugen und verwalten — FLUX.2, FLUX.1 Kontext und OpenAI gpt-image, mit Seitenverhältnis, Referenzbildern und Guthabenabfrage.",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "author": {
         "name": "Tim Kruse"
     },

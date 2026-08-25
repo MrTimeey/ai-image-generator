@@ -69,7 +69,8 @@ Alles unter `/api` verlangt eine Anmeldung und antwortet bei fehlender mit
 |---|---|
 | `POST /api/generate` | Bild erzeugen |
 | `GET /api/models` | Registry mit Verhältnissen, Stufen, Formaten |
-| `GET /api/thumbnails/all?sorting=DESC` | vorhandene Bilder |
+| `GET /api/images` | Bestand mit Metadaten, Suche, Filter, Cursor |
+| `GET /api/thumbnails/all?sorting=DESC` | nur Dateinamen — **veraltet**, siehe unten |
 | `GET /api/files/get/:name` | Metadaten |
 | `GET /api/files/download/:name` | Datei |
 | `DELETE /api/files/:name` | löschen |
@@ -148,6 +149,49 @@ Solange eine Vorlage gesetzt ist, stehen nur Modelle zur Wahl, die sie auch
 auswerten (`maxInputImages > 0`) — sonst könnte man `flux-pro-1.1` wählen, das
 die Vorlage entgegennimmt und trotzdem ein völlig neues Bild erzeugt. Wird die
 letzte Vorlage entfernt, sind wieder alle wählbar.
+
+### Bestand abfragen
+
+`GET /api/images` liefert Metadaten statt nur Dateinamen und ist die Grundlage
+für Suche und Filter:
+
+| Parameter | Wirkung |
+|---|---|
+| `q` | Volltext über Prompt, revidierten Prompt und Modell |
+| `model`, `provider`, `ratio` | exakter Filter |
+| `favorite=true` | nur Markierte |
+| `sorting` | `ASC` / `DESC` (Standard) |
+| `limit` | 1–500, Standard 100 |
+| `cursor` | `nextCursor` der vorigen Antwort |
+
+```jsonc
+{ "images": [{ "fileName", "createdAt", "prompt", "revisedPrompt",
+               "model", "provider", "ratio", "width", "height",
+               "favorite", "hasReferences" }],
+  "nextCursor": "…oder null", "total": 838 }
+```
+
+`GET /api/thumbnails/all` liefert weiterhin die volle Liste der Dateinamen und
+bleibt für ältere Skripte bestehen — neue Aufrufe gehören an `/api/images`.
+
+### Speicherschicht
+
+`data.json` bleibt die Wahrheit, wird aber **einmal beim Start gelesen** und im
+Speicher gehalten; ein `Map` über den Dateinamen ersetzt die Linearsuche.
+Vorher parste jeder Zugriff 1,2 MB neu — auch die Detailansicht eines
+einzelnen Bildes.
+
+Geschrieben wird **atomar** (tmp + rename). Ohne das hinterließ ein
+Container-Stop mitten im Schreiben — also jedes Deployment während einer
+Generierung — eine halbe Datei und damit den gesamten Bestand an Prompts.
+Eine unlesbare `data.json` wird beim Start als `data.json.kaputt-<zeit>`
+beiseitegelegt statt überschrieben, und die Anwendung startet mit leerem
+Bestand weiter, statt in einer Neustartschleife zu enden.
+
+`cleanDataStore` gleicht Bestand und Ordner ab und läuft **nur beim Start**.
+Beim Löschen eines einzelnen Bildes wird gezielt dessen Eintrag entfernt —
+sonst hätte das Aufräumen ein zeitgleich frisch erzeugtes, noch nicht
+eingetragenes Bild mitgelöscht.
 
 ### Kontoseite
 

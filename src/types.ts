@@ -93,6 +93,8 @@ export type DataImage = {
     height?: number;
     /** Dateinamen der mitgegebenen Referenzbilder, klein abgelegt. */
     referenceImages?: string[];
+    /** Vom Nutzer markiert. Fehlt bei allem, was nie angefasst wurde. */
+    favorite?: boolean;
     /**
      * Der alte Feldname aus der Zeit von DALL-E. Wird nur noch **gelesen**,
      * damit vorhandene `data.json`-Eintraege ihr Modell behalten; neue

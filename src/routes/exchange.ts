@@ -22,8 +22,15 @@ exchange.get('/all', async (req, res) => {
     const archive = archiver('zip', { zlib: { level: 9 } });
 
 
+    // **Kein `throw` hier.** Ein Wurf in einem asynchronen EventEmitter-Callback
+    // landet als `uncaughtException` und reisst den ganzen Server mit — ein
+    // fehlgeschlagener Export hat den Dienst beendet.
+    let fehlgeschlagen = false;
     archive.on('error', (err) => {
-        throw err;
+        fehlgeschlagen = true;
+        console.error('Export fehlgeschlagen:', err);
+        if (!res.headersSent) res.status(500).send({ error: 'export_failed', message: 'Der Export ist fehlgeschlagen.' });
+        fs.rm(zipFilePath, { force: true }, () => undefined);
     });
     // Gezielt statt `archive.directory(imageDir, false)`: im Bilderordner
     // liegt seit den API-Keys auch `api-keys.json`, und die gehoert in kein
@@ -36,15 +43,17 @@ exchange.get('/all', async (req, res) => {
     }
     archive.finalize();
     output.on('close', () => {
+        if (fehlgeschlagen) return;
         res.setHeader('Content-Type', 'application/zip');
         res.setHeader('Content-Disposition', 'attachment; filename="export.zip"');
 
         res.download(zipFilePath, 'export.zip', (err) => {
             if (err) {
-                res.status(500).send('Fehler beim Senden der Datei.');
-            } else {
-                fs.unlinkSync(zipFilePath); // Temporäre Datei nach dem Senden löschen
+                console.error('Export liess sich nicht senden:', err);
             }
+            // **Immer** aufräumen, nicht nur im Erfolgsfall: bei 800 Bildern
+            // bleibt sonst je Abbruch ein dreistelliger MB-Brocken in /tmp.
+            fs.rm(zipFilePath, { force: true }, () => undefined);
         });
     });
     archive.pipe(output);
@@ -62,7 +71,8 @@ const storage = multer.diskStorage({
     }
 });
 
-const upload = multer({ storage: storage });
+// Ohne Grenze nimmt der Upload alles entgegen, was hereinkommt.
+const upload = multer({ storage, limits: { fileSize: 2 * 1024 * 1024 * 1024, files: 1 } });
 
 exchange.post('/upload', upload.single('file'), (req, res) => {
     if (!req.file) {
@@ -112,13 +122,13 @@ exchange.post('/upload', upload.single('file'), (req, res) => {
             if (!fs.existsSync(importImagePath)) continue;
             fs.renameSync(importImagePath, path.join(imageDir, imageName))
             dataStore.data.push(importImageMap[imageName]);
-            dataStore.entries = dataStore.entries + 1
         }
     }
     saveDataStore(dataStore);
     rimraf.sync(unzippedFolderPath)
     rimraf.sync(uploadedFile)
-    rimraf.sync(path.join(imageDir, 'uploads'))
+    // Nur die eigene Datei, nicht das ganze Verzeichnis: ein zweiter,
+    // gleichzeitig laufender Upload verlor sonst seine.
 
     res.status(200).send({
         message: 'Dateien erfolgreich importiert.',

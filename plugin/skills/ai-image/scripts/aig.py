@@ -149,13 +149,28 @@ def cmd_gen(args):
 
 
 def cmd_list(args):
-    names = request("GET", "/api/thumbnails/all?sorting=DESC")
-    names = names[: args.limit]
+    """Blättert über den Cursor, bis genug beisammen ist."""
+    from urllib.parse import urlencode
+
+    gesammelt = []
+    cursor = None
+    while len(gesammelt) < args.limit:
+        params = {"limit": min(args.limit - len(gesammelt), 500), "sorting": "DESC"}
+        if cursor:
+            params["cursor"] = cursor
+        data = request("GET", "/api/images?" + urlencode(params))
+        gesammelt.extend(data["images"])
+        cursor = data.get("nextCursor")
+        if not cursor:
+            break
+
     if args.json:
-        print(json.dumps(names, indent=2))
+        print(json.dumps(gesammelt, indent=2, ensure_ascii=False))
         return
-    for name in names:
-        print(name)
+    for image in gesammelt:
+        # Prompt gekürzt daneben — beim Suchen will man ihn sehen, nicht raten.
+        prompt = (image.get("prompt") or "").replace("\n", " ")[:60]
+        print(f"{image['fileName']}  {image.get('model', ''):18} {prompt}")
 
 
 def cmd_get(args):

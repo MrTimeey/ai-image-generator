@@ -110,10 +110,23 @@ export const generate = async (request: GenerationRequest): Promise<GenerationRe
             errors.push(describeError(error));
             continue;
         }
-        // Bei `aspect_ratio` bestimmt der Anbieter die Kantenlaengen selbst —
-        // `size` ist dort nur eine Schaetzung. Also an der Datei nachmessen,
-        // statt in `data.json` und Antwort eine Zahl zu behaupten.
-        const measured = await sharp(imagePath(fileName)).metadata();
+        /**
+         * Bei `aspect_ratio` bestimmt der Anbieter die Kantenlaengen selbst —
+         * `size` ist dort nur eine Schaetzung. Also an der Datei nachmessen,
+         * statt in `data.json` und Antwort eine Zahl zu behaupten.
+         *
+         * Das Messen ist die einzige Pause zwischen „Datei liegt" und „Eintrag
+         * existiert". Sie kurz zu halten ist kein Selbstzweck: in dieser Spanne
+         * gilt die Datei als verwaist.
+         */
+        let measured: { width?: number; height?: number } = {};
+        try {
+            measured = await sharp(imagePath(fileName)).metadata();
+        } catch (error) {
+            // Ein nicht messbares Bild ist immer noch ein Bild — dann eben mit
+            // den angefragten Maßen eintragen.
+            errors.push(describeError(error));
+        }
         const image: GeneratedImage = {
             id,
             fileName,
@@ -123,8 +136,14 @@ export const generate = async (request: GenerationRequest): Promise<GenerationRe
             seed: providerImage.seed,
         };
         persistImage(image, createdAt, model, prompt, ratio, referenceNames);
-        await createBigThumbnail(fileName);
-        await createThumbnail(fileName);
+        // Vorschaubilder sind Beiwerk: das Bild ist bezahlt und liegt bereits,
+        // ein Fehler hier darf es nicht mehr in Frage stellen.
+        try {
+            await createBigThumbnail(fileName);
+            await createThumbnail(fileName);
+        } catch (error) {
+            errors.push(describeError(error));
+        }
         images.push(image);
     }
 

@@ -166,7 +166,8 @@ aig.py gen \
   --model gpt-image-2 --ratio 16:9 --quality high --out .
 ```
 
-Nachsehen, was zuletzt erzeugt wurde, und eins davon holen:
+Nachsehen, was zuletzt erzeugt wurde, und eins davon holen. `list` zeigt zu
+jedem Bild Modell und Prompt — man muss also nicht erst jedes einzeln abfragen:
 
 ```bash
 aig.py list --limit 10
