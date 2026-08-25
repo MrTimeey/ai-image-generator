@@ -31,28 +31,36 @@ const toRatio = (value: unknown): AspectRatio | undefined => {
     return LEGACY_SIZES[value.toUpperCase()];
 };
 
-const rewrite: express.RequestHandler = (req, res, next) => {
-    const body = req.body ?? {};
+/**
+ * Die eigentliche Übersetzung, ohne Express — damit sie sich prüfen lässt.
+ * Undefinierte Felder fallen heraus, statt als `undefined` an die Validierung
+ * zu gehen, die sie dann als gesetzt behandelt.
+ */
+export const toModernBody = (body: Record<string, unknown>): Record<string, unknown> => {
     const model = typeof body.languageModel === 'string' ? body.languageModel : undefined;
-    req.body = {
+    const quality = typeof body.quality === 'string' ? body.quality.toLowerCase() : undefined;
+
+    const uebersetzt: Record<string, unknown> = {
         prompt: body.description ?? body.prompt,
         model: (model && LEGACY_MODELS[model]) ?? model,
         ratio: toRatio(body.ratio) ?? toRatio(body.size) ?? '1:1',
-        quality: typeof body.quality === 'string' ? body.quality.toLowerCase() : undefined,
+        // `HD` und `STANDARD` gibt es nicht mehr; beides auf die neue Skala legen.
+        quality: quality === 'hd' ? 'high' : quality === 'standard' ? 'medium' : quality,
         outputFormat: body.outputFormat,
         amount: body.amount,
         revisePrompt: body.revisePrompt,
         seed: body.seed,
+        inputImages: body.inputImages,
     };
-    // `HD` und `STANDARD` gibt es nicht mehr; beides auf die neue Skala legen.
-    if (req.body.quality === 'hd') req.body.quality = 'high';
-    if (req.body.quality === 'standard') req.body.quality = 'medium';
-    if (req.body.quality === undefined) delete req.body.quality;
-    if (req.body.outputFormat === undefined) delete req.body.outputFormat;
-    if (req.body.amount === undefined) delete req.body.amount;
-    if (req.body.revisePrompt === undefined) delete req.body.revisePrompt;
-    if (req.body.seed === undefined) delete req.body.seed;
-    if (req.body.model === undefined) delete req.body.model;
+
+    for (const [schluessel, wert] of Object.entries(uebersetzt)) {
+        if (wert === undefined) delete uebersetzt[schluessel];
+    }
+    return uebersetzt;
+};
+
+const rewrite: express.RequestHandler = (req, res, next) => {
+    req.body = toModernBody(req.body ?? {});
     // Direkt an den neuen Router weiterreichen, statt intern erneut zu routen.
     req.url = '/generate';
     generateRouter(req, res, next);

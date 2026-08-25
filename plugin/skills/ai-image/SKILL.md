@@ -256,6 +256,15 @@ curl -s "$AIG_URL/api/jobs/$ID" -H "Authorization: Bearer $AIG_TOKEN"
 Das CLI wartet einfach ab (`gen` blockiert bis zum Ergebnis) — dort ist das
 nur bei sehr wackligen Verbindungen ein Thema.
 
+## Beim Entwickeln
+
+Im Repo (nicht über die API):
+
+```bash
+npm test           # vitest über die reine Logik
+npm run lint       # TS-Dateien und die Inline-Skripte der Seiten
+```
+
 ## Was der Skill nicht macht
 
 - **Kosten:** jedes Bild kostet echtes Geld bei BFL bzw. OpenAI. Bei größeren

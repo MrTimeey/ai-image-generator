@@ -341,10 +341,31 @@ Dev-Betrieb gedacht.
 
 ```shell
 npm install
-npm run dev      # nodemon
-npm run serve    # ts-node
-npm run lint     # eslint über die TS-Dateien + Inline-Skripte der Seiten
+npm run dev        # nodemon
+npm run serve      # ts-node
+npm run lint       # eslint über die TS-Dateien + Inline-Skripte der Seiten
+npm test           # vitest, einmalig
+npm run test:watch # vitest, mitlaufend
 ```
+
+### Tests
+
+**vitest**, `src/**/*.test.ts`, in der CI-Stufe `check` neben `tsc` und
+`lint`. Geprüft wird bewusst nur die reine Logik ohne Dateizugriff und Netz —
+dort ist der Nutzen am größten und der Aufwand am kleinsten:
+
+| Datei | worum es geht |
+|---|---|
+| `aspectRatio.test.ts` | Kantenrasterung, Grenzen, feste Größen — war laut den Kommentaren schon einmal falsch |
+| `fileUtils.test.ts` | `safeImageName` als Schutz vor Path Traversal, vollständig |
+| `imageQuery.test.ts` | Reihenfolge, Suche, Filter, Blättern; der Store ist ersetzt |
+| `jobStore.test.ts` | Lebenslauf eines Auftrags, TTL und Obergrenze |
+| `modelRegistry.test.ts` | Registry in sich stimmig, Kostenrechnung gegen gemessene Werte |
+| `legacy.test.ts` | Übersetzung alter Aufrufe — bricht sonst, ohne dass es auffällt |
+| `apiKeyStore.test.ts` | Ablauf eines Schlüssels, inklusive der Grenze |
+
+Gegengeprüft, dass sie etwas taugen: die Pfadprüfung entschärft und die
+Kantenrasterung verbogen — beides fällt sofort auf.
 
 Für den Betrieb im Container zieht `docker compose up -d` das Image aus der
 GitHub Registry. Lokal bauen geht mit `docker build -t ai-image-generator .`.
