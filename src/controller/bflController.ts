@@ -47,6 +47,20 @@ type BflResultResponse = {
 
 const sleep = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms));
 
+/**
+ * Obergrenze fuer eine durchgereichte Anbieter-Meldung. BFL laeuft auf
+ * FastAPI, und dessen 422 fuehrt das beanstandete Feld unter `input` mit —
+ * bei `input_image` also das komplette base64. Ungekuerzt landete das in
+ * `msg.textContent` **und** in einem Toast: eine Meldung von 132.000 Zeichen
+ * fuer einen Fehler, der in einer Zeile zu sagen ist.
+ */
+const MAX_MELDUNG = 500;
+
+const kuerzeMeldung = (text: string): string =>
+    text.length <= MAX_MELDUNG
+        ? text
+        : `${text.slice(0, MAX_MELDUNG)}… (Meldung gekürzt, ${text.length} Zeichen)`;
+
 const bflHeaders = () => {
     if (!appConfig.bfl.apiKey) {
         throw new ProviderError(503, 'bfl_not_configured', 'Es ist kein BFL-Schlüssel hinterlegt.');
@@ -100,26 +114,64 @@ const buildBody = (
     return body;
 };
 
+/**
+ * Wie oft das Absenden hoechstens versucht wird, und die Pausen dazwischen —
+ * zusammen rund fuenf Sekunden. Grosszuegig bemessen, weil die Generierung
+ * selbst zwanzig Sekunden und mehr braucht: fuenf Sekunden laenger warten
+ * faellt daneben nicht auf, ein unnoetiger Fehlschlag sehr wohl. Am 25.08.2026
+ * lagen der gescheiterte und der geglueckte Versuch neun Sekunden auseinander.
+ */
+const SUBMIT_ATTEMPTS = 4;
+const SUBMIT_BACKOFF_MS = [500, 1_500, 3_000];
+
+/**
+ * Ob ein gescheitertes Absenden wiederholt werden darf. Die Bedingung ist
+ * **enger** als beim Pollen, und das mit Absicht: ein GET kostet nichts, ein
+ * POST erzeugt ein bezahltes Bild. Wiederholt wird nur, wo feststeht, dass der
+ * Auftrag den Anbieter nicht erreicht hat.
+ *
+ * - Keine `response`: der Verbindungsaufbau ist gescheitert (DNS, Timeout,
+ *   abgewiesene Verbindung). Genau das trat am 25.08.2026 auf — `api.bfl.ai`
+ *   loest dual-stack auf, und schlagen alle Adressen fehl, wirft Node einen
+ *   `AggregateError` **ohne Message**. In der Oberflaeche stand dann
+ *   „bfl_submit_failed:" und nichts dahinter, was wie ein Eingabefehler aussah.
+ * - **429**: der Anbieter sagt ausdruecklich, dass er nichts verarbeitet hat.
+ *
+ * **5xx bewusst nicht** — dort kann der Auftrag angenommen und abgerechnet
+ * worden sein, und ein zweiter Versuch bezahlte dasselbe Bild doppelt.
+ */
+export const isRetryableSubmitError = (error: unknown): boolean => {
+    if (error instanceof ProviderError) return false;
+    const axiosError = error as AxiosError;
+    if (!axiosError?.response) return true;
+    return axiosError.response.status === 429;
+};
+
 const submit = async (
     model: ModelDefinition,
     body: Record<string, unknown>
 ): Promise<{ pollingUrl: string; cost?: number }> => {
-    try {
-        const response = await axios.post<BflSubmitResponse>(`${BASE_URL}/${model.endpoint}`, body, {
-            headers: bflHeaders(),
-            timeout: 30_000,
-        });
-        const pollingUrl = response.data?.polling_url;
-        if (!pollingUrl) {
-            // Frueher lief `pollForResult(undefined)` weiter und warf erst tief
-            // in axios — die Ursache stand dann nirgends.
-            throw new ProviderError(502, 'bfl_no_polling_url', 'BFL hat keine Polling-URL geliefert.');
+    for (let versuch = 0; ; versuch++) {
+        try {
+            const response = await axios.post<BflSubmitResponse>(`${BASE_URL}/${model.endpoint}`, body, {
+                headers: bflHeaders(),
+                timeout: 30_000,
+            });
+            const pollingUrl = response.data?.polling_url;
+            if (!pollingUrl) {
+                // Frueher lief `pollForResult(undefined)` weiter und warf erst tief
+                // in axios — die Ursache stand dann nirgends.
+                throw new ProviderError(502, 'bfl_no_polling_url', 'BFL hat keine Polling-URL geliefert.');
+            }
+            // Die aeltere Generation (`flux-pro-1.1`) liefert hier `null`.
+            const cost = typeof response.data?.cost === 'number' ? response.data.cost : undefined;
+            return { pollingUrl, cost };
+        } catch (error) {
+            const fehler = toProviderError(error, 'bfl_submit_failed');
+            if (versuch + 1 >= SUBMIT_ATTEMPTS || !isRetryableSubmitError(error)) throw fehler;
+            console.warn(`Absenden an BFL, Versuch ${versuch + 1}/${SUBMIT_ATTEMPTS} fehlgeschlagen:`, fehler.message);
+            await sleep(SUBMIT_BACKOFF_MS[versuch]);
         }
-        // Die aeltere Generation (`flux-pro-1.1`) liefert hier `null`.
-        const cost = typeof response.data?.cost === 'number' ? response.data.cost : undefined;
-        return { pollingUrl, cost };
-    } catch (error) {
-        throw toProviderError(error, 'bfl_submit_failed');
     }
 };
 
@@ -151,7 +203,11 @@ export const pollForResult = async (pollUrl: string): Promise<ProviderImage> => 
             const terminal = TERMINAL_STATUS[status];
             if (terminal) {
                 const detail = response.data?.details ? ` (${JSON.stringify(response.data.details)})` : '';
-                throw new ProviderError(422, `bfl_${status.toLowerCase().replace(/\s+/g, '_')}`, terminal + detail);
+                throw new ProviderError(
+                    422,
+                    `bfl_${status.toLowerCase().replace(/\s+/g, '_')}`,
+                    kuerzeMeldung(terminal + detail)
+                );
             }
 
             // Alles andere ist `Pending` oder ein neuer Zustand — weiter warten.
@@ -217,13 +273,26 @@ export const generateImages = async (
     return { images, errors };
 };
 
-const toProviderError = (error: unknown, fallbackCode: string): ProviderError => {
+export const toProviderError = (error: unknown, fallbackCode: string): ProviderError => {
     if (error instanceof ProviderError) return error;
     const axiosError = error as AxiosError<{ detail?: unknown }>;
     const status = axiosError.response?.status ?? 502;
     const detail = axiosError.response?.data?.detail;
-    const message = detail ? JSON.stringify(detail) : axiosError.message;
+    // `axiosError.message` ist nicht immer gefuellt: ein `AggregateError` aus
+    // dem gescheiterten Verbindungsaufbau hat gar keine Message, nur `code`.
+    // Ohne den Rueckfall stand in der Oberflaeche nichts als der Fehlercode.
+    const message = detail
+        ? kuerzeMeldung(JSON.stringify(detail))
+        : axiosError.message || netzfehlerText(axiosError);
     return new ProviderError(status, fallbackCode, message);
+};
+
+const netzfehlerText = (error: AxiosError): string => {
+    const code = String(error?.code ?? '');
+    const host = new URL(BASE_URL).host;
+    return code
+        ? `Die Verbindung zu ${host} kam nicht zustande (${code}).`
+        : `Die Verbindung zu ${host} kam nicht zustande.`;
 };
 
 const isRetryableNetworkError = (error: AxiosError): boolean =>
