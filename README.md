@@ -303,14 +303,19 @@ liefern sie nicht rückwirkend. Die Anzeige weist das als „unbekannt" aus.
 
 ### Seed
 
-Der Seed wurde schon immer ausgelesen und angezeigt — nur nie gespeichert.
-Jetzt steht er in den Metadaten, die Detailansicht zeigt ihn, und „nochmal mit
-diesem Seed" führt zurück in den Generator (`/index.html?prompt=…&model=…&ratio=…&seed=…`).
+Der Seed steht in den Metadaten und die Detailansicht zeigt ihn — als
+Aufzeichnung, nicht als Bedienelement. Die Oberfläche nimmt **keinen** Seed
+entgegen; wer einen Lauf gezielt wiederholen will, nimmt
+`aig.py gen "…" --model … --ratio … --seed <wert>` oder `POST /api/generate`.
 
-Gleicher Seed und gleicher Prompt ergeben **praktisch** dasselbe Bild — bei
-einer Gegenprobe lagen zwei Läufe bei 0,2 % mittlerer Pixelabweichung, also
-sichtbar identisch, aber nicht bitgenau. OpenAI kennt keinen Seed; dort ist das
-Feld ausgeblendet.
+Der Grund: gleicher Seed und gleicher Prompt ergeben nur **praktisch** dasselbe
+Bild — bei einer Gegenprobe lagen zwei Läufe bei 0,2 % mittlerer
+Pixelabweichung, also sichtbar identisch, aber nicht bitgenau. Ein Feld, das
+Reproduzierbarkeit verspricht, die es nicht gibt, trägt sich nicht. OpenAI
+kennt ohnehin keinen Seed.
+
+Das Formular lässt sich weiter über `/index.html?prompt=…&model=…&ratio=…`
+vorbelegen — gedacht für von Hand gebaute Links.
 
 ### Kontoseite
 

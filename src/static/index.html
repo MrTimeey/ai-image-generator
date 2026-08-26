@@ -116,6 +116,10 @@
             <button id="reference-clear" class="hidden text-sm text-red-600 hover:underline">Alle entfernen</button>
         </div>
         <div id="reference-preview" class="flex flex-wrap gap-3 mt-3"></div>
+        <!-- Bleibt stehen, wenn die Vorlage aus der Detailansicht nicht kam —
+             ein Toast ist nach drei Sekunden weg, und danach sieht das
+             Formular aus, als waere alles in Ordnung. -->
+        <p id="reference-error" class="hidden mt-2 text-sm text-red-600"></p>
     </div>
 
     <div class="flex flex-wrap items-center gap-6 mb-6">
@@ -123,16 +127,16 @@
             <input type="checkbox" id="revise-prompt" class="rounded border-gray-300">
             <span id="revise-label">Prompt vom Anbieter ausformulieren lassen</span>
         </label>
-        <label id="seed-field" class="flex items-center gap-2 text-sm text-gray-700">
-            <span>Seed</span>
-            <input type="number" id="seed" placeholder="zufällig"
-                   class="w-36 p-1 border border-gray-300 rounded" title="Gleicher Seed und gleicher Prompt ergeben dasselbe Bild">
-            <button id="seed-clear" class="hidden text-blue-600 hover:underline">zurücksetzen</button>
-        </label>
     </div>
 
     <div class="text-center">
-        <button id="generate-btn" type="submit" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2">Erzeugen</button>
+        <!--
+            Gesperrt bis die Modellliste steht: vorher ist das Select leer,
+            `selectedModel()` liefert `undefined`, und der Klick starb an
+            `model.id` — mit laufendem Spinner und ohne jede Meldung.
+        -->
+        <button id="generate-btn" type="submit" disabled
+                class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:hover:bg-gray-400">Erzeugen</button>
     </div>
 
     <!-- Ergebnis-Anzeige -->
@@ -165,9 +169,8 @@
     const referencePreview = document.getElementById('reference-preview');
     const referenceClear = document.getElementById('reference-clear');
     const referenceCount = document.getElementById('reference-count');
+    const referenceError = document.getElementById('reference-error');
     const reviseCheckbox = document.getElementById('revise-prompt');
-    const seedField = document.getElementById('seed-field');
-    const seedInput = document.getElementById('seed');
     const reviseLabel = document.getElementById('revise-label');
     const modelTitle = document.getElementById('model-title');
     const modelNote = document.getElementById('model-note');
@@ -261,10 +264,6 @@
             ? 'Prompt vom Anbieter ausformulieren lassen'
             : 'Dieses Modell formuliert den Prompt nicht um';
         if (!model.supportsRevisePrompt) reviseCheckbox.checked = false;
-
-        // OpenAI kennt keinen Seed — dann hat das Feld dort nichts zu suchen.
-        seedField.classList.toggle('hidden', !model.supportsSeed);
-        if (!model.supportsSeed) seedInput.value = '';
 
         renderReferences();
     };
@@ -398,15 +397,32 @@
         return canvas.toDataURL('image/jpeg', 0.9);
     };
 
+    /**
+     * Sagt, ob die Vorlage wirklich angekommen ist. Frueher wurde jeder Fehler
+     * zu einem Toast, der nach Sekunden verschwand — danach stand das Formular
+     * unauffaellig ohne Vorlage da, und der naechste Klick erzeugte ein
+     * bezahltes, voellig neues Bild statt der gewuenschten Abwandlung.
+     */
     const referenzAusBibliothek = async (fileName) => {
         try {
             const response = await fetch(`/api/files/download/${encodeURIComponent(fileName)}`);
             if (!response.ok) throw new Error(`Fehler ${response.status}`);
             references.push({ name: fileName, dataUrl: await verkleinern(await response.blob()) });
+            zeigeReferenzFehler('');
             showToast('Als Referenz übernommen');
+            return true;
         } catch (error) {
-            showToast(`Referenzbild nicht ladbar: ${error.message}`);
+            zeigeReferenzFehler(
+                `„${fileName}" ließ sich nicht als Vorlage laden (${error.message}). ` +
+                'Ohne sie entsteht ein völlig neues Bild — neu laden versucht es noch einmal.'
+            );
+            return false;
         }
+    };
+
+    const zeigeReferenzFehler = (text) => {
+        referenceError.textContent = text;
+        referenceError.classList.toggle('hidden', text === '');
     };
 
     const readAsDataUrl = (file) =>
@@ -434,22 +450,15 @@
         }
         // Zurücksetzen, damit dieselbe Datei erneut gewählt werden kann.
         referenceInput.value = '';
+        // Wer selbst eine Vorlage waehlt, hat die misslungene ersetzt.
+        if (references.length) zeigeReferenzFehler('');
         renderModelSelect();
     });
 
     referenceClear.addEventListener('click', () => {
         references = [];
+        zeigeReferenzFehler('');
         renderModelSelect();
-    });
-
-    const seedClear = document.getElementById('seed-clear');
-    seedClear.addEventListener('click', (event) => {
-        event.preventDefault();
-        seedInput.value = '';
-        seedClear.classList.add('hidden');
-    });
-    seedInput.addEventListener('input', () => {
-        seedClear.classList.toggle('hidden', seedInput.value === '');
     });
 
     const createImage = (imageName) => {
@@ -522,6 +531,12 @@
             return;
         }
         const model = selectedModel();
+        // Zweiter Riegel neben dem gesperrten Knopf: ohne Modell gibt es keine
+        // sinnvolle Anfrage, und `model.id` warf hier frueher einen TypeError.
+        if (!model) {
+            msgField.textContent = 'Die Modellliste ist noch nicht geladen.';
+            return;
+        }
         spinnerOverlay.classList.remove('hidden');
         msgField.textContent = '';
         imageContainer.replaceChildren();
@@ -537,18 +552,23 @@
         };
         if (qualitySelect.value) request.quality = qualitySelect.value;
         if (references.length) request.inputImages = references.map(r => r.dataUrl);
-        if (seedInput.value !== '' && !seedField.classList.contains('hidden')) {
-            request.seed = Number(seedInput.value);
-        }
 
-        const imageNames = await generateImage(request);
-        if (imageNames.length !== 0) {
-            previewContainer.classList.add('hidden');
-            imageNames.map(createImage).forEach(i => imageContainer.appendChild(i));
-            saveUrl(imageNames);
-            imageContainer.classList.remove('hidden');
+        // `finally`, damit der Spinner auch bei einem unerwarteten Fehler
+        // wieder verschwindet — sonst dreht er bis zum Neuladen weiter.
+        try {
+            const imageNames = await generateImage(request);
+            if (imageNames.length !== 0) {
+                previewContainer.classList.add('hidden');
+                imageNames.map(createImage).forEach(i => imageContainer.appendChild(i));
+                saveUrl(imageNames);
+                imageContainer.classList.remove('hidden');
+            }
+        } catch (error) {
+            msgField.textContent = `Unerwarteter Fehler: ${error.message}`;
+            showToast(String(error));
+        } finally {
+            spinnerOverlay.classList.add('hidden');
         }
-        spinnerOverlay.classList.add('hidden');
     });
 
     document.addEventListener('DOMContentLoaded', async () => {
@@ -559,9 +579,9 @@
             modelSelect.value = standardModell;
 
             /**
-             * Aus der Detailansicht: „nochmal mit diesem Seed" bringt Prompt,
-             * Modell, Verhältnis und Seed mit. Vor `renderModelSelect`, damit
-             * die abhängigen Felder gleich zum richtigen Modell passen.
+             * `?prompt=`, `?model=` und `?ratio=` fuellen das Formular vor —
+             * gedacht fuer von Hand gebaute Links. Vor `renderModelSelect`,
+             * damit die abhaengigen Felder gleich zum richtigen Modell passen.
              */
             const parameter = new URLSearchParams(window.location.search);
             if (parameter.has('prompt')) {
@@ -571,13 +591,20 @@
             const gewuenschteReferenz = parameter.get('reference');
             if (gewuenschteReferenz) {
                 spinnerOverlay.classList.remove('hidden');
-                await referenzAusBibliothek(gewuenschteReferenz);
+                const geklappt = await referenzAusBibliothek(gewuenschteReferenz);
                 spinnerOverlay.classList.add('hidden');
-                // Aus der Adresse nehmen, sonst hängt die Vorlage nach einem
-                // Neuladen ein zweites Mal daran.
-                const url = new URL(window.location.href);
-                url.searchParams.delete('reference');
-                window.history.replaceState(null, '', url.pathname + url.search);
+                /**
+                 * Nur nach **Erfolg** aus der Adresse nehmen, sonst hängt die
+                 * Vorlage nach einem Neuladen ein zweites Mal daran. Ging es
+                 * schief, bleibt der Parameter absichtlich stehen: der Zustand
+                 * lebt nur im Speicher, und Neuladen ist dann der einzige Weg,
+                 * die Vorlage doch noch zu bekommen.
+                 */
+                if (geklappt) {
+                    const url = new URL(window.location.href);
+                    url.searchParams.delete('reference');
+                    window.history.replaceState(null, '', url.pathname + url.search);
+                }
             }
 
             renderModelSelect();
@@ -596,20 +623,22 @@
             if (parameter.has('ratio') && [...ratioSelect.options].some(o => o.value === parameter.get('ratio'))) {
                 ratioSelect.value = parameter.get('ratio');
             }
-            if (parameter.has('seed') && !seedField.classList.contains('hidden')) {
-                seedInput.value = parameter.get('seed');
-                seedClear.classList.remove('hidden');
-            }
-            if ([...parameter.keys()].some(k => ['prompt', 'model', 'ratio', 'seed'].includes(k))) {
+            // `seed` wird nicht mehr ausgewertet, aber weiter weggeraeumt:
+            // aeltere Links tragen ihn noch, und was in der Adresse stehen
+            // bleibt, haengt `saveUrl` danach an jede erzeugte Bild-URL.
+            const uebernommen = ['prompt', 'model', 'ratio', 'seed'];
+            if ([...parameter.keys()].some(k => uebernommen.includes(k))) {
                 const url = new URL(window.location.href);
-                for (const k of ['prompt', 'model', 'ratio', 'seed']) url.searchParams.delete(k);
+                for (const k of uebernommen) url.searchParams.delete(k);
                 window.history.replaceState(null, '', url.pathname + url.search);
             }
         } catch (error) {
+            // Der Knopf bleibt gesperrt: ohne Modelle gibt es nichts zu erzeugen.
             msgField.textContent = 'Die Modellliste ließ sich nicht laden.';
             showToast(String(error));
             return;
         }
+        generateBtn.disabled = false;
         await restoreFromUrl();
     });
 </script>

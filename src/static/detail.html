@@ -135,7 +135,6 @@
             <p id="seed-line" class="hidden mt-1">
                 <span class="text-gray-600">Seed:</span>
                 <code id="seed-value"></code>
-                <a id="seed-again" class="ml-2 text-blue-600 hover:underline" href="#">nochmal mit diesem Seed</a>
             </p>
         </div>
 
@@ -208,13 +207,10 @@
             ? teile.join(' · ')
             : 'Für dieses Bild wurden keine Einstellungen aufgezeichnet.';
 
+        // Nur zur Aufzeichnung: die Oberflaeche nimmt keinen Seed mehr
+        // entgegen, wiederholen laesst sich ein Lauf ueber `aig.py gen --seed`.
         if (image.seed === undefined || image.seed === null) return;
         document.getElementById('seed-value').textContent = image.seed;
-        // Derselbe Weg wie „Als Referenz nutzen", nur mit Seed und Prompt.
-        const ziel = new URLSearchParams({ prompt: image.prompt ?? '', seed: String(image.seed) });
-        if (image.model) ziel.set('model', image.model);
-        if (image.ratio) ziel.set('ratio', image.ratio);
-        document.getElementById('seed-again').href = `/index.html?${ziel.toString()}`;
         document.getElementById('seed-line').classList.remove('hidden');
     };
 
