@@ -37,12 +37,12 @@ import { pollUntilReady, submitTo } from './bflController';
 export const VIDEO_ENDPOINT = 'flux-3-video';
 
 /**
- * Welche Modi angeboten werden. Fortsetzen (`v2v`) ist vorerst aus: am
- * 07.10.2026 lehnte BFL einen 5-s-Entwurf (Listenpreis 60 Credits) bei 610
- * Credits Restguthaben mit „Insufficient credits" ab, ungeklärt warum. Der
- * Code bleibt; zum Einschalten hier `v2v` ergänzen und es einmal echt testen.
+ * Welche Modi angeboten werden — ein Schalter, falls einer bei BFL hakt.
+ * Fortsetzen war kurz aus, weil es mit „Insufficient credits" scheiterte; das
+ * lag aber am leeren Konto, nicht am Modus (am 07.10.2026 danach erfolgreich
+ * getestet: 5 s Entwurf, 60 Credits, 93 s).
  */
-export const ENABLED_MODES: readonly ('t2v' | 'i2v' | 'v2v')[] = ['t2v', 'i2v'];
+export const ENABLED_MODES: readonly ('t2v' | 'i2v' | 'v2v')[] = ['t2v', 'i2v', 'v2v'];
 
 export const VIDEO_RATIOS = ['auto', '21:9', '2:1', '16:9', '4:3', '1:1', '3:4', '9:16', '9:21'] as const;
 export const VIDEO_RESOLUTIONS: readonly VideoResolution[] = ['hd', 'fhd', 'qhd', 'uhd'];

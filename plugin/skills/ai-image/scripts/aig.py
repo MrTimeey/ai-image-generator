@@ -288,6 +288,8 @@ def cmd_costs(args):
         else:
             art = "Restguthaben" if provider["kind"] == "balance" else "Ausgaben (Monat)"
             print(f"  {provider['label']:20} {provider['value']:g} {provider['unit']}  ({art})")
+            if provider.get("hint"):
+                print(f"  {'':20} {provider['hint']}")
 
     spending = data.get("spending")
     if not spending or spending["total"]["images"] == 0:
@@ -504,14 +506,14 @@ def main():
     lay.add_argument("--edit", action="store_true",
                      help="als behalten-Zeilen für eine Bearbeitung mit --source")
 
-    vid = sub.add_parser("video", help="Video erzeugen (FLUX 3): aus Text oder Bildern; Standard: Entwurf")
+    vid = sub.add_parser("video", help="Video erzeugen (FLUX 3): Text, Bilder oder Fortsetzung; Standard: Entwurf")
     vid.add_argument("prompt")
     vid.add_argument("--image", action="append", metavar="BILD[@SEK]",
                      help="Keyframe: lokale Datei oder Dateiname im Bestand, optional mit Sekunde "
                           "(bild.png@4.5). Mehrfach angebbar, bis 10. Ohne Sekunden: eins = Anfang, "
                           "zwei = Anfang und Ende, mehr = gleichmäßig verteilt (dann --duration nötig)")
     vid.add_argument("--continue", dest="continue_video", metavar="VIDEO_ID",
-                     help="dieses Video fortsetzen (derzeit serverseitig abgeschaltet)")
+                     help="dieses Video fortsetzen (bis 15 s, eigener Preis)")
     vid.add_argument("--duration", default="auto", help="5–20 Sekunden (Fortsetzung bis 15) oder auto")
     vid.add_argument("--ratio", default="auto", choices=["auto", "21:9", "2:1", "16:9", "4:3", "1:1", "3:4", "9:16", "9:21"])
     vid.add_argument("--final", choices=["hd", "fhd", "qhd", "uhd"],

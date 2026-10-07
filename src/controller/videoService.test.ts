@@ -146,8 +146,8 @@ describe('VideoSchema', () => {
 });
 
 describe('ENABLED_MODES', () => {
-    it('bietet Fortsetzen vorerst nicht an — es scheiterte ungeklärt an „Insufficient credits"', async () => {
+    it('bietet alle drei Wege an', async () => {
         const { ENABLED_MODES } = await import('./videoService');
-        expect(ENABLED_MODES).toEqual(['t2v', 'i2v']);
+        expect(ENABLED_MODES).toEqual(['t2v', 'i2v', 'v2v']);
     });
 });

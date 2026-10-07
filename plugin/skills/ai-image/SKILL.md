@@ -1,6 +1,6 @@
 ---
 name: ai-image
-description: Bilder mit dem eigenen AI Image Generator auf ai.mrtimeey.com erzeugen und verwalten - Modellwahl (FLUX 3, FLUX.2, FLUX.1 Kontext, OpenAI gpt-image), Komposition mit Bounding Boxes (Elemente gezielt platzieren, ein Bild Element für Element bearbeiten - ersetzen, verschieben, entfernen), Seitenverhältnis, Referenzbilder, Varianten, Download, Metadaten; Videos mit Ton (Text, Bilder als Keyframes mit Zeitpunkten; Entwurf und Fertigrendern); Prompts bleiben standardmäßig wörtlich. Auslösen bei - Bild generieren, Video erzeugen, Clip, Animation, Bild animieren, Keyframes, Bild erzeugen, Bild bearbeiten, Referenzbild, Vorlage, Illustration, Titelbild, Header-Bild, Poster, Cover, Layout, Komposition, Bounding Box, Element platzieren, Icon-Motiv, KI-Bild, FLUX, FLUX 3, gpt-image, ai.mrtimeey.com, aig.
+description: Bilder mit dem eigenen AI Image Generator auf ai.mrtimeey.com erzeugen und verwalten - Modellwahl (FLUX 3, FLUX.2, FLUX.1 Kontext, OpenAI gpt-image), Komposition mit Bounding Boxes (Elemente gezielt platzieren, ein Bild Element für Element bearbeiten - ersetzen, verschieben, entfernen), Seitenverhältnis, Referenzbilder, Varianten, Download, Metadaten; Videos mit Ton (Text, Bilder als Keyframes mit Zeitpunkten, Fortsetzung; Entwurf und Fertigrendern); Prompts bleiben standardmäßig wörtlich. Auslösen bei - Bild generieren, Video erzeugen, Clip, Animation, Bild animieren, Keyframes, Bild erzeugen, Bild bearbeiten, Referenzbild, Vorlage, Illustration, Titelbild, Header-Bild, Poster, Cover, Layout, Komposition, Bounding Box, Element platzieren, Icon-Motiv, KI-Bild, FLUX, FLUX 3, gpt-image, ai.mrtimeey.com, aig.
 ---
 
 # AI Image Generator
@@ -39,7 +39,7 @@ alias aig="python3 $(find ~/.claude -path '*ai-image*/scripts/aig.py' | head -1)
 | **`rm <datei> [...]`** | **Bild(er) löschen — auch mehrere auf einmal** |
 | `favorite <datei>` | markieren (`--off` hebt auf) |
 | `costs` | Guthaben und bisherige Ausgaben |
-| `video "<prompt>"` | Video erzeugen (Text oder `--image` als Keyframes) — Standard: Entwurf |
+| `video "<prompt>"` | Video erzeugen (Text, `--image` als Keyframes, `--continue`) — Standard: Entwurf |
 | `enhance <id>` | Video-Entwurf fertig rendern — dieselbe Aufnahme |
 | `videos` / `video-rm <id>` | Videos auflisten / löschen |
 
@@ -295,7 +295,7 @@ deutlich). Für Retusche, bei der jedes Pixel bleiben muss, taugt es nicht.
 
 ## Video mit FLUX 3
 
-Kurze Clips (5–20 s) mit Ton — Geräusche, Musik,
+Kurze Clips (5–20 s, Fortsetzungen bis 15 s) mit Ton — Geräusche, Musik,
 Sprache. In der Weboberfläche ist das die Seite **Video**; Videos stehen dort in
 einer eigenen Liste, nicht in der Bildübersicht.
 
@@ -303,12 +303,13 @@ einer eigenen Liste, nicht in der Bildübersicht.
 aig.py video "a fox running through dawn mist, birdsong" --ratio 16:9 --duration 6 --out .
 ```
 
-**Zwei Wege** (ein dritter, Fortsetzen, ist derzeit abgeschaltet — siehe unten):
+**Drei Wege:**
 
 | Weg | CLI | Was rein muss |
 |---|---|---|
 | Text → Video | `video "<prompt>"` | nur der Prompt |
 | Bilder → Video | `video "<prompt>" --image A --image B …` | 1–10 Bilder (lokale Datei oder Dateiname im Bestand) |
+| Fortsetzen | `video "<prompt>" --continue <video-id>` | ein fertiges Video (auch ein Entwurf) |
 
 **Keyframes:** Ohne Zeitangabe ist ein Bild der Anfang, zwei sind Anfang und
 Ende, weitere verteilen sich gleichmäßig — ab drei Bildern dann mit fester
@@ -338,12 +339,17 @@ dann voll.
 
 Ein 10-s-Video in fhd kostet also rund 2,90 $ — vorher fragen, bevor du mehrere
 fertig renderst. Gemessen: 6-s-Entwurf 36 Credits in 56 s, fertig in hd 102
-Credits in 92 s.
+Credits in 92 s, Fortsetzen 5 s Entwurf 60 Credits in 93 s.
 
-**Fortsetzen ist abgeschaltet.** BFL lehnte am 07.10.2026 einen 5-s-Entwurf
-(Listenpreis 60 Credits) bei 610 Credits Restguthaben mit „Insufficient
-credits" ab, ungeklärt warum. `--continue` antwortet deshalb mit
-`mode_disabled`; nicht versuchen, das zu umgehen.
+**„Insufficient credits" (402) heißt: Konto leer — auch wenn `aig.py costs`
+noch Guthaben zeigt.** BFLs Schnittstelle meldete am 07.10.2026 rund 550
+Credits mehr als das Dashboard und lehnte bei 60 Credits laut Dashboard schon
+alles ab. Dann nicht wiederholen, sondern Tim Bescheid sagen.
+
+**„Protected Content" (Inhaltsprüfung):** Ein Intro, in dem eine Raubkatze
+*brüllt*, wird abgelehnt — vermutlich wegen des berühmten brüllenden Löwen im
+Filmintro. Ohne „roar" (z. B. „opens its jaws wide", Ton „deep hiss") ging
+dasselbe Motiv durch.
 
 **Gesprochenes** in Anführungszeichen in den Prompt, dann sagt es jemand.
 Mehrere Einstellungen: „SHOT ONE: … HARD CUT. SHOT TWO: …". `--no-audio` für stumm.

@@ -111,7 +111,7 @@ Ruhe; die Kosten zählen trotzdem in `GET /api/credits` mit (Modell
 
 | Feld | Bedeutung |
 |---|---|
-| `mode` | `t2v` (Text), `i2v` (Bilder als Keyframes); `v2v` (fortsetzen) ist gebaut, aber über `ENABLED_MODES` abgeschaltet → 400 `mode_disabled` |
+| `mode` | `t2v` (Text), `i2v` (Bilder als Keyframes), `v2v` (fortsetzen). Abschaltbar über `ENABLED_MODES` → 400 `mode_disabled` |
 | `prompt` | Pflicht |
 | `keyframes` | `i2v`: 1–10 × `{image, time?}` — `image` ist ein Dateiname im Bestand oder base64; `time` die Sekunde. Alle oder keins mit Zeit, aufsteigend; ohne Zeit ab drei Bildern feste `duration` |
 | `startVideo` | `v2v`: Id eines fertigen Videos |
@@ -149,11 +149,12 @@ Gemessen am 07.10.2026:
 - Dauer: Entwurf 56–97 s, Fertigrendern 92 s.
 - `keyframes` als `[[0, …], [4.5, …]]` setzt die Bilder exakt: Anfang und
   Ende stimmten im Test.
-- Ein Fortsetzungs-Entwurf (5 s, Listenpreis 60 Credits) wurde bei 610 Credits
-  Restguthaben mit „Insufficient credits" abgelehnt — ungeklärt, vermutlich
-  hält BFL dort vorab mehr zurück. Deshalb ist `v2v` in `ENABLED_MODES`
-  (`videoService.ts`) vorerst aus; zum Einschalten dort ergänzen und einmal
-  echt testen.
+- Fortsetzen (5 s Entwurf, Startvideo als base64-MP4) kostete 60 Credits und
+  dauerte 93 s.
+- **`/v1/credits` stimmt nicht mit dem Dashboard überein:** am 07.10.2026
+  meldete die API konstant 550,2 Credits mehr. Bei 60 Credits laut Dashboard
+  lehnte BFL jeden Auftrag mit 402 „Insufficient credits" ab, während die API
+  610,2 zeigte. Die Kontoseite sagt das dazu; maßgeblich ist das Dashboard.
 
 DALL·E ist am 12. Mai 2026 abgeschaltet worden; `dall-e-2` und `dall-e-3`
 antworten mit 400 und sind entsprechend entfernt.

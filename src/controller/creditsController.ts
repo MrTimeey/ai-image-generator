@@ -46,7 +46,19 @@ const bflCredits = async (): Promise<ProviderCredits> => {
         if (typeof credits !== 'number') {
             return { ...base, hint: 'Antwort ohne Guthaben.' };
         }
-        return { ...base, kind: 'balance', value: credits, unit: 'Credits' };
+        /**
+         * `/v1/credits` und das BFL-Dashboard laufen auseinander: am 07.10.2026
+         * meldete die API 1497,4, das Dashboard 947,20 — eine feste Lücke von
+         * 550,2. Bei 60 Credits laut Dashboard lehnte BFL schon jeden Auftrag
+         * ab, während die API 610,2 zeigte. Maßgeblich ist das Dashboard.
+         */
+        return {
+            ...base,
+            kind: 'balance',
+            value: credits,
+            unit: 'Credits',
+            hint: 'Laut BFL-Schnittstelle. Das BFL-Dashboard kann deutlich weniger zeigen — maßgeblich ist das Dashboard.',
+        };
     } catch (error) {
         return { ...base, hint: describe(error) };
     }

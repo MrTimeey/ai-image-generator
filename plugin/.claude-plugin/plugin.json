@@ -1,8 +1,8 @@
 {
     "name": "ai-image",
     "displayName": "AI Image Generator",
-    "description": "Bilder über die eigene Instanz des AI Image Generators erzeugen und verwalten — FLUX 3 mit Bounding Boxes, FLUX.2, FLUX.1 Kontext und OpenAI gpt-image, mit Seitenverhältnis, Referenzbildern und Guthabenabfrage. Videos mit Ton aus Text oder Bildern. Prompts bleiben standardmäßig wörtlich.",
-    "version": "1.10.0",
+    "description": "Bilder über die eigene Instanz des AI Image Generators erzeugen und verwalten — FLUX 3 mit Bounding Boxes, FLUX.2, FLUX.1 Kontext und OpenAI gpt-image, mit Seitenverhältnis, Referenzbildern und Guthabenabfrage. Videos mit Ton aus Text, Bildern oder als Fortsetzung. Prompts bleiben standardmäßig wörtlich.",
+    "version": "1.10.1",
     "author": {
         "name": "Tim Kruse"
     },
