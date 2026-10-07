@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Videos · AI Image Generator</title>
+    <link rel="apple-touch-icon" sizes="180x180" href="/public/favicon_io/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/public/favicon_io/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/public/favicon_io/favicon-16x16.png" />
+    <link rel="manifest" href="/public/favicon_io/site.webmanifest" />
+    <meta name="theme-color" content="#2563eb">
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').catch((error) =>
+                    console.debug('Service Worker nicht registriert', error));
+            });
+        }
+    </script>
+    <script src="/js/main.js" defer></script>
+    <script src="/public/js/toast.js" defer></script>
+    <script src="/public/js/nav.js" defer></script>
+    <script src="/public/js/video-karten.js" defer></script>
+    <link href="/public/css/generated-tailwind.css" rel="stylesheet">
+    <link href="/public/css/style.css" rel="stylesheet">
+    <style>
+        dialog::backdrop { background: rgba(17, 24, 39, 0.7); }
+        .filter-aktiv { background: #2563eb; color: #fff; border-color: #2563eb; }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+<header class="bg-blue-600 text-white">
+    <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+        <div class="text-2xl font-bold">
+            <a href="/index.html">AI Image Generator</a>
+        </div>
+        <nav id="nav-desktop" class="hidden md:flex space-x-6 items-center"></nav>
+        <div class="md:hidden">
+            <button id="burger-btn" class="focus:outline-none" aria-label="Menü">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path>
+                </svg>
+            </button>
+        </div>
+    </div>
+    <nav id="mobile-menu" class="hidden bg-blue-600 md:hidden px-4 py-4">
+        <div id="nav-mobile"></div>
+    </nav>
+</header>
+
+<div id="toast" class="toast"></div>
+
+<main class="max-w-6xl mx-auto py-6 px-4">
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <div>
+            <h1 class="text-2xl font-semibold text-gray-800">Videos <span id="zahl" class="text-base font-normal text-gray-500"></span></h1>
+            <p class="text-sm text-gray-600">Mit der Maus darüber spielt eine Vorschau ohne Ton; ein Klick öffnet das Video.</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+            <div id="filter" class="inline-flex rounded-lg border border-gray-300 overflow-hidden text-sm bg-white">
+                <button type="button" data-filter="alle" class="px-3 py-1.5">Alle</button>
+                <button type="button" data-filter="fertig" class="px-3 py-1.5 border-l border-gray-300">Fertig</button>
+                <button type="button" data-filter="entwurf" class="px-3 py-1.5 border-l border-gray-300">Entwürfe</button>
+            </div>
+            <a href="/video.html" class="text-sm px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700">Neues Video</a>
+        </div>
+    </div>
+
+    <p id="leer" class="hidden text-sm text-gray-500">Noch keine Videos. <a href="/video.html" class="text-blue-700 underline">Erstes Video erzeugen</a></p>
+    <div id="raster" class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"></div>
+</main>
+
+<dialog id="detail" class="w-full max-w-3xl rounded-lg p-0">
+    <div class="flex justify-end p-2 border-b border-gray-200">
+        <button id="detail-zu" type="button" class="px-3 py-1 text-sm rounded-lg border border-gray-300 hover:bg-gray-50">Schließen</button>
+    </div>
+    <div id="detail-inhalt"></div>
+</dialog>
+
+<script>
+    const raster = document.getElementById('raster');
+    const dialog = document.getElementById('detail');
+    let optionen = null;
+    let videos = [];
+    let filter = 'alle';
+    let pollTimer = null;
+
+    const passt = (v) =>
+        filter === 'alle' ||
+        (filter === 'entwurf' && v.draft) ||
+        (filter === 'fertig' && !v.draft && v.status === 'done');
+
+    /** Eine Kachel: Standbild, Vorschau bei Hover, Marken unten. */
+    const kachel = (v) => {
+        const knopf = document.createElement('button');
+        knopf.type = 'button';
+        knopf.className = 'group relative block w-full aspect-square overflow-hidden rounded-lg bg-black text-left focus:outline-none focus:ring-2 focus:ring-blue-600';
+        knopf.title = v.prompt;
+        if (v.status === 'done' && v.url) {
+            /**
+             * Erst nur das Standbild. Das Video wird beim ersten Hover geladen —
+             * ein Raster aus zwanzig Videos lüde sonst zwanzig Dateien an.
+             */
+            const bild = Object.assign(document.createElement('img'), {
+                src: v.poster, alt: '', loading: 'lazy', className: 'absolute inset-0 w-full h-full object-cover',
+            });
+            knopf.appendChild(bild);
+            let player = null;
+            knopf.addEventListener('pointerenter', (event) => {
+                if (event.pointerType === 'touch') return;
+                if (!player) {
+                    player = Object.assign(document.createElement('video'), {
+                        src: v.url, muted: true, loop: true, className: 'absolute inset-0 w-full h-full object-cover',
+                    });
+                    player.playsInline = true;
+                    knopf.insertBefore(player, bild.nextSibling);
+                }
+                player.play().catch(() => undefined);
+            });
+            knopf.addEventListener('pointerleave', () => {
+                if (!player) return;
+                player.pause();
+                player.currentTime = 0;
+            });
+        } else if (v.status === 'running') {
+            knopf.insertAdjacentHTML('beforeend', '<div class="absolute inset-0 flex flex-col items-center justify-center gap-2 text-white text-xs"><div class="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div><span data-laeuft></span></div>');
+            const zeit = knopf.querySelector('[data-laeuft]');
+            zeit.dataset.seit = v.startedAt;
+            zeit.textContent = `entsteht seit ${videoDauerText(Date.now() - v.startedAt)}`;
+        } else {
+            knopf.insertAdjacentHTML('beforeend', '<p class="absolute inset-0 flex items-center justify-center p-3 text-center text-xs text-red-300"></p>');
+            knopf.querySelector('p').textContent = v.error || 'Fehlgeschlagen.';
+        }
+        const unten = document.createElement('div');
+        unten.className = 'absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-black/70 to-transparent pointer-events-none';
+        unten.appendChild(videoMarken(v, true));
+        unten.appendChild(Object.assign(document.createElement('p'), {
+            textContent: v.prompt, className: 'mt-1 text-[11px] leading-tight text-white/90 line-clamp-2',
+        }));
+        knopf.appendChild(unten);
+        knopf.addEventListener('click', () => oeffne(v.id));
+        return knopf;
+    };
+
+    const oeffne = (id) => {
+        const v = videos.find((video) => video.id === id);
+        if (!v) return;
+        document.getElementById('detail-inhalt').replaceChildren(videoKarte(v, {
+            optionen,
+            neuLaden: async () => {
+                dialog.close();
+                await lade();
+            },
+        }));
+        if (!dialog.open) dialog.showModal();
+        const url = new URL(window.location.href);
+        url.searchParams.set('id', id);
+        window.history.replaceState(null, '', url);
+    };
+
+    dialog.addEventListener('close', () => {
+        // Ein offenes Video soll nicht hinter dem geschlossenen Fenster weiterspielen.
+        dialog.querySelectorAll('video').forEach((player) => player.pause());
+        const url = new URL(window.location.href);
+        url.searchParams.delete('id');
+        window.history.replaceState(null, '', url);
+    });
+    document.getElementById('detail-zu').addEventListener('click', () => dialog.close());
+    dialog.addEventListener('click', (event) => {
+        if (event.target === dialog) dialog.close();
+    });
+
+    const zeichne = () => {
+        const sichtbar = videos.filter(passt);
+        document.getElementById('zahl').textContent = videos.length ? `(${videos.length})` : '';
+        document.getElementById('leer').classList.toggle('hidden', videos.length > 0);
+        document.querySelectorAll('#filter button').forEach((b) => b.classList.toggle('filter-aktiv', b.dataset.filter === filter));
+        const schluessel = `${filter}|${sichtbar.map((v) => `${v.id}:${v.status}`).join('|')}`;
+        if (raster.dataset.stand === schluessel) {
+            videoLaufzeitenNachfuehren(raster);
+            return;
+        }
+        raster.dataset.stand = schluessel;
+        raster.replaceChildren(...sichtbar.map(kachel));
+    };
+
+    const lade = async () => {
+        videos = await ladeVideoListe();
+        zeichne();
+        clearTimeout(pollTimer);
+        if (videos.some((v) => v.status === 'running')) pollTimer = setTimeout(lade, 5000);
+    };
+
+    document.querySelectorAll('#filter button').forEach((knopf) => knopf.addEventListener('click', () => {
+        filter = knopf.dataset.filter;
+        zeichne();
+    }));
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        try {
+            const response = await fetch('/api/videos/options');
+            if (response.ok) optionen = await response.json();
+        } catch {
+            // Ohne Optionen fehlt nur „Fertig rendern"; der Rest geht.
+        }
+        await lade();
+        const id = new URLSearchParams(window.location.search).get('id');
+        if (id) oeffne(id);
+    });
+</script>
+</body>
+</html>

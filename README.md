@@ -128,7 +128,14 @@ verliert einen bezahlten Lauf deshalb nicht, `resumeVideos` holt ihn beim Start
 nach. `POST /api/videos/:id/enhance {resolution}` rendert einen Entwurf über
 `draft_enhance` fertig: dieselbe Aufnahme, das Bündel enthält Seed und Eingaben.
 `GET /api/videos/:id/file` liefert das MP4 mit Range-Unterstützung
-(`?download=1` als Anhang), `DELETE /api/videos/:id` löscht Eintrag und Dateien.
+(`?download=1` als Anhang), `GET /api/videos/:id/poster` ein Standbild,
+`DELETE /api/videos/:id` löscht Eintrag und Dateien.
+
+Das Standbild zieht **ffmpeg** (seit dem Video-Ausbau im Image, `apk add
+ffmpeg`) bei 0,1 s aus dem Video, für ältere Videos beim ersten Abruf. Ohne
+Standbild zeigten Raster und iPhone nur schwarze Flächen. `/videos.html` ist
+die Übersicht (Raster, Vorschau beim Darüberfahren, Klick öffnet Player und
+Aktionen); `/video.html` zeigt unten nur Laufendes und das neueste Ergebnis.
 
 Gemessen am 07.10.2026:
 
@@ -256,7 +263,7 @@ Alles unter `/api` verlangt eine Anmeldung und antwortet bei fehlender mit
 | `GET /api/skill/download` | Claude-Skill als ZIP |
 | `GET/POST/DELETE /api/keys` | API-Keys (**nur mit Sitzung**) |
 | `GET/POST /api/videos` | Videos auflisten / erzeugen (202, im Hintergrund) |
-| `GET/DELETE /api/videos/:id` | Stand bzw. löschen; `…/file` liefert das MP4 |
+| `GET/DELETE /api/videos/:id` | Stand bzw. löschen; `…/file` liefert das MP4, `…/poster` das Standbild |
 | `POST /api/videos/:id/enhance` | Entwurf fertig rendern |
 | `GET /api/health` | öffentlich |
 

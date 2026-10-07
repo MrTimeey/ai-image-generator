@@ -1,4 +1,5 @@
 import fs from 'fs';
+import { execFile } from 'child_process';
 import axios from 'axios';
 import sharp from 'sharp';
 import { v4 as uuidv4 } from 'uuid';
@@ -13,6 +14,7 @@ import {
     KEYFRAME_DIR,
     keyframePath,
     listVideos,
+    posterPath,
     updateVideo,
     VideoKeyframe,
     VideoMode,
@@ -244,6 +246,27 @@ export const mp4Seconds = (bytes: Buffer): number | undefined => {
     return Math.round((dauer / timescale) * 100) / 100;
 };
 
+/**
+ * Zieht das Standbild bei 0,1 s aus dem Video. Ohne ffmpeg (lokal fehlt es
+ * vielleicht) gibt es eben keins — die Oberfläche fällt dann auf das Video
+ * selbst zurück. Gibt zurück, ob das Bild jetzt da ist.
+ */
+export const ensurePoster = (video: DataVideo): Promise<boolean> =>
+    new Promise(resolve => {
+        if (!video.fileName) return resolve(false);
+        const ziel = posterPath(video.id);
+        if (fs.existsSync(ziel)) return resolve(true);
+        execFile(
+            'ffmpeg',
+            ['-loglevel', 'error', '-y', '-ss', '0.1', '-i', videoPath(video.fileName), '-frames:v', '1', '-vf', 'scale=720:-2', '-q:v', '4', ziel],
+            { timeout: 20_000 },
+            error => {
+                if (error) console.warn(`Standbild für Video ${video.id} nicht erzeugt:`, error.message);
+                resolve(!error && fs.existsSync(ziel));
+            }
+        );
+    });
+
 const herunterladen = async (url: string): Promise<Buffer> => {
     const response = await axios.get<ArrayBuffer>(url, { responseType: 'arraybuffer', timeout: 120_000 });
     return Buffer.from(response.data);
@@ -274,6 +297,7 @@ const abschliessen = async (video: DataVideo, pollingUrl: string): Promise<void>
     }
 
     const seconds = mp4Seconds(bytes);
+    await ensurePoster({ ...video, fileName });
     // Gemeldet wird `cost` beim Abholen; fehlt es, aus der Preisliste schätzen.
     const gemeldet = typeof ergebnis.cost === 'number' ? ergebnis.cost : video.cost;
     const geschaetzt = gemeldet === undefined;

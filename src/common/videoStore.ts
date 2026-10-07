@@ -72,6 +72,8 @@ type VideoStore = { videos: DataVideo[] };
 export const videoDir = (): string => path.join(appConfig.baseFolder, VIDEO_DIR);
 export const videoPath = (fileName: string): string => path.join(videoDir(), fileName);
 export const keyframePath = (fileName: string): string => path.join(videoDir(), KEYFRAME_DIR, fileName);
+/** Standbild eines Videos, `<id>.jpg` neben dem MP4. */
+export const posterPath = (id: string): string => path.join(videoDir(), `${id}.jpg`);
 
 const storePath = (): string => path.join(videoDir(), 'videos.json');
 
@@ -139,6 +141,7 @@ export const removeVideo = (id: string): boolean => {
     const dateien = [
         video.fileName && videoPath(video.fileName),
         video.draftCache && videoPath(video.draftCache),
+        posterPath(video.id),
         ...(video.keyframes ?? []).filter(k => k.source === 'upload').map(k => keyframePath(k.image)),
     ].filter((datei): datei is string => Boolean(datei));
     for (const datei of dateien) {

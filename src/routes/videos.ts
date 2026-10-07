@@ -4,11 +4,21 @@ import path from 'path';
 import { z } from 'zod';
 import { hasProvider } from '../common/appConfig';
 import { describeError, ProviderError, statusOf } from '../common/providerError';
-import { DataVideo, findVideo, keyframePath, listVideos, removeVideo, updateVideo, videoPath } from '../common/videoStore';
+import {
+    DataVideo,
+    findVideo,
+    keyframePath,
+    listVideos,
+    posterPath,
+    removeVideo,
+    updateVideo,
+    videoPath,
+} from '../common/videoStore';
 import {
     acceptKeyframes,
     durationLimit,
     enhanceDraft,
+    ensurePoster,
     ENABLED_MODES,
     keyframeErrors,
     MAX_KEYFRAMES,
@@ -50,6 +60,7 @@ const alsPayload = (video: DataVideo) => ({
     ...video,
     pollingUrl: undefined,
     url: video.fileName ? `/api/videos/${video.id}/file` : null,
+    poster: video.fileName ? `/api/videos/${video.id}/poster` : null,
     keyframes: video.keyframes?.map(frame => ({
         ...frame,
         url: frame.source === 'library' ? `/thumbnails/${frame.image}` : `/api/videos/keyframe/${frame.image}`,
@@ -102,6 +113,15 @@ videos.get('/:id/file', (req, res) => {
     }
     if (req.query.download === '1') return res.download(path.resolve(videoPath(video.fileName)));
     res.sendFile(path.resolve(videoPath(video.fileName)));
+});
+
+/** Das Standbild; für Videos von vor dieser Änderung beim ersten Abruf erzeugt. */
+videos.get('/:id/poster', async (req, res) => {
+    const video = findVideo(req.params.id);
+    if (!video?.fileName || !(await ensurePoster(video))) {
+        return res.status(404).send({ error: 'not_found', message: 'Kein Standbild.' });
+    }
+    res.sendFile(path.resolve(posterPath(video.id)));
 });
 
 videos.post('/', async (req, res) => {

@@ -4,7 +4,7 @@
  * gecachte Antwort waere dort im besten Fall veraltet und im schlechtesten
  * eine fremde Sitzung.
  */
-const CACHE = 'aig-shell-v15';
+const CACHE = 'aig-shell-v16';
 
 /**
  * Nur Bausteine, nie HTML. Eine Seite, die ohne Sitzung abgerufen wird,
@@ -18,6 +18,7 @@ const SHELL = [
     '/public/js/toast.js',
     '/public/js/nav.js',
     '/public/js/layout-overlay.js',
+    '/public/js/video-karten.js',
     '/public/css/generated-tailwind.css',
     '/public/css/style.css',
     '/public/favicon_io/favicon.ico',

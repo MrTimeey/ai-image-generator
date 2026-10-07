@@ -20,6 +20,7 @@
     <script src="/js/main.js" defer></script>
     <script src="/public/js/toast.js" defer></script>
     <script src="/public/js/nav.js" defer></script>
+    <script src="/public/js/video-karten.js" defer></script>
     <link href="/public/css/generated-tailwind.css" rel="stylesheet">
     <link href="/public/css/style.css" rel="stylesheet">
     <style>
@@ -192,10 +193,11 @@
 
     <section class="mt-8">
         <div class="flex items-center justify-between mb-3">
-            <h2 class="text-xl font-semibold text-gray-800">Deine Videos</h2>
-            <span id="videos-zahl" class="text-sm text-gray-500"></span>
+            <h2 id="zuletzt-titel" class="text-xl font-semibold text-gray-800">Zuletzt</h2>
+            <a id="alle-videos" href="/videos.html" class="hidden text-sm text-blue-700 hover:underline">Alle Videos →</a>
         </div>
         <p id="videos-leer" class="hidden text-sm text-gray-500">Noch keine Videos.</p>
+        <!-- Nur was läuft und das neueste Ergebnis; alles andere steht in /videos.html. -->
         <div id="videos" class="grid grid-cols-1 gap-6 md:grid-cols-2"></div>
     </section>
 </main>
@@ -238,21 +240,10 @@
         timing: 'auto',
     };
 
-    /** Fehlt ein Vorschaubild (ältere Bilder haben keins), das Original zeigen. */
-    const mitRueckfall = (img, fileName) => {
-        img.addEventListener('error', () => {
-            const original = `/api/files/download/${encodeURIComponent(fileName)}`;
-            if (fileName && !img.src.endsWith(original)) img.src = original;
-        }, { once: true });
-        return img;
-    };
-
     const option = (value, label) => Object.assign(document.createElement('option'), { value, textContent: label });
     const ablauf = () => document.querySelector('input[name="ablauf"]:checked').value;
     const dauer = () => (dauerSelect.value === 'auto' ? 'auto' : Number(dauerSelect.value));
     const RES_LABEL = { hd: 'hd (720p)', fhd: 'fhd (1080p)', qhd: 'qhd (2K)', uhd: 'uhd (4K)' };
-    const MODUS_LABEL = { t2v: 'Text → Video', i2v: 'Bilder → Video', v2v: 'Fortsetzung', draft_enhance: 'Fertig gerendert' };
-    const dollar = (betrag) => `${betrag.toFixed(2).replace('.', ',')} $`;
 
     // ---- Modus ---------------------------------------------------------------
 
@@ -326,7 +317,7 @@
             marke.dataset.key = k.key;
             // Ränder freilassen, damit die Vorschau bei 0 s und am Ende nicht abgeschnitten wird.
             marke.style.left = `calc(28px + (100% - 56px) * ${Math.min(1, t / laenge)})`;
-            const img = mitRueckfall(document.createElement('img'), k.bibliothek ? k.image : null);
+            const img = videoMitRueckfall(document.createElement('img'), k.bibliothek ? k.image : null);
             img.src = k.vorschau;
             img.alt = `Bild ${i + 1}`;
             const label = document.createElement('span');
@@ -382,7 +373,7 @@
         kfListe.replaceChildren(...zustand.keyframes.map((k, i) => {
             const li = document.createElement('li');
             li.className = 'flex items-center gap-3 p-2 rounded-lg border border-gray-200';
-            const img = mitRueckfall(
+            const img = videoMitRueckfall(
                 Object.assign(document.createElement('img'), { src: k.vorschau, alt: '', className: 'w-14 h-14 object-cover rounded' }),
                 k.bibliothek ? k.image : null
             );
@@ -519,7 +510,7 @@
             const img = Object.assign(document.createElement('img'), {
                 src: `/thumbnails/${bild.fileName}`, alt: bild.prompt, loading: 'lazy', className: 'w-full h-full object-cover',
             });
-            knopf.appendChild(mitRueckfall(img, bild.fileName));
+            knopf.appendChild(videoMitRueckfall(img, bild.fileName));
             knopf.addEventListener('click', () => {
                 neuerKeyframe(bild.fileName, `/thumbnails/${bild.fileName}`, bild.prompt || bild.fileName);
                 zeichneKeyframes();
@@ -577,11 +568,11 @@
         const satz = optionen.prices[zustand.modus][entwurf ? 'draft' : aufloesungSelect.value];
         const sekunden = erwarteteSekunden();
         preisFeld.textContent = sekunden
-            ? `≈ ${dollar(satz * sekunden)} für ${sekunden} s (${dollar(satz)} je Sekunde)`
-            : `${dollar(satz)} je Sekunde — bei „automatisch" meist 5 bis 10 s, also bis ≈ ${dollar(satz * 10)}`;
+            ? `≈ ${videoDollar(satz * sekunden)} für ${sekunden} s (${videoDollar(satz)} je Sekunde)`
+            : `${videoDollar(satz)} je Sekunde — bei „automatisch" meist 5 bis 10 s, also bis ≈ ${videoDollar(satz * 10)}`;
         if (entwurf) {
             const fertig = optionen.prices[zustand.modus].fhd;
-            preisFeld.textContent += `. Fertig rendern in fhd danach ≈ ${dollar(fertig * (sekunden ?? 10))}.`;
+            preisFeld.textContent += `. Fertig rendern in fhd danach ≈ ${videoDollar(fertig * (sekunden ?? 10))}.`;
         }
         startBtn.textContent = entwurf ? 'Entwurf erzeugen' : 'Video erzeugen';
         const fehler = pruefe();
@@ -652,11 +643,6 @@
 
     // ---- Liste der Videos -----------------------------------------------------
 
-    const dauerText = (ms) => {
-        const s = Math.round(ms / 1000);
-        return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
-    };
-
     const zeigeStartVideo = () => {
         const v = videos.find((video) => video.id === startVideoSelect.value);
         const vorschau = document.getElementById('startvideo-vorschau');
@@ -675,139 +661,38 @@
         zeigeStartVideo();
     };
 
-    const karte = (v) => {
-        const el = document.createElement('article');
-        el.className = 'bg-white rounded-lg border border-gray-200 overflow-hidden';
-        const medien = document.createElement('div');
-        medien.className = 'bg-black aspect-video flex items-center justify-center';
-        if (v.status === 'done' && v.url) {
-            // `#t=0.1` lässt den Browser das erste Bild zeigen statt einer grauen Fläche.
-            const player = Object.assign(document.createElement('video'), { src: `${v.url}#t=0.1`, controls: true, preload: 'metadata', className: 'w-full h-full' });
-            player.playsInline = true;
-            medien.appendChild(player);
-        } else if (v.status === 'running') {
-            medien.innerHTML = '<div class="flex flex-col items-center gap-3 text-white text-sm"><div class="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div><span data-laeuft></span></div>';
-            medien.querySelector('[data-laeuft]').textContent = `entsteht seit ${dauerText(Date.now() - v.startedAt)}`;
-        } else {
-            medien.innerHTML = '<p class="px-6 text-center text-sm text-red-300"></p>';
-            medien.querySelector('p').textContent = v.error || 'Fehlgeschlagen.';
-        }
-
-        const info = document.createElement('div');
-        info.className = 'p-3 space-y-2';
-        const marken = document.createElement('div');
-        marken.className = 'flex flex-wrap gap-1 text-xs';
-        const marke = (text, klasse) => marken.appendChild(Object.assign(document.createElement('span'), { textContent: text, className: `px-1.5 py-0.5 rounded ${klasse}` }));
-        marke(MODUS_LABEL[v.mode], 'bg-gray-100 text-gray-700');
-        marke(v.draft ? 'Entwurf · hd' : v.resolution, v.draft ? 'bg-amber-100 text-amber-800' : 'bg-green-100 text-green-800');
-        if (v.seconds) marke(`${String(v.seconds).replace('.', ',')} s`, 'bg-gray-100 text-gray-700');
-        if (v.aspectRatio !== 'auto') marke(v.aspectRatio, 'bg-gray-100 text-gray-700');
-        if (v.cost !== undefined) marke(`${v.costEstimated ? '≈ ' : ''}${v.cost} Credits`, 'bg-gray-100 text-gray-700');
-        if (!v.generateAudio) marke('ohne Ton', 'bg-gray-100 text-gray-700');
-        info.appendChild(marken);
-
-        const prompt = Object.assign(document.createElement('p'), { textContent: v.prompt, className: 'text-sm text-gray-700 line-clamp-3', title: v.prompt });
-        info.appendChild(prompt);
-
-        if (v.keyframes?.length) {
-            const reihe = document.createElement('div');
-            reihe.className = 'flex flex-wrap gap-1';
-            for (const k of v.keyframes) {
-                const fig = document.createElement('figure');
-                fig.className = 'relative';
-                fig.appendChild(mitRueckfall(
-                    Object.assign(document.createElement('img'), { src: k.url, alt: '', className: 'w-10 h-10 object-cover rounded' }),
-                    k.source === 'library' ? k.image : null
-                ));
-                if (k.time !== undefined) {
-                    fig.appendChild(Object.assign(document.createElement('figcaption'), {
-                        textContent: `${k.time}s`, className: 'absolute bottom-0 inset-x-0 text-center text-[10px] leading-4 bg-black/60 text-white mono',
-                    }));
-                }
-                reihe.appendChild(fig);
-            }
-            info.appendChild(reihe);
-        }
-
-        const aktionen = document.createElement('div');
-        aktionen.className = 'flex flex-wrap items-center gap-2 pt-1 text-sm';
-        if (v.canEnhance) {
-            const res = document.createElement('select');
-            res.className = 'p-1 text-sm border border-gray-300 rounded';
-            const satz = optionen.prices[v.mode === 'draft_enhance' ? 't2v' : v.mode];
-            for (const r of optionen.resolutions) res.appendChild(option(r, `${r} · ≈ ${dollar(satz[r] * (v.seconds ?? 10))}`));
-            res.value = 'fhd';
-            const fertig = Object.assign(document.createElement('button'), {
-                type: 'button', textContent: 'Fertig rendern',
-                className: 'px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700',
-            });
-            fertig.addEventListener('click', async () => {
-                fertig.disabled = true;
-                const response = await fetch(`/api/videos/${v.id}/enhance`, {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ resolution: res.value }),
-                });
-                const daten = await response.json().catch(() => ({}));
-                if (!response.ok) showToast(daten.message || `Fehler ${response.status}`);
-                else showToast('Wird fertig gerendert — dieselbe Aufnahme in voller Qualität');
-                await ladeVideos();
-            });
-            aktionen.append(res, fertig);
-        }
-        // Fortsetzen nur, wenn der Server den Modus anbietet (derzeit aus).
-        if (v.status === 'done' && optionen.modes?.includes('v2v')) {
-            const weiter = Object.assign(document.createElement('button'), {
-                type: 'button', textContent: 'Fortsetzen', className: 'px-3 py-1.5 rounded-lg border border-gray-300 hover:bg-gray-50',
-            });
-            weiter.addEventListener('click', () => {
-                setzeModus('v2v');
-                startVideoSelect.value = v.id;
-                zeigeStartVideo();
-                aktualisiere();
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-                promptFeld.focus();
-            });
-            aktionen.appendChild(weiter);
-        }
-        if (v.status === 'done') {
-            const laden = Object.assign(document.createElement('a'), {
-                href: `${v.url}?download=1`, textContent: 'Herunterladen', className: 'px-3 py-1.5 rounded-lg border border-gray-300 hover:bg-gray-50',
-            });
-            aktionen.appendChild(laden);
-        }
-        if (v.status !== 'running') {
-            const loeschen = Object.assign(document.createElement('button'), {
-                type: 'button', textContent: 'Löschen', className: 'px-3 py-1.5 rounded-lg border border-red-300 text-red-700 hover:bg-red-50',
-            });
-            loeschen.addEventListener('click', async () => {
-                if (!window.confirm('Dieses Video wirklich löschen? Das lässt sich nicht rückgängig machen.')) return;
-                const response = await fetch(`/api/videos/${v.id}`, { method: 'DELETE' });
-                if (!response.ok) showToast('Löschen ging nicht.');
-                await ladeVideos();
-            });
-            aktionen.appendChild(loeschen);
-        }
-        info.appendChild(aktionen);
-        el.append(medien, info);
-        return el;
+    let pollTimer = null;
+    const fortsetzenMit = (v) => {
+        setzeModus('v2v');
+        startVideoSelect.value = v.id;
+        zeigeStartVideo();
+        aktualisiere();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        promptFeld.focus();
     };
 
-    let pollTimer = null;
     const ladeVideos = async () => {
-        const response = await fetch('/api/videos');
-        if (!response.ok) return;
-        videos = (await response.json()).videos;
+        videos = await ladeVideoListe();
+        /**
+         * Hier nur, was gerade entsteht, und das neueste Ergebnis (auch ein
+         * Fehlschlag soll sichtbar sein). Der ganze Bestand steht in
+         * /videos.html — als Liste wuchs diese Seite mit jedem Video weiter.
+         */
+        const laufend = videos.filter((v) => v.status === 'running');
+        const letztes = videos.find((v) => v.status !== 'running');
+        const zeigen = [...laufend, ...(letztes ? [letztes] : [])];
         document.getElementById('videos-leer').classList.toggle('hidden', videos.length > 0);
-        document.getElementById('videos-zahl').textContent = videos.length ? `${videos.length}` : '';
+        document.getElementById('zuletzt-titel').textContent = laufend.length ? 'Entsteht gerade' : 'Zuletzt';
+        const alle = document.getElementById('alle-videos');
+        alle.textContent = `Alle Videos (${videos.length}) →`;
+        alle.classList.toggle('hidden', videos.length === 0);
         // Laufende Karten nicht jedes Mal neu bauen, sonst springen spielende Videos zurück.
-        const schluessel = videos.map((v) => `${v.id}:${v.status}`).join('|');
+        const schluessel = zeigen.map((v) => `${v.id}:${v.status}`).join('|');
         if (videoListe.dataset.stand !== schluessel) {
-            videoListe.replaceChildren(...videos.map(karte));
+            videoListe.replaceChildren(...zeigen.map((v) => videoKarte(v, { optionen, neuLaden: ladeVideos, fortsetzen: fortsetzenMit })));
             videoListe.dataset.stand = schluessel;
         } else {
-            videoListe.querySelectorAll('[data-laeuft]').forEach((el, i) => {
-                const laufend = videos.filter((v) => v.status === 'running')[i];
-                if (laufend) el.textContent = `entsteht seit ${dauerText(Date.now() - laufend.startedAt)}`;
-            });
+            videoLaufzeitenNachfuehren(videoListe);
         }
         baueStartVideoAuswahl();
         clearTimeout(pollTimer);

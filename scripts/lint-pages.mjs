@@ -20,6 +20,7 @@ const SHARED = [
     'src/static/public/js/toast.js',
     'src/static/public/js/nav.js',
     'src/static/public/js/layout-overlay.js',
+    'src/static/public/js/video-karten.js',
 ]
     .map(path => readFileSync(path, 'utf8'))
     .join('\n;\n');
