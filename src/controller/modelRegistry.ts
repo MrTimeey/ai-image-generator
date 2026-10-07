@@ -49,6 +49,13 @@ export type ModelDefinition = {
      */
     maxInputImages: number;
     supportsSeed: boolean;
+    /**
+     * Nur OpenAI: die API kennt `xhigh` und `max` selbst — bei GPT Image 2.5
+     * sind das reine Rechenstufen, die Aufloesung bleibt (am 07.10.2026
+     * gemessen). Fehlt das, ist `max` allein unser Begriff fuer die groesste
+     * Aufloesung und geht als `high` hinaus.
+     */
+    apiKnowsXhighMax?: boolean;
     /** Grobe Einordnung der Kosten, damit die Wahl bewusst faellt. */
     cost: 'low' | 'medium' | 'high';
 };
@@ -193,10 +200,47 @@ export const MODELS: readonly ModelDefinition[] = [
         cost: 'high',
     },
     {
+        id: 'gpt-image-2.5-flare',
+        provider: 'openai',
+        label: 'OpenAI GPT Image 2.5 Flare',
+        hint: 'Beste Wahl für Text im Bild und präzise Vorgaben. Schnell, freie Größe.',
+        endpoint: 'gpt-image-2.5-flare',
+        sizeMode: 'pixel_size',
+        ratios: ALL_RATIOS,
+        qualities: ['low', 'medium', 'high', 'xhigh', 'max'],
+        formats: ['png', 'jpeg', 'webp'],
+        maxAmount: 4,
+        edge: { multiple: 16, min: 256, max: 3840, maxPixels: 8_294_400 },
+        supportsRevisePrompt: false,
+        // Laut Doku bis 16; am 07.10.2026 wurden sogar 17 angenommen.
+        maxInputImages: 16,
+        supportsSeed: false,
+        apiKnowsXhighMax: true,
+        cost: 'medium',
+    },
+    {
+        id: 'gpt-image-2.5-sunburst',
+        provider: 'openai',
+        label: 'OpenAI GPT Image 2.5 Sunburst',
+        hint: 'Höchste Bildqualität bei OpenAI, hält Personen und Materialien über Bearbeitungen stabil. Langsam.',
+        endpoint: 'gpt-image-2.5-sunburst',
+        sizeMode: 'pixel_size',
+        ratios: ALL_RATIOS,
+        qualities: ['low', 'medium', 'high', 'xhigh', 'max'],
+        formats: ['png', 'jpeg', 'webp'],
+        maxAmount: 4,
+        edge: { multiple: 16, min: 256, max: 3840, maxPixels: 8_294_400 },
+        supportsRevisePrompt: false,
+        maxInputImages: 16,
+        supportsSeed: false,
+        apiKnowsXhighMax: true,
+        cost: 'medium',
+    },
+    {
         id: 'gpt-image-2',
         provider: 'openai',
         label: 'OpenAI GPT Image 2',
-        hint: 'Beste Wahl für Text im Bild und präzise Vorgaben. Freie Größe.',
+        hint: 'Vorgänger von GPT Image 2.5: langsamer und je Stufe teurer.',
         endpoint: 'gpt-image-2',
         sizeMode: 'pixel_size',
         ratios: ALL_RATIOS,
@@ -251,7 +295,7 @@ export const MODELS: readonly ModelDefinition[] = [
  * Tokenzahlen genau aufgeschlüsselt, damit ist der Betrag exakt und nicht
  * geschätzt.
  *
- * **Stand 25.08.2026** von der OpenAI-Preisseite. Preise ändern sich; wenn die
+ * **Stand 07.10.2026** von der OpenAI-Preisseite. Preise ändern sich; wenn die
  * Beträge auf der Kontoseite von der Abrechnung abweichen, ist das hier die
  * erste Stelle zum Nachsehen. BFL braucht so eine Tabelle nicht — dort steht
  * `cost` in Credits schon in der Antwort.
@@ -259,6 +303,8 @@ export const MODELS: readonly ModelDefinition[] = [
 export type TokenPrice = { textInput: number; imageInput: number; imageOutput: number };
 
 export const OPENAI_PRICES_USD_PER_MILLION: Record<string, TokenPrice> = {
+    'gpt-image-2.5-flare': { textInput: 5, imageInput: 8, imageOutput: 30 },
+    'gpt-image-2.5-sunburst': { textInput: 5, imageInput: 8, imageOutput: 30 },
     'gpt-image-2': { textInput: 5, imageInput: 8, imageOutput: 30 },
     'gpt-image-1.5': { textInput: 5, imageInput: 8, imageOutput: 32 },
     'gpt-image-1': { textInput: 5, imageInput: 10, imageOutput: 40 },

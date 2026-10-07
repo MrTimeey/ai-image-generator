@@ -24,6 +24,8 @@ const TARGET_PIXELS: Record<Quality, number> = {
     low: 1_000_000,
     medium: 2_000_000,
     high: 4_000_000,
+    // `xhigh` aendert nur den Rechenaufwand der API, nicht die Groesse.
+    xhigh: 4_000_000,
     // `max` heisst „so gross, wie das Modell kann"; der echte Wert kommt aus
     // dessen `maxPixels`.
     max: Number.POSITIVE_INFINITY,
@@ -138,7 +140,7 @@ export const clampQuality = (model: ModelDefinition, quality: Quality | undefine
     const supported = model.qualities;
     if (supported.length === 0) return 'medium';
     if (quality && supported.includes(quality)) return quality;
-    const order: Quality[] = ['high', 'medium', 'low'];
+    const order: Quality[] = ['xhigh', 'high', 'medium', 'low'];
     const wanted = order.indexOf(quality ?? 'medium');
     for (let i = wanted; i < order.length; i++) {
         if (supported.includes(order[i])) return order[i];

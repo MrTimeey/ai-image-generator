@@ -106,6 +106,14 @@ describe('resolveSize — pixel_size (OpenAI)', () => {
         expect(height % 16).toBe(0);
     });
 
+    it('ändert bei GPT Image 2.5 mit `xhigh` nur den Aufwand, nicht die Größe', () => {
+        // Am 07.10.2026 gemessen: `xhigh` und `max` liefern dieselben Pixel
+        // wie `high`, die API rechnet nur länger. Die Größe bestimmen wir.
+        const flare = modell('gpt-image-2.5-flare');
+        expect(resolveSize(flare, '16:9', 'xhigh')).toEqual(resolveSize(flare, '16:9', 'high'));
+        expect(resolveSize(flare, '16:9', 'max').size).toBe('3840x2160');
+    });
+
     it('rastet bei festen Größen auf die nächstliegende ein', () => {
         const mini = modell('gpt-image-1-mini');
         expect(resolveSize(mini, '1:1', 'low').size).toBe('1024x1024');
@@ -133,6 +141,12 @@ describe('resolveSize — aspect_ratio (Kontext)', () => {
 describe('clampQuality', () => {
     it('behält eine unterstützte Stufe', () => {
         expect(clampQuality(modell('flux-2-pro'), 'high')).toBe('high');
+    });
+
+    it('macht aus `xhigh` ein `high`, wo die API es nicht kennt', () => {
+        expect(clampQuality(modell('gpt-image-2'), 'xhigh')).toBe('high');
+        expect(clampQuality(modell('flux-2-pro'), 'xhigh')).toBe('high');
+        expect(clampQuality(modell('gpt-image-2.5-flare'), 'xhigh')).toBe('xhigh');
     });
 
     it('geht auf die nächstniedrigere, wenn die Stufe fehlt', () => {

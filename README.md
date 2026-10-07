@@ -22,7 +22,9 @@ eine eigene zu führen.
 | `flux-pro-1.1` | BFL | Vorgängergeneration |
 | `flux-pro-1.1-ultra` | BFL | bis 4 Megapixel |
 | `flux-kontext-pro` / `-max` | BFL | Bildbearbeitung mit einem Referenzbild |
-| `gpt-image-2` | OpenAI | Text im Bild, präzise Vorgaben, freie Größe |
+| `gpt-image-2.5-flare` | OpenAI | Text im Bild, präzise Vorgaben, schnell, freie Größe |
+| `gpt-image-2.5-sunburst` | OpenAI | höchste Bildqualität, stabil über Bearbeitungen, langsam |
+| `gpt-image-2` | OpenAI | Vorgänger von 2.5, langsamer und je Stufe teurer |
 | `gpt-image-1.5` / `gpt-image-1-mini` | OpenAI | günstiger, drei feste Größen |
 
 DALL·E ist am 12. Mai 2026 abgeschaltet worden; `dall-e-2` und `dall-e-3`
@@ -35,11 +37,11 @@ hergibt — angeboten wird sie nur, wo das spürbar mehr ist als `high`:
 
 | Modell | `high` (16:9) | `max` (16:9) | Grenze |
 |---|---|---|---|
-| `gpt-image-2` | 2672×1504 | **3840×2160** | 8.294.400 Pixel, Kante ≤ 3840 |
+| `gpt-image-2`, GPT Image 2.5 | 2672×1504 | **3840×2160** | 8.294.400 Pixel, Kante ≤ 3840 |
 | FLUX.2 (alle) | 2672×1504 | — | 4.194.304 Pixel |
 | `flux-pro-1.1-ultra` | — | — | 4 MP, Kanten vom Anbieter |
 
-**Für Wallpaper in 4K führt kein Weg an `gpt-image-2` vorbei.** FLUX.2 endet
+**Für Wallpaper in 4K führt kein Weg an den OpenAI-Modellen mit freier Größe vorbei.** FLUX.2 endet
 bei 4 Megapixeln; dort wäre eine `max`-Stufe nur fünf Prozent über `high` und
 damit ein Versprechen, das sie nicht hält.
 
@@ -49,6 +51,23 @@ neben `max` auch `maxPixels`.
 
 Ein 4K-Bild kostet rund **0,40 $** gegenüber gut einem Cent bei `low` — die
 Oberfläche weist beim Umschalten darauf hin.
+
+**GPT Image 2.5** (Flare und Sunburst) kennt in der API selbst die Stufen
+`xhigh` und `max` — dort ändern sie nur den Rechenaufwand, nicht die
+Auflösung (am 07.10.2026 gemessen). Die App legt das auf ihre eine Leiter:
+`xhigh` ist so groß wie `high`, rechnet aber länger; `max` ist 4K **und**
+höchster Aufwand. Bei `gpt-image-2` geht `max` als API-Stufe `high` hinaus,
+weil die API dort kein `max` kennt.
+
+| Flare, 1024×1024 | `low` | `high` | `xhigh` | `max` |
+|---|---|---|---|---|
+| Bild-Tokens | 196 | 1.756 | 3.122 | 7.024 |
+| Dauer | 10 s | 22 s | 34 s | 66 s |
+
+Zum Vergleich: `gpt-image-2` mit `high` kostet 7.024 Tokens und brauchte
+135 s. Sunburst kostet je Stufe dasselbe wie Flare, ist aber zwei- bis
+dreimal so langsam. In 4K (3840×2160) mit `max` sind es 13.342 Tokens, rund
+0,40 $.
 
 Ein Upscale gibt es nicht: BFL bietet dafür keinen Endpunkt an (nur für
 Video), und alle Varianten antworten mit 404. Wer größer will, erzeugt gleich
@@ -65,7 +84,8 @@ Vergrößern.
 |---|---|---|
 | FLUX.2 (alle) | 4 | `input_image`, `input_image_2`, … |
 | `flux-kontext-pro` / `-max` | 1 | `input_image` |
-| OpenAI (alle) | 4 | `POST /v1/images/edits` statt `/generations` |
+| GPT Image 2.5 | 16 | `POST /v1/images/edits` statt `/generations` |
+| übrige OpenAI-Modelle | 4 | `POST /v1/images/edits` statt `/generations` |
 | `flux-pro-1.1`, `-ultra` | 0 | — |
 
 `flux-pro-1.1` nimmt `input_image` zwar entgegen, ignoriert es aber und liefert
@@ -84,7 +104,7 @@ pro Modell übersetzt:
 - **`width`/`height`** — FLUX.2 (Vielfache von 16) und `flux-pro-1.1` (32). Die
   FLUX.2-Endpunkte nehmen `aspect_ratio` zwar an, **ignorieren es aber** und
   liefern 1024×1024.
-- **`size`** — OpenAI. `gpt-image-2` nimmt freie Größen (Kanten als Vielfache
+- **`size`** — OpenAI. `gpt-image-2` und GPT Image 2.5 nehmen freie Größen (Kanten als Vielfache
   von 16, max. 3840 px), die übrigen nur 1024×1024, 1536×1024, 1024×1536.
 
 ## API
@@ -157,33 +177,6 @@ Kennung nach, sobald die Seite wieder sichtbar wird.
 
 Aufträge liegen im Speicher (30 Minuten, höchstens 200). Ein Neustart des
 Containers verliert sie; die Bilder stehen dann in der Übersicht.
-
-### Auflösung und Wallpaper
-
-Die Qualitätsstufe bestimmt die Auflösung. `max` reizt aus, was das Modell
-hergibt — angeboten wird sie nur, wo das spürbar mehr ist als `high`:
-
-| Modell | `high` (16:9) | `max` (16:9) | Grenze |
-|---|---|---|---|
-| `gpt-image-2` | 2672×1504 | **3840×2160** | 8.294.400 Pixel, Kante ≤ 3840 |
-| FLUX.2 (alle) | 2672×1504 | — | 4.194.304 Pixel |
-| `flux-pro-1.1-ultra` | — | — | 4 MP, Kanten vom Anbieter |
-
-**Für Wallpaper in 4K führt kein Weg an `gpt-image-2` vorbei.** FLUX.2 endet
-bei 4 Megapixeln; dort wäre eine `max`-Stufe nur fünf Prozent über `high` und
-damit ein Versprechen, das sie nicht hält.
-
-Bei FLUX.2 zählt die **Fläche**, nicht die einzelne Kante: 3040×1360 wird
-angenommen, 3072×1728 nicht (am 25.08.2026 nachgemessen). Deshalb hat `edge`
-neben `max` auch `maxPixels`.
-
-Ein 4K-Bild kostet rund **0,40 $** gegenüber gut einem Cent bei `low` — die
-Oberfläche weist beim Umschalten darauf hin.
-
-Ein Upscale gibt es nicht: BFL bietet dafür keinen Endpunkt an (nur für
-Video), und alle Varianten antworten mit 404. Wer größer will, erzeugt gleich
-größer — das liefert ohnehin bessere Ergebnisse als nachträgliches
-Vergrößern.
 
 ### Referenzbilder in der Detailansicht
 

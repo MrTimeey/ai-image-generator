@@ -197,6 +197,7 @@
     const selectedModel = () => models.find(m => m.id === modelSelect.value);
 
     const COST_LABEL = { low: 'günstig', medium: 'mittel', high: 'teuer' };
+    const QUALITY_LABEL = { xhigh: 'xhigh (mehr Aufwand)', max: 'max (größtmöglich)' };
 
     /**
      * Baut die abhaengigen Felder neu auf. Das ersetzt die alte Loesung, bei
@@ -240,7 +241,7 @@
         } else {
             qualitySelect.disabled = false;
             qualitySelect.replaceChildren(
-                ...model.qualities.map(q => option(q, q === 'max' ? 'max (größtmöglich)' : q))
+                ...model.qualities.map(q => option(q, QUALITY_LABEL[q] ?? q))
             );
             qualitySelect.value = model.qualities.includes(previousQuality)
                 ? previousQuality

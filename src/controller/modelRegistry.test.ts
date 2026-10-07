@@ -55,6 +55,12 @@ describe('Registry ist in sich stimmig', () => {
         expect(findModel('flux-2-pro')?.maxInputImages).toBeGreaterThan(0);
         expect(findModel('flux-kontext-pro')?.maxInputImages).toBe(1);
     });
+
+    it('schickt `xhigh` nur an Modelle, deren API es kennt', () => {
+        for (const model of MODELS) {
+            if (model.qualities.includes('xhigh')) expect(model.apiKnowsXhighMax).toBe(true);
+        }
+    });
 });
 
 describe('availableModels', () => {
@@ -81,6 +87,12 @@ describe('openAiCost', () => {
         // gpt-image-2: Bild ein 8 $/Mio, Bild aus 30 $/Mio.
         expect(openAiCost('gpt-image-2', { textInput: 0, imageInput: 1_000_000, imageOutput: 0 })).toBe(8);
         expect(openAiCost('gpt-image-2', { textInput: 0, imageInput: 0, imageOutput: 1_000_000 })).toBe(30);
+    });
+
+    it('rechnet den gemessenen 4K-Fall von GPT Image 2.5 nach', () => {
+        // Echte Antwort von gpt-image-2.5-flare (07.10.2026), 3840×2160 mit
+        // `max`: 16 Text-Tokens ein, 13.342 Bild-Tokens aus — gut 0,40 $.
+        expect(openAiCost('gpt-image-2.5-flare', { textInput: 16, imageInput: 0, imageOutput: 13_342 })).toBeCloseTo(0.4003, 4);
     });
 
     it('liefert null für ein unbekanntes Modell', () => {

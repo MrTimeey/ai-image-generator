@@ -35,11 +35,14 @@ export type AspectRatio = (typeof ASPECT_RATIOS)[number];
 /**
  * `max` reizt aus, was das Modell hergibt. Die Stufe steht **nur** an
  * Modellen, bei denen das spuerbar mehr ist als `high` — praktisch also an
- * `gpt-image-2` mit 8,3 Megapixeln (3840x2160 bei 16:9). FLUX.2 endet bei
- * 4 Megapixeln, dort waere `max` gerade fuenf Prozent ueber `high` und damit
- * ein Versprechen, das die Stufe nicht haelt.
+ * `gpt-image-2` und GPT Image 2.5 mit 8,3 Megapixeln (3840x2160 bei 16:9).
+ * FLUX.2 endet bei 4 Megapixeln, dort waere `max` gerade fuenf Prozent ueber
+ * `high` und damit ein Versprechen, das die Stufe nicht haelt.
+ *
+ * `xhigh` gibt es nur bei GPT Image 2.5: gleiche Aufloesung wie `high`, aber
+ * die API rechnet laenger daran (siehe `apiKnowsXhighMax`).
  */
-export const QUALITIES = ['low', 'medium', 'high', 'max'] as const;
+export const QUALITIES = ['low', 'medium', 'high', 'xhigh', 'max'] as const;
 export type Quality = (typeof QUALITIES)[number];
 
 export const OUTPUT_FORMATS = ['png', 'jpeg', 'webp'] as const;

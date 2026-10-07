@@ -74,16 +74,19 @@ Formate. Was hier steht, ist die Entscheidungshilfe dahinter:
 | Viele Entwürfe, Varianten durchprobieren | `flux-2-klein-9b` (am günstigsten) |
 | `[pro]` trifft das Motiv nicht | `flux-2-max` |
 | Sehr detailreiche oder ungewöhnliche Szene | `flux-2-flex` (langsamer) |
-| **Text im Bild**, Schrift, Beschriftung, Logo | `gpt-image-2` |
-| Präzise Vorgaben, die eingehalten werden müssen | `gpt-image-2` |
+| **Text im Bild**, Schrift, Beschriftung, Logo | `gpt-image-2.5-flare` |
+| Präzise Vorgaben, die eingehalten werden müssen | `gpt-image-2.5-flare` |
+| Fertiges Bild bei OpenAI, Person oder Produkt über mehrere Bearbeitungen gleich halten | `gpt-image-2.5-sunburst` (langsam) |
 | Druck, großes Format, 4 Megapixel | `flux-pro-1.1-ultra` |
 | Vorhandenes Bild verändern | `flux-kontext-pro` / `flux-kontext-max` |
-| Mehrere Vorlagen kombinieren | `flux-2-pro` (bis 4 Referenzbilder) |
+| Mehrere Vorlagen kombinieren | `flux-2-pro` (bis 4), GPT Image 2.5 (bis 16) |
 | Billig und schnell bei OpenAI | `gpt-image-1-mini` |
 
-FLUX ist stärker bei Bildwirkung und Stil, `gpt-image-2` bei Instruktionstreue
+FLUX ist stärker bei Bildwirkung und Stil, GPT Image bei Instruktionstreue
 und allem, was lesbar sein muss. Wenn Schrift im Bild vorkommt, ist die Wahl
-nicht offen — dann `gpt-image-2`.
+nicht offen — dann `gpt-image-2.5-flare`. Flare ist schneller als
+`gpt-image-2` und je Stufe deutlich günstiger; `gpt-image-2` braucht es nur
+noch zum Vergleich.
 
 ## Seitenverhältnis
 
@@ -110,14 +113,18 @@ Kantenlängen selbst; das Verhältnis stimmt, die Pixelzahl ist nicht vorhersagb
 - **FLUX**: die Auflösung (rund 1, 2 bzw. 4 Megapixel). Die API kennt dort kein
   Qualitätsfeld.
 - **OpenAI**: den Rechenaufwand **und** die Auflösung.
+- **GPT Image 2.5** hat zusätzlich `xhigh`: gleiche Größe wie `high`, aber mehr
+  Rechenaufwand (rund doppelt so teuer). Für das fertige Bild, wenn `high`
+  noch nicht reicht.
 
 `low` ist für Entwürfe völlig ausreichend und deutlich billiger. `high` erst,
 wenn das Bild wirklich verwendet wird.
 
-**Für Wallpaper und große Bildschirme:** `--model gpt-image-2 --quality max`
-liefert bei 16:9 echte **3840×2160**. Nur dieses Modell kann das — FLUX.2
-endet bei 4 Megapixeln (2672×1504), deshalb gibt es die Stufe dort nicht.
-Ein 4K-Bild kostet rund **0,40 $**, also nicht beiläufig verwenden.
+**Für Wallpaper und große Bildschirme:** `--model gpt-image-2.5-flare --quality max`
+liefert bei 16:9 echte **3840×2160** mit dem höchsten Rechenaufwand. Nur die
+OpenAI-Modelle mit freier Größe können das — FLUX.2 endet bei 4 Megapixeln
+(2672×1504), deshalb gibt es die Stufe dort nicht. Ein 4K-Bild kostet rund
+**0,40 $**, also nicht beiläufig verwenden.
 
 Einen Upscale gibt es nicht; wer größer will, erzeugt gleich größer.
 
@@ -143,6 +150,7 @@ Einen Upscale gibt es nicht; wer größer will, erzeugt gleich größer.
 | Modell | Referenzbilder |
 |---|---|
 | `flux-2-pro` / `-flex` / `-max` / `-klein-9b` | bis 4 |
+| `gpt-image-2.5-flare` / `-sunburst` | bis 16 |
 | `gpt-image-2`, `gpt-image-1.5`, `gpt-image-1-mini` | bis 4 |
 | `flux-kontext-pro` / `-max` | 1 |
 | `flux-pro-1.1`, `flux-pro-1.1-ultra` | **keine** |
