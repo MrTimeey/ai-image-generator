@@ -12,7 +12,15 @@ import { failJob, finishJob, getJob, isValidJobId, startJob } from '../common/jo
 
 const generateRouter: express.Router = express.Router();
 
-const GenerateSchema = z.object({
+/**
+ * Deckel fuer die Zahl der Referenzbilder: das Maximum ueber alle Modelle.
+ * Aus der Registry abgeleitet, weil ein fester Wert hier schon einmal
+ * zurueckblieb — GPT Image 2.5 versprach 16, die Pruefung liess nur 8 durch.
+ * Das Limit je Modell prueft `imageService`.
+ */
+export const MAX_INPUT_IMAGES = Math.max(...MODELS.map(model => model.maxInputImages));
+
+export const GenerateSchema = z.object({
     prompt: z.string().min(1, 'prompt darf nicht leer sein'),
     model: z.string().optional().default(DEFAULT_MODEL),
     ratio: z.enum(ASPECT_RATIOS).optional().default('1:1'),
@@ -26,7 +34,7 @@ const GenerateSchema = z.object({
      * Obergrenze steht je Modell in der Registry; hier nur ein Deckel gegen
      * offensichtlichen Unfug.
      */
-    inputImages: z.array(z.string().min(1)).max(8).optional(),
+    inputImages: z.array(z.string().min(1)).max(MAX_INPUT_IMAGES).optional(),
     /**
      * Vom Client vergebene Kennung. Reisst die Verbindung ab — in der PWA
      * passiert das, sobald sie in den Hintergrund geht —, kann er das Ergebnis
