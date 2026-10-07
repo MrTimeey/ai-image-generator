@@ -42,7 +42,12 @@ type BflSubmitResponse = {
 };
 type BflResultResponse = {
     status?: string;
-    result?: { sample?: string; prompt?: string; seed?: number };
+    /**
+     * Bei Bildern `sample`, `prompt`, `seed`; bei Videos zusaetzlich
+     * `draft_cache` (Entwurf) und `duration`. Alles, was nicht gebraucht wird,
+     * bleibt unbeachtet.
+     */
+    result?: { sample?: string; prompt?: string; seed?: number; [key: string]: unknown };
     details?: unknown;
 };
 
@@ -197,13 +202,19 @@ export const isRetryableSubmitError = (error: unknown): boolean => {
     return axiosError.response.status === 429 || isLoadShedding(error);
 };
 
-const submit = async (
+const submit = (
     model: ModelDefinition,
+    body: Record<string, unknown>
+): Promise<{ pollingUrl: string; cost?: number }> => submitTo(model.endpoint, body);
+
+/** Absenden an einen BFL-Endpunkt, mit der Wiederholung aus `isRetryableSubmitError`. */
+export const submitTo = async (
+    endpoint: string,
     body: Record<string, unknown>
 ): Promise<{ pollingUrl: string; cost?: number }> => {
     for (let versuch = 0; ; versuch++) {
         try {
-            const response = await axios.post<BflSubmitResponse>(`${BASE_URL}/${model.endpoint}`, body, {
+            const response = await axios.post<BflSubmitResponse>(`${BASE_URL}/${endpoint}`, body, {
                 headers: bflHeaders(),
                 timeout: 30_000,
             });
@@ -235,6 +246,18 @@ const terminalError = (data: BflResultResponse | undefined): ProviderError | und
 };
 
 export const pollForResult = async (pollUrl: string, deadlineMs: number = POLL_DEADLINE_MS): Promise<ProviderImage> => {
+    const result = await pollUntilReady(pollUrl, deadlineMs);
+    return { url: result.sample, revisedPrompt: result.prompt, seed: result.seed };
+};
+
+/**
+ * Pollt bis `Ready` und gibt das ganze `result` zurueck — fuer Videos, deren
+ * Ergebnis mehr enthaelt als ein Bild (`draft_cache`, `duration`).
+ */
+export const pollUntilReady = async (
+    pollUrl: string,
+    deadlineMs: number = POLL_DEADLINE_MS
+): Promise<NonNullable<BflResultResponse['result']> & { sample: string; cost?: number }> => {
     const deadline = Date.now() + deadlineMs;
     let wait = POLL_START_MS;
     let transientErrors = 0;
@@ -250,13 +273,12 @@ export const pollForResult = async (pollUrl: string, deadlineMs: number = POLL_D
             if (status === 'Ready') {
                 const sample = response.data?.result?.sample;
                 if (!sample) {
-                    throw new ProviderError(502, 'bfl_empty_result', 'BFL meldete „Ready" ohne Bild.');
+                    throw new ProviderError(502, 'bfl_empty_result', 'BFL meldete „Ready" ohne Ergebnis.');
                 }
-                return {
-                    url: sample,
-                    revisedPrompt: response.data?.result?.prompt,
-                    seed: response.data?.result?.seed,
-                };
+                // Videos melden `cost` erst hier, auf oberster Ebene — beim Absenden
+                // steht dort `null` (am 07.10.2026 gesehen).
+                const cost = (response.data as { cost?: unknown })?.cost;
+                return { ...response.data?.result, sample, ...(typeof cost === 'number' ? { cost } : {}) };
             }
 
             const terminal = terminalError(response.data);
@@ -332,6 +354,14 @@ export const toProviderError = (error: unknown, fallbackCode: string): ProviderE
     const axiosError = error as AxiosError<{ detail?: unknown }>;
     const status = axiosError.response?.status ?? 502;
     const detail = axiosError.response?.data?.detail;
+    // Am 07.10.2026 so gekommen — als nacktes Englisch sah es wie ein Programmfehler aus.
+    if (typeof detail === 'string' && /insufficient credits/i.test(detail)) {
+        return new ProviderError(
+            402,
+            'bfl_insufficient_credits',
+            'BFL meldet zu wenig Guthaben für diesen Auftrag. Restguthaben steht auf der Kontoseite.'
+        );
+    }
     // `axiosError.message` ist nicht immer gefuellt: ein `AggregateError` aus
     // dem gescheiterten Verbindungsaufbau hat gar keine Message, nur `code`.
     // Ohne den Rueckfall stand in der Oberflaeche nichts als der Fehlercode.

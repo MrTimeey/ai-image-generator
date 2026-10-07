@@ -87,6 +87,10 @@
            class="bg-white border border-blue-300 text-blue-700 px-5 py-2 rounded-lg hover:bg-blue-50">In Komposition bearbeiten</a>
         <a id="compose-from" title="Dieselben Boxen und dieselbe Szene als neue Komposition"
            class="hidden bg-white border border-blue-300 text-blue-700 px-5 py-2 rounded-lg hover:bg-blue-50">Layout wiederverwenden</a>
+        <a id="video-from" title="Dieses Bild als Startbild eines Videos"
+           class="bg-white border border-blue-300 text-blue-700 px-5 py-2 rounded-lg hover:bg-blue-50">Als Video animieren</a>
+        <a id="video-morph" title="Ein Video, das vom Original zu diesem Bild führt"
+           class="hidden bg-white border border-blue-300 text-blue-700 px-5 py-2 rounded-lg hover:bg-blue-50">Original → dieses Bild als Video</a>
         <a id="download-link" class="bg-gray-200 text-gray-800 px-5 py-2 rounded-lg hover:bg-gray-300">Herunterladen</a>
         <button id="favorite-toggle" class="bg-white border border-gray-300 px-5 py-2 rounded-lg hover:bg-gray-50">
             <span id="favorite-icon">&#9734;</span> <span id="favorite-label">Favorit</span>
@@ -251,6 +255,13 @@
     const zeigeLayout = (image) => {
         const name = encodeURIComponent(image.filename);
         document.getElementById('compose-edit').href = `/compose.html?edit=${name}`;
+        document.getElementById('video-from').href = `/video.html?keyframes=${name}`;
+        if (image.editedFrom) {
+            // Anfang und Ende: das Video bewegt sich vom Original zur Bearbeitung.
+            const morph = document.getElementById('video-morph');
+            morph.href = `/video.html?keyframes=${encodeURIComponent(image.editedFrom)},${name}`;
+            morph.classList.remove('hidden');
+        }
         if (image.promptRewrite === 'always') {
             document.getElementById('revised-titel').textContent = 'Vom Modell ausformuliert:';
         }

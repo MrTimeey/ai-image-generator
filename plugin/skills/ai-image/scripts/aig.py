@@ -11,6 +11,7 @@ import mimetypes
 import os
 import pathlib
 import sys
+import time
 import urllib.error
 import urllib.request
 
@@ -341,6 +342,102 @@ def cmd_layout(args):
     print(json.dumps({"scene": data.get("prompt", ""), "elements": rows}, indent=2, ensure_ascii=False))
 
 
+def keyframe_arg(value: str):
+    """`bild.png`, `bild.png@3.5` oder ein Dateiname aus dem Bestand.
+    Lokale Dateien gehen als data:-URL hinaus, alles andere als Name im Bestand."""
+    pfad, _, zeit = value.rpartition("@") if "@" in value else (value, "", "")
+    frame = {}
+    if zeit:
+        try:
+            frame["time"] = float(zeit)
+        except ValueError:
+            die(f"--image {value}: hinter @ steht die Sekunde, z. B. bild.png@3.5")
+    frame["image"] = as_data_url(pfad) if pathlib.Path(pfad).expanduser().is_file() else pfad
+    return frame
+
+
+def video_line(video) -> str:
+    teile = [video["status"], video["mode"], "Entwurf" if video["draft"] else video["resolution"]]
+    if video.get("seconds"):
+        teile.append(f"{video['seconds']:g} s")
+    if video.get("cost") is not None:
+        teile.append(("≈ " if video.get("costEstimated") else "") + f"{video['cost']:g} Credits")
+    return f"{video['id']}  {' · '.join(teile)}  {video['prompt'][:50]}"
+
+
+def wait_for_video(video_id: str):
+    """Ein Video braucht ein bis drei Minuten; der Server arbeitet im Hintergrund."""
+    begonnen = time.time()
+    while True:
+        video = request("GET", f"/api/videos/{video_id}")
+        if video["status"] != "running":
+            if sys.stderr.isatty():
+                print(file=sys.stderr)
+            return video
+        if sys.stderr.isatty():
+            print(f"\r  entsteht seit {int(time.time() - begonnen)} s …", end="", file=sys.stderr, flush=True)
+        time.sleep(5)
+
+
+def finish_video(video, args):
+    if args.json:
+        print(json.dumps(video, indent=2, ensure_ascii=False))
+    else:
+        print(video_line(video))
+    if video["status"] == "error":
+        die(f"Fehlgeschlagen: {video.get('error')}", 4)
+    if video.get("canEnhance") and not args.json:
+        print(f"  Gefällt der Entwurf: aig.py enhance {video['id']} --resolution fhd")
+    if getattr(args, "out", None) and video.get("url"):
+        target = download(f"{video['url']}?download=1", pathlib.Path(args.out), f"{video['id']}.mp4")
+        print(f"  gespeichert: {target}")
+
+
+def cmd_video(args):
+    payload = {"prompt": args.prompt, "aspectRatio": args.ratio, "generateAudio": not args.no_audio,
+               "draft": args.final is None}
+    payload["duration"] = "auto" if args.duration == "auto" else int(args.duration)
+    if args.final:
+        payload["resolution"] = args.final
+    if args.image:
+        payload["mode"] = "i2v"
+        payload["keyframes"] = [keyframe_arg(value) for value in args.image]
+    elif args.continue_video:
+        payload["mode"] = "v2v"
+        payload["startVideo"] = args.continue_video
+    else:
+        payload["mode"] = "t2v"
+    video = request("POST", "/api/videos", payload)
+    if args.no_wait:
+        print(video_line(video))
+        print(f"  Abholen: aig.py videos   (oder GET /api/videos/{video['id']})")
+        return
+    finish_video(wait_for_video(video["id"]), args)
+
+
+def cmd_enhance(args):
+    video = request("POST", f"/api/videos/{args.id}/enhance", {"resolution": args.resolution})
+    if args.no_wait:
+        print(video_line(video))
+        return
+    finish_video(wait_for_video(video["id"]), args)
+
+
+def cmd_videos(args):
+    data = request("GET", "/api/videos")["videos"][: args.limit]
+    if args.json:
+        print(json.dumps(data, indent=2, ensure_ascii=False))
+        return
+    for video in data:
+        print(video_line(video))
+
+
+def cmd_video_rm(args):
+    for video_id in args.ids:
+        request("DELETE", f"/api/videos/{video_id}")
+        print(f"{video_id} gelöscht")
+
+
 def cmd_download(args):
     path = download(f"/api/files/download/{args.name}", pathlib.Path(args.out), args.name)
     print(path)
@@ -407,6 +504,34 @@ def main():
     lay.add_argument("--edit", action="store_true",
                      help="als behalten-Zeilen für eine Bearbeitung mit --source")
 
+    vid = sub.add_parser("video", help="Video erzeugen (FLUX 3): aus Text oder Bildern; Standard: Entwurf")
+    vid.add_argument("prompt")
+    vid.add_argument("--image", action="append", metavar="BILD[@SEK]",
+                     help="Keyframe: lokale Datei oder Dateiname im Bestand, optional mit Sekunde "
+                          "(bild.png@4.5). Mehrfach angebbar, bis 10. Ohne Sekunden: eins = Anfang, "
+                          "zwei = Anfang und Ende, mehr = gleichmäßig verteilt (dann --duration nötig)")
+    vid.add_argument("--continue", dest="continue_video", metavar="VIDEO_ID",
+                     help="dieses Video fortsetzen (derzeit serverseitig abgeschaltet)")
+    vid.add_argument("--duration", default="auto", help="5–20 Sekunden (Fortsetzung bis 15) oder auto")
+    vid.add_argument("--ratio", default="auto", choices=["auto", "21:9", "2:1", "16:9", "4:3", "1:1", "3:4", "9:16", "9:21"])
+    vid.add_argument("--final", choices=["hd", "fhd", "qhd", "uhd"],
+                     help="ohne Entwurf direkt in dieser Auflösung (teurer, jeder Fehlversuch kostet voll)")
+    vid.add_argument("--no-audio", action="store_true", help="ohne Ton")
+    vid.add_argument("--no-wait", action="store_true", help="nicht auf das Ergebnis warten")
+    vid.add_argument("--out", help="Verzeichnis, in das das Video geladen wird")
+
+    enh = sub.add_parser("enhance", help="einen Video-Entwurf fertig rendern — dieselbe Aufnahme")
+    enh.add_argument("id")
+    enh.add_argument("--resolution", default="fhd", choices=["hd", "fhd", "qhd", "uhd"])
+    enh.add_argument("--no-wait", action="store_true")
+    enh.add_argument("--out")
+
+    vids = sub.add_parser("videos", help="vorhandene Videos, neueste zuerst")
+    vids.add_argument("--limit", type=int, default=20)
+
+    vrm = sub.add_parser("video-rm", help="Video(s) löschen (endgültig)")
+    vrm.add_argument("ids", nargs="+", metavar="VIDEO_ID")
+
     sub.add_parser("costs", help="Guthaben und was hier bereits ausgegeben wurde")
 
     dl = sub.add_parser("download", help="Bild herunterladen")
@@ -423,7 +548,8 @@ def main():
     args = parser.parse_args()
     {"models": cmd_models, "gen": cmd_gen, "list": cmd_list, "get": cmd_get, "layout": cmd_layout,
      "costs": cmd_costs, "download": cmd_download, "rm": cmd_rm,
-     "favorite": cmd_favorite}[args.command](args)
+     "favorite": cmd_favorite, "video": cmd_video, "enhance": cmd_enhance, "videos": cmd_videos,
+     "video-rm": cmd_video_rm}[args.command](args)
 
 
 if __name__ == "__main__":

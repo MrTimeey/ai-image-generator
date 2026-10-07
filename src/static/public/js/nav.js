@@ -8,6 +8,7 @@
     const ENTRIES = [
         { href: '/index.html', label: 'Generator' },
         { href: '/compose.html', label: 'Komposition' },
+        { href: '/video.html', label: 'Video' },
         { href: '/overview.html?sorting=DESC', label: 'Übersicht', match: '/overview.html' },
         { href: '/exchange.html', label: 'Austausch' },
         { href: '/api-keys.html', label: 'API-Keys' },

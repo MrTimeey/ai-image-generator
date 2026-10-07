@@ -1,6 +1,6 @@
 ---
 name: ai-image
-description: Bilder mit dem eigenen AI Image Generator auf ai.mrtimeey.com erzeugen und verwalten - Modellwahl (FLUX 3, FLUX.2, FLUX.1 Kontext, OpenAI gpt-image), Komposition mit Bounding Boxes (Elemente gezielt platzieren, ein Bild Element für Element bearbeiten - ersetzen, verschieben, entfernen), Seitenverhältnis, Referenzbilder, Varianten, Download, Metadaten; Prompts bleiben standardmäßig wörtlich. Auslösen bei - Bild generieren, Bild erzeugen, Bild bearbeiten, Referenzbild, Vorlage, Illustration, Titelbild, Header-Bild, Poster, Cover, Layout, Komposition, Bounding Box, Element platzieren, Icon-Motiv, KI-Bild, FLUX, FLUX 3, gpt-image, ai.mrtimeey.com, aig.
+description: Bilder mit dem eigenen AI Image Generator auf ai.mrtimeey.com erzeugen und verwalten - Modellwahl (FLUX 3, FLUX.2, FLUX.1 Kontext, OpenAI gpt-image), Komposition mit Bounding Boxes (Elemente gezielt platzieren, ein Bild Element für Element bearbeiten - ersetzen, verschieben, entfernen), Seitenverhältnis, Referenzbilder, Varianten, Download, Metadaten; Videos mit Ton (Text, Bilder als Keyframes mit Zeitpunkten; Entwurf und Fertigrendern); Prompts bleiben standardmäßig wörtlich. Auslösen bei - Bild generieren, Video erzeugen, Clip, Animation, Bild animieren, Keyframes, Bild erzeugen, Bild bearbeiten, Referenzbild, Vorlage, Illustration, Titelbild, Header-Bild, Poster, Cover, Layout, Komposition, Bounding Box, Element platzieren, Icon-Motiv, KI-Bild, FLUX, FLUX 3, gpt-image, ai.mrtimeey.com, aig.
 ---
 
 # AI Image Generator
@@ -39,6 +39,9 @@ alias aig="python3 $(find ~/.claude -path '*ai-image*/scripts/aig.py' | head -1)
 | **`rm <datei> [...]`** | **Bild(er) löschen — auch mehrere auf einmal** |
 | `favorite <datei>` | markieren (`--off` hebt auf) |
 | `costs` | Guthaben und bisherige Ausgaben |
+| `video "<prompt>"` | Video erzeugen (Text oder `--image` als Keyframes) — Standard: Entwurf |
+| `enhance <id>` | Video-Entwurf fertig rendern — dieselbe Aufnahme |
+| `videos` / `video-rm <id>` | Videos auflisten / löschen |
 
 ## Prompt bleibt wörtlich
 
@@ -290,6 +293,66 @@ seinem Platz, aber **nicht pixelgleich** — außerhalb der geänderten Box
 wichen Farbton und Korn leicht ab (im Mittel 19 von 765, bei 7 % der Pixel
 deutlich). Für Retusche, bei der jedes Pixel bleiben muss, taugt es nicht.
 
+## Video mit FLUX 3
+
+Kurze Clips (5–20 s) mit Ton — Geräusche, Musik,
+Sprache. In der Weboberfläche ist das die Seite **Video**; Videos stehen dort in
+einer eigenen Liste, nicht in der Bildübersicht.
+
+```bash
+aig.py video "a fox running through dawn mist, birdsong" --ratio 16:9 --duration 6 --out .
+```
+
+**Zwei Wege** (ein dritter, Fortsetzen, ist derzeit abgeschaltet — siehe unten):
+
+| Weg | CLI | Was rein muss |
+|---|---|---|
+| Text → Video | `video "<prompt>"` | nur der Prompt |
+| Bilder → Video | `video "<prompt>" --image A --image B …` | 1–10 Bilder (lokale Datei oder Dateiname im Bestand) |
+
+**Keyframes:** Ohne Zeitangabe ist ein Bild der Anfang, zwei sind Anfang und
+Ende, weitere verteilen sich gleichmäßig — ab drei Bildern dann mit fester
+`--duration`. Mit `@Sekunde` steht jedes Bild genau dort:
+`--image start.png@0 --image mitte.png@3.5 --image ende.png@8`. Entweder alle
+mit Zeit oder keins; aufsteigend; bei `--duration auto` endet das Video beim
+letzten Bild. Der Prompt beschreibt, **was zwischen den Bildern passiert**
+(Bewegung, Kamera, Ton), nicht die Bilder selbst.
+
+Stark ist die Kombination mit der Komposition: Original als Anfang, die
+Bearbeitung als Ende — das Video läuft vom einen zum anderen. Am 07.10.2026
+wurde so aus „RUN FAST" Buchstabe für Buchstabe „GO SLOW". In der Detailansicht
+eines bearbeiteten Bildes führt **„Original → dieses Bild als Video"** direkt dorthin.
+
+**Erst Entwurf, dann fertig.** Ohne `--final` entsteht ein Entwurf: hd, schnell,
+ein Drittel des Preises. Gefällt er, rendert `aig.py enhance <id> --resolution fhd`
+**genau diese Aufnahme** in voller Qualität (dasselbe Seed, nichts neu
+interpretiert). `--final fhd` überspringt den Entwurf — jeder Fehlversuch kostet
+dann voll.
+
+**Kosten je Sekunde** (BFL-Preisliste, 07.10.2026; gemeldet wird beim Abholen):
+
+| | Entwurf | hd | fhd | qhd | uhd |
+|---|---|---|---|---|---|
+| Text/Bilder → Video | 0,06 $ | 0,17 $ | 0,29 $ | 0,40 $ | 0,80 $ |
+| Fortsetzen | 0,12 $ | 0,41 $ | 0,53 $ | 0,65 $ | 0,95 $ |
+
+Ein 10-s-Video in fhd kostet also rund 2,90 $ — vorher fragen, bevor du mehrere
+fertig renderst. Gemessen: 6-s-Entwurf 36 Credits in 56 s, fertig in hd 102
+Credits in 92 s.
+
+**Fortsetzen ist abgeschaltet.** BFL lehnte am 07.10.2026 einen 5-s-Entwurf
+(Listenpreis 60 Credits) bei 610 Credits Restguthaben mit „Insufficient
+credits" ab, ungeklärt warum. `--continue` antwortet deshalb mit
+`mode_disabled`; nicht versuchen, das zu umgehen.
+
+**Gesprochenes** in Anführungszeichen in den Prompt, dann sagt es jemand.
+Mehrere Einstellungen: „SHOT ONE: … HARD CUT. SHOT TWO: …". `--no-audio` für stumm.
+Der Prompt kam im Test unverändert zurück.
+
+`video` wartet, bis das Video fertig ist (meist ein bis zwei Minuten);
+`--no-wait` gibt sofort die Id zurück, `aig.py videos` zeigt den Stand. Läuft
+beim Neustart des Dienstes noch ein Video, holt der Server es danach selbst ab.
+
 ## Rezepte
 
 Ein Bild, gleich lokal:
@@ -460,3 +523,4 @@ npm run lint       # TS-Dateien und die Inline-Skripte der Seiten
   nicht pixelgleich. Die mitgegebenen Vorlagen sind später in der
   Detailansicht des Bildes zu sehen.
 - Einen Upscale gibt es nicht; wer größer will, erzeugt gleich größer.
+- Videos bearbeiten (Video Edit) gibt es nicht — nur neu erzeugen oder fortsetzen.

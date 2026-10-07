@@ -69,6 +69,13 @@ describe('toProviderError', () => {
         expect(fehler.message).toBe(JSON.stringify(detail));
     });
 
+    it('übersetzt „Insufficient credits" in einen verständlichen Satz', () => {
+        const fehler = toProviderError(mitAntwort(402, { detail: 'Insufficient credits' }), 'bfl_submit_failed');
+        expect(fehler.code).toBe('bfl_insufficient_credits');
+        expect(fehler.status).toBe(402);
+        expect(fehler.message).toContain('Guthaben');
+    });
+
     it('laesst einen ProviderError unveraendert durch', () => {
         const eigener = new ProviderError(503, 'bfl_not_configured', 'Kein Schlüssel.');
         expect(toProviderError(eigener, 'bfl_submit_failed')).toBe(eigener);

@@ -1,4 +1,5 @@
 import { getDataStore } from './dataStore';
+import { listVideos } from './videoStore';
 
 /**
  * Was hier tatsächlich ausgegeben wurde — gerechnet aus dem, was die Anbieter
@@ -52,7 +53,19 @@ export const spendingReport = (monate = 6): SpendingReport => {
     const monatlich = new Map<string, SpendingBucket>();
     const proModell = new Map<string, SpendingBucket>();
 
-    for (const entry of getDataStore().data) {
+    // Videos stehen in einem eigenen Bestand, kosten aber aus demselben
+    // BFL-Guthaben — sie gehören in dieselbe Rechnung.
+    const videoEintraege = listVideos()
+        .filter(video => video.status === 'done')
+        .map(video => ({ createdAt: video.createdAt, model: 'flux-3-video', cost: video.cost, costUnit: video.costUnit }));
+
+    for (const entry of [...getDataStore().data, ...videoEintraege] as {
+        createdAt?: string;
+        model?: string;
+        languageModel?: string;
+        cost?: number;
+        costUnit?: string;
+    }[]) {
         // `createdAt` hat die Form `YYYY-MM-DD_HH-mm`; die ersten sieben
         // Zeichen sind der Monat, ohne dass dafür geparst werden muss.
         const monat = (entry.createdAt ?? '').slice(0, 7) || 'unbekannt';

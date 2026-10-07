@@ -14,6 +14,8 @@ import thumbnails from './routes/thumbnails';
 import images from './routes/images';
 import files from './routes/files';
 import exchange from './routes/exchange';
+import videos from './routes/videos';
+import { resumeVideos } from './controller/videoService';
 
 const app: express.Application = express();
 
@@ -45,6 +47,7 @@ apiRouter.use('/images', images);
 apiRouter.use('/thumbnails', thumbnails);
 apiRouter.use('/files', files);
 apiRouter.use('/exchange', exchange);
+apiRouter.use('/videos', videos);
 
 app.use('/api', apiRouter);
 app.use('/thumbnails', thumbnails);
@@ -69,5 +72,7 @@ app.use((req, res) => {
 
 app.listen(appConfig.port, () => {
     cleanDataStore();
+    // Was beim letzten Herunterfahren noch entstand, ist bezahlt — weiterholen.
+    resumeVideos();
     console.log(`it's alive on ${appConfig.publicBaseUrl}`);
 });

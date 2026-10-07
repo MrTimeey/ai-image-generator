@@ -99,6 +99,55 @@ Die Oberfläche dafür ist `/compose.html`: Boxen ziehen, beschreiben,
 Szenen-Prompt mit `<id>`-Chips; `?edit=<datei>` bearbeitet ein Bild (sein
 Layout wird zu behalten-Zeilen), `?from=<datei>` übernimmt ein Layout.
 
+### Video (FLUX 3)
+
+`/video.html` und `POST /api/videos` erzeugen Clips über `POST
+/v1/flux-3-video`. Videos haben einen **eigenen Bestand**: Ordner
+`<baseFolder>/videos/` mit `videos.json`, MP4s, Entwurfs-Bündeln
+(`<id>.draft.bin`) und hochgeladenen Keyframes (`keyframes/`). Übersicht,
+Export und `cleanDataStore` kennen nur Bilder und lassen den Unterordner in
+Ruhe; die Kosten zählen trotzdem in `GET /api/credits` mit (Modell
+`flux-3-video`).
+
+| Feld | Bedeutung |
+|---|---|
+| `mode` | `t2v` (Text), `i2v` (Bilder als Keyframes); `v2v` (fortsetzen) ist gebaut, aber über `ENABLED_MODES` abgeschaltet → 400 `mode_disabled` |
+| `prompt` | Pflicht |
+| `keyframes` | `i2v`: 1–10 × `{image, time?}` — `image` ist ein Dateiname im Bestand oder base64; `time` die Sekunde. Alle oder keins mit Zeit, aufsteigend; ohne Zeit ab drei Bildern feste `duration` |
+| `startVideo` | `v2v`: Id eines fertigen Videos |
+| `duration` | 5–20 (v2v bis 15) oder `auto` |
+| `aspectRatio` | `auto`, `21:9`, `2:1`, `16:9`, `4:3`, `1:1`, `3:4`, `9:16`, `9:21` |
+| `draft` | Standard `true`: hd-Vorschau mit Bündel. `false` rendert direkt in `resolution` |
+| `resolution` | `hd`, `fhd` (Standard), `qhd`, `uhd` — nur ohne Entwurf |
+| `generateAudio` | Standard `true` |
+
+Die Antwort ist **202** mit dem Eintrag (`status: running`); fertig wird es im
+Hintergrund, abgeholt über `GET /api/videos/:id`. Der Eintrag wird mit der
+Polling-URL gespeichert, bevor gepollt wird — ein Neustart (jedes Deployment)
+verliert einen bezahlten Lauf deshalb nicht, `resumeVideos` holt ihn beim Start
+nach. `POST /api/videos/:id/enhance {resolution}` rendert einen Entwurf über
+`draft_enhance` fertig: dieselbe Aufnahme, das Bündel enthält Seed und Eingaben.
+`GET /api/videos/:id/file` liefert das MP4 mit Range-Unterstützung
+(`?download=1` als Anhang), `DELETE /api/videos/:id` löscht Eintrag und Dateien.
+
+Gemessen am 07.10.2026:
+
+- `cost` kommt **nicht** beim Absenden (dort `null`), sondern beim Abholen auf
+  oberster Ebene: 5 s Entwurf = 30 Credits, 6 s = 36, 6 s fertig in hd = 102 —
+  genau die Preisliste.
+- Das Ergebnis enthält `sample` (MP4, H.264 + AAC, faststart), `prompt`
+  (unverändert zurück), `seed` und beim Entwurf `draft_cache` — eine URL, die
+  verfällt; das Bündel (0,6–4,8 MB) wird deshalb sofort gespeichert. Eine
+  Laufzeit meldet BFL nicht; sie wird aus dem `mvhd`-Atom der MP4 gelesen.
+- Dauer: Entwurf 56–97 s, Fertigrendern 92 s.
+- `keyframes` als `[[0, …], [4.5, …]]` setzt die Bilder exakt: Anfang und
+  Ende stimmten im Test.
+- Ein Fortsetzungs-Entwurf (5 s, Listenpreis 60 Credits) wurde bei 610 Credits
+  Restguthaben mit „Insufficient credits" abgelehnt — ungeklärt, vermutlich
+  hält BFL dort vorab mehr zurück. Deshalb ist `v2v` in `ENABLED_MODES`
+  (`videoService.ts`) vorerst aus; zum Einschalten dort ergänzen und einmal
+  echt testen.
+
 DALL·E ist am 12. Mai 2026 abgeschaltet worden; `dall-e-2` und `dall-e-3`
 antworten mit 400 und sind entsprechend entfernt.
 
@@ -206,6 +255,9 @@ Alles unter `/api` verlangt eine Anmeldung und antwortet bei fehlender mit
 | `GET /api/files/reference/:name` | mitgegebenes Referenzbild |
 | `GET /api/skill/download` | Claude-Skill als ZIP |
 | `GET/POST/DELETE /api/keys` | API-Keys (**nur mit Sitzung**) |
+| `GET/POST /api/videos` | Videos auflisten / erzeugen (202, im Hintergrund) |
+| `GET/DELETE /api/videos/:id` | Stand bzw. löschen; `…/file` liefert das MP4 |
+| `POST /api/videos/:id/enhance` | Entwurf fertig rendern |
 | `GET /api/health` | öffentlich |
 
 `POST /api/openai/generate-images` und `POST /api/bfl/generate-images` bleiben
