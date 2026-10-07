@@ -42,6 +42,7 @@ alias aig="python3 $(find ~/.claude -path '*ai-image*/scripts/aig.py' | head -1)
 | `video "<prompt>"` | Video erzeugen (Text, `--image` als Keyframes, `--continue`) — Standard: Entwurf |
 | `enhance <id>` | Video-Entwurf fertig rendern — dieselbe Aufnahme |
 | `videos` / `video-rm <id>` | Videos auflisten / löschen |
+| `sheet <video-id>` | Kontaktbogen (4 Bilder/s mit Zeitstempel) — so beurteilst du ein Video |
 
 ## Prompt bleibt wörtlich
 
@@ -358,6 +359,61 @@ Der Prompt kam im Test unverändert zurück.
 `video` wartet, bis das Video fertig ist (meist ein bis zwei Minuten);
 `--no-wait` gibt sofort die Id zurück, `aig.py videos` zeigt den Stand. Läuft
 beim Neustart des Dienstes noch ein Video, holt der Server es danach selbst ab.
+
+### Ein gutes Video in wenigen Runden
+
+Am 07.10.2026 an einem Maskottchen-Intro gelernt (Krone fliegt herein →
+Säbelzahnkatze springt → wird zum runden Badge). Der erste Entwurf war
+„hakelig", der dritte rund. Was den Unterschied machte:
+
+**Ablauf**
+
+1. Entwurf erzeugen (`video …`, ohne `--final`).
+2. **Ansehen mit `aig.py sheet <id>`** und das PNG lesen. Ohne Bogen nicht
+   urteilen — du kannst das Video nicht abspielen. Notier Brüche mit
+   Zeitstempel: Sprünge, Schnitte, Objekte, die das Bild verlassen, doppelte
+   Elemente, eingefrorene Posen.
+3. Gezielt nachbessern (Prompt und/oder Keyframes), neuer Entwurf. Ein
+   zweites Paar Augen (ein Subagent mit den Bögen) findet mehr als man selbst.
+4. Erst wenn der Bogen sauber ist: `enhance <id> --resolution fhd` — das
+   rendert **genau diese** Aufnahme, Fehler im Entwurf bleiben drin.
+
+**Keyframes**
+
+- **Wo sich Perspektive oder Hintergrund ändert, gehört ein Keyframe hin.**
+  Das Modell erfindet Bewegung gut, aber keine Wendung von Profil zu frontal
+  und keinen Wechsel Nachthimmel → Creme. Fehlt das Bild, baut es Schnitte,
+  lässt Figuren aus dem Bild laufen oder verdoppelt Requisiten.
+- **Abstände von höchstens etwa 2 s** zwischen Keyframes. Bei 4 s Lücke
+  improvisiert das Modell, bei 2 s bleibt es auf der Linie.
+- **Keyframe und Prompt müssen dasselbe wollen.** Steht die Krone im Startbild
+  schon in der Mitte, kann sie nicht „von oben links hereinkommen" — sie gleitet
+  dann nur. Besser: was das Bild zeigt, *bewegen* („spins on its own axis").
+- **Zwischenbilder selbst erzeugen** mit `gen --model flux-3-image --image
+  <charakterblatt>` — dann sieht die Figur in allen Keyframes gleich aus. Je
+  Bild 2,4 Credits, das lohnt sich immer.
+- **Speedlines oder eingefrorene Action in einem Keyframe** verleiten das Modell,
+  die Pose zu halten. Als Durchgangspunkt (kurz vor/nach) setzen, nicht als
+  Ruhepunkt.
+- **Endet das Video auf einem fertigen Motiv** (Logo, Badge), das Original als
+  letzten Keyframe auf die letzte Sekunde legen.
+
+**Prompt**
+
+- Nach Zeitabschnitten gliedern („0–1.5 s: … 1.5–2.5 s: …"), dazu
+  „one continuous shot with no cuts" und eine Zeile, die die Figur festnagelt
+  („exactly one red crown").
+- Verbieten, was schiefging, ausdrücklich: „stays fully inside the frame",
+  „the head never turns or rotates".
+- **Wörter mit Nebenwirkung:** „flips" → die Figur dreht sich (Hinterkopf
+  im Bild). „roar"/Brüllen bei einer Raubkatze → „Protected Content". Statt
+  dessen „opens its jaws wide", Ton „short playful hiss", plus
+  „No voice, no big-cat vocal sounds".
+- Ton als eigene Zeile am Ende, Ereignis für Ereignis (whoosh, clink, thud,
+  bass drum hit, shimmering sting).
+
+**Kosten des Beispiels:** drei Entwürfe à 8 s je 48 Credits, vier
+Zwischenbilder je 2,4, fertig in fhd 232 Credits — zusammen gut 4 $.
 
 ## Rezepte
 

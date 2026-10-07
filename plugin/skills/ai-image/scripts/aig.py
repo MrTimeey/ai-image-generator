@@ -10,7 +10,10 @@ import json
 import mimetypes
 import os
 import pathlib
+import shutil
+import subprocess
 import sys
+import tempfile
 import time
 import urllib.error
 import urllib.request
@@ -434,6 +437,33 @@ def cmd_videos(args):
         print(video_line(video))
 
 
+def cmd_sheet(args):
+    """Kontaktbogen eines Videos: Einzelbilder im festen Takt, mit Zeitstempel,
+    als ein PNG. Ein Agent kann ein Video nicht abspielen — ohne den Bogen kann
+    er einen Entwurf nicht beurteilen. Braucht ffmpeg lokal."""
+    if not shutil.which("ffmpeg"):
+        die("Für den Kontaktbogen braucht es ffmpeg (z. B. `sudo apt install ffmpeg`).")
+    video = request("GET", f"/api/videos/{args.id}")
+    if not video.get("url"):
+        die(f"Video {args.id} ist nicht fertig ({video['status']}).")
+    out = pathlib.Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory() as tmp:
+        mp4 = download(f"{video['url']}?download=1", pathlib.Path(tmp), "video.mp4")
+        sekunden = video.get("seconds") or 10
+        # Gerundet, nicht aufgerundet: 8,04 s × 4 sind 32 Bilder, nicht 33 (sonst bleibt eine Zeile leer).
+        bilder = max(1, round(sekunden * args.fps))
+        spalten = 8 if bilder > 16 else 4
+        zeilen = -(-bilder // spalten)
+        ziel = out / f"{args.id}-bogen.png"
+        filter_ = (f"fps={args.fps},scale={args.width}:-1,"
+                   "drawtext=text='%{pts\\:hms}':x=4:y=4:fontsize=12:fontcolor=white:box=1:boxcolor=black@0.6,"
+                   f"tile={spalten}x{zeilen}")
+        subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-i", str(mp4), "-vf", filter_,
+                        "-frames:v", "1", str(ziel)], check=True)
+    print(ziel)
+
+
 def cmd_video_rm(args):
     for video_id in args.ids:
         request("DELETE", f"/api/videos/{video_id}")
@@ -531,6 +561,12 @@ def main():
     vids = sub.add_parser("videos", help="vorhandene Videos, neueste zuerst")
     vids.add_argument("--limit", type=int, default=20)
 
+    sht = sub.add_parser("sheet", help="Kontaktbogen eines Videos (Einzelbilder mit Zeitstempel) — zum Beurteilen")
+    sht.add_argument("id")
+    sht.add_argument("--fps", type=float, default=4, help="Bilder je Sekunde (Standard 4)")
+    sht.add_argument("--width", type=int, default=200, help="Breite je Bild in Pixeln")
+    sht.add_argument("--out", default=".")
+
     vrm = sub.add_parser("video-rm", help="Video(s) löschen (endgültig)")
     vrm.add_argument("ids", nargs="+", metavar="VIDEO_ID")
 
@@ -551,7 +587,7 @@ def main():
     {"models": cmd_models, "gen": cmd_gen, "list": cmd_list, "get": cmd_get, "layout": cmd_layout,
      "costs": cmd_costs, "download": cmd_download, "rm": cmd_rm,
      "favorite": cmd_favorite, "video": cmd_video, "enhance": cmd_enhance, "videos": cmd_videos,
-     "video-rm": cmd_video_rm}[args.command](args)
+     "video-rm": cmd_video_rm, "sheet": cmd_sheet}[args.command](args)
 
 
 if __name__ == "__main__":
