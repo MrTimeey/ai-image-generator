@@ -1,4 +1,4 @@
-import { AspectRatio, Quality } from '../types';
+import { AspectRatio, ASPECT_RATIOS, Quality } from '../types';
 import { ModelDefinition } from '../controller/modelRegistry';
 
 /**
@@ -13,6 +13,20 @@ export type ResolvedSize = {
     aspectRatio?: AspectRatio;
     /** Fuer `sizeMode: 'pixel_size'` — der `size`-String fuer OpenAI. */
     size?: string;
+    /** Fuer `sizeMode: 'aspect_ratio_resolution'` — die Flaechenstufe (FLUX 3). */
+    resolution?: string;
+};
+
+/**
+ * Ungefaehre Flaeche je FLUX-3-Stufe. Nur fuer die vorlaeufigen Kanten — die
+ * echten misst `imageService` an der fertigen Datei.
+ */
+const RESOLUTION_PIXELS: Record<string, number> = {
+    '768sq': 589_824,
+    '1k': 1_048_576,
+    '1.5k': 2_359_296,
+    '2k': 4_194_304,
+    '4k': 16_777_216,
 };
 
 /**
@@ -111,6 +125,15 @@ const nearestFixedSize = (ratio: AspectRatio, sizes: readonly string[]): Resolve
 };
 
 export const resolveSize = (model: ModelDefinition, ratio: AspectRatio, quality: Quality): ResolvedSize => {
+    if (model.sizeMode === 'aspect_ratio_resolution') {
+        const resolution = model.resolutions?.[quality] ?? '1k';
+        const { width, height } = edgesFor(ratio, RESOLUTION_PIXELS[resolution] ?? 1_048_576, {
+            multiple: 16,
+            min: 256,
+            max: 6144,
+        });
+        return { width, height, aspectRatio: ratio, resolution };
+    }
     if (model.sizeMode === 'aspect_ratio') {
         // Die Kanten sind hier nur informativ (fuer die Anzeige und data.json);
         // massgeblich ist, was der Anbieter aus dem Verhaeltnis macht.
@@ -146,4 +169,19 @@ export const clampQuality = (model: ModelDefinition, quality: Quality | undefine
         if (supported.includes(order[i])) return order[i];
     }
     return supported[supported.length - 1];
+};
+
+/** Das Verhaeltnis aus der Liste, das den Kanten am naechsten kommt. */
+export const nearestRatio = (width: number, height: number): AspectRatio => {
+    const ziel = Math.log(width / height);
+    let bestes: AspectRatio = '1:1';
+    let abstand = Number.POSITIVE_INFINITY;
+    for (const ratio of ASPECT_RATIOS) {
+        const d = Math.abs(Math.log(ratioValue(ratio)) - ziel);
+        if (d < abstand) {
+            abstand = d;
+            bestes = ratio;
+        }
+    }
+    return bestes;
 };

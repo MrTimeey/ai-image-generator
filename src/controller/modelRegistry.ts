@@ -11,8 +11,23 @@ export type Provider = 'openai' | 'bfl';
  *   was genau der Grund ist, warum das Seitenverhaeltnis bisher nicht griff.
  * - `width_height`: FLUX.2 (Vielfache von 16) und `flux-pro-1.1` (32).
  * - `pixel_size`: OpenAI, als `size`-String.
+ * - `aspect_ratio_resolution`: FLUX 3. Verhaeltnis plus eine Flaechenstufe
+ *   (`resolution`), die genauen Kanten waehlt der Anbieter.
  */
-export type SizeMode = 'aspect_ratio' | 'width_height' | 'pixel_size';
+export type SizeMode = 'aspect_ratio' | 'width_height' | 'pixel_size' | 'aspect_ratio_resolution';
+
+/**
+ * Ob der Anbieter den Prompt umformuliert, bevor er rechnet:
+ *
+ * - `never`: der Prompt kommt woertlich an.
+ * - `optional`: nur auf ausdruecklichen Wunsch (`prompt_upsampling`), sonst
+ *   woertlich. Der Standard ist **aus**: Agenten schreiben ohnehin
+ *   ausfuehrliche Prompts und wollen sie nicht umgeschrieben sehen.
+ * - `always`: nicht abschaltbar. FLUX 3 formuliert jeden Prompt aus (Status
+ *   `Reasoning`, Ergebnis in `result.prompt`); verbindlich sind dort nur die
+ *   Boxen eines Layouts.
+ */
+export type PromptRewrite = 'never' | 'optional' | 'always';
 
 export type ModelDefinition = {
     id: string;
@@ -40,8 +55,7 @@ export type ModelDefinition = {
     edge?: { multiple: number; min: number; max: number; maxPixels?: number };
     /** Nur für `pixel_size`: feste Groessen; fehlt = freie Größe. */
     fixedSizes?: readonly string[];
-    /** BFL schreibt den Prompt auf Wunsch um (`prompt_upsampling`). */
-    supportsRevisePrompt: boolean;
+    promptRewrite: PromptRewrite;
     /**
      * Wie viele Referenzbilder das Modell auswertet. 0 heisst: keine.
      * Am 24.08.2026 nachgemessen — `flux-pro-1.1` nimmt `input_image` zwar
@@ -56,6 +70,25 @@ export type ModelDefinition = {
      * Aufloesung und geht als `high` hinaus.
      */
     apiKnowsXhighMax?: boolean;
+    /** Nur `aspect_ratio_resolution`: welche `resolution` je Qualitaetsstufe hinausgeht. */
+    resolutions?: Partial<Record<Quality, string>>;
+    /**
+     * Wie Referenzbilder heissen: `input_image`, `input_image_2`, … (FLUX.2,
+     * Kontext) oder eine Liste `images` (FLUX 3). Fehlt = die alte Form.
+     */
+    inputImageField?: 'input_image_n' | 'images';
+    /** Nimmt Bounding Boxes im Prompt an (FLUX 3). */
+    supportsLayout?: boolean;
+    /** Kennt `grounding`: Web- und Bildsuche vor dem Generieren (FLUX 3). */
+    supportsGrounding?: boolean;
+    /**
+     * Ob der Endpunkt `output_format` kennt. FLUX 3 nicht — sein Schema
+     * verbietet unbekannte Felder (422). Dort wird das gelieferte Bild
+     * hinterher ins gewuenschte Format umgerechnet.
+     */
+    acceptsOutputFormat?: boolean;
+    /** Wie lange hoechstens gepollt wird. Fehlt = der Standard des Controllers. */
+    pollDeadlineMs?: number;
     /** Grobe Einordnung der Kosten, damit die Wahl bewusst faellt. */
     cost: 'low' | 'medium' | 'high';
 };
@@ -66,6 +99,34 @@ const FIXED_RATIOS = ['3:2', '1:1', '2:3'] as const;
 const OPENAI_FIXED_SIZES = ['1024x1024', '1536x1024', '1024x1536'] as const;
 
 export const MODELS: readonly ModelDefinition[] = [
+    {
+        id: 'flux-3-image',
+        provider: 'bfl',
+        label: 'FLUX 3 [image]',
+        hint: 'Neueste Generation. Elemente per Box platzieren, gezielt bearbeiten, bis 10 Referenzen, bis 4K. Formuliert den Prompt immer aus.',
+        endpoint: 'flux-3-image',
+        sizeMode: 'aspect_ratio_resolution',
+        ratios: ALL_RATIOS,
+        qualities: ['low', 'medium', 'high', 'max'],
+        /**
+         * Entlang der Pixel-Leiter der anderen Modelle (low ≈ 1, medium ≈ 2,
+         * high ≈ 4 MP, max = was geht). `768sq` fehlt bewusst: 0,6 MP fuer
+         * 0,007 $ weniger als `1k`.
+         */
+        resolutions: { low: '1k', medium: '1.5k', high: '2k', max: '4k' },
+        formats: ['png', 'jpeg', 'webp'],
+        maxAmount: 4,
+        promptRewrite: 'always',
+        maxInputImages: 10,
+        inputImageField: 'images',
+        supportsSeed: false,
+        supportsLayout: true,
+        supportsGrounding: true,
+        acceptsOutputFormat: false,
+        // Ausformulieren, ggf. Websuche und 4K brauchen spuerbar laenger.
+        pollDeadlineMs: 300_000,
+        cost: 'medium',
+    },
     {
         id: 'flux-2-pro',
         provider: 'bfl',
@@ -78,7 +139,7 @@ export const MODELS: readonly ModelDefinition[] = [
         formats: ['png', 'jpeg'],
         maxAmount: 4,
         edge: { multiple: 16, min: 256, max: 4096, maxPixels: 4_194_304 },
-        supportsRevisePrompt: true,
+        promptRewrite: 'optional',
         maxInputImages: 4,
         supportsSeed: true,
         cost: 'medium',
@@ -95,7 +156,7 @@ export const MODELS: readonly ModelDefinition[] = [
         formats: ['png', 'jpeg'],
         maxAmount: 4,
         edge: { multiple: 16, min: 256, max: 4096, maxPixels: 4_194_304 },
-        supportsRevisePrompt: true,
+        promptRewrite: 'optional',
         maxInputImages: 4,
         supportsSeed: true,
         cost: 'high',
@@ -112,7 +173,7 @@ export const MODELS: readonly ModelDefinition[] = [
         formats: ['png', 'jpeg'],
         maxAmount: 4,
         edge: { multiple: 16, min: 256, max: 4096, maxPixels: 4_194_304 },
-        supportsRevisePrompt: true,
+        promptRewrite: 'optional',
         maxInputImages: 4,
         supportsSeed: true,
         cost: 'high',
@@ -122,6 +183,8 @@ export const MODELS: readonly ModelDefinition[] = [
         provider: 'bfl',
         label: 'FLUX.2 [klein] 9B',
         hint: 'Günstig und schnell. Gut für Entwürfe und viele Varianten.',
+        // Laut BFL-Doku ohne Prompt-Upsampling — die Option war hier ein
+        // Versprechen, das der Endpunkt nicht haelt.
         endpoint: 'flux-2-klein-9b',
         sizeMode: 'width_height',
         ratios: ALL_RATIOS,
@@ -129,7 +192,7 @@ export const MODELS: readonly ModelDefinition[] = [
         formats: ['png', 'jpeg'],
         maxAmount: 4,
         edge: { multiple: 16, min: 256, max: 4096, maxPixels: 4_194_304 },
-        supportsRevisePrompt: true,
+        promptRewrite: 'never',
         maxInputImages: 4,
         supportsSeed: true,
         cost: 'low',
@@ -146,7 +209,7 @@ export const MODELS: readonly ModelDefinition[] = [
         formats: ['png', 'jpeg'],
         maxAmount: 4,
         edge: { multiple: 32, min: 256, max: 1440 },
-        supportsRevisePrompt: true,
+        promptRewrite: 'optional',
         maxInputImages: 0,
         supportsSeed: true,
         cost: 'low',
@@ -162,7 +225,7 @@ export const MODELS: readonly ModelDefinition[] = [
         qualities: [],
         formats: ['png', 'jpeg'],
         maxAmount: 4,
-        supportsRevisePrompt: false,
+        promptRewrite: 'never',
         maxInputImages: 0,
         supportsSeed: true,
         cost: 'medium',
@@ -178,7 +241,7 @@ export const MODELS: readonly ModelDefinition[] = [
         qualities: [],
         formats: ['png', 'jpeg'],
         maxAmount: 4,
-        supportsRevisePrompt: true,
+        promptRewrite: 'optional',
         maxInputImages: 1,
         supportsSeed: true,
         cost: 'medium',
@@ -194,7 +257,7 @@ export const MODELS: readonly ModelDefinition[] = [
         qualities: [],
         formats: ['png', 'jpeg'],
         maxAmount: 4,
-        supportsRevisePrompt: true,
+        promptRewrite: 'optional',
         maxInputImages: 1,
         supportsSeed: true,
         cost: 'high',
@@ -211,7 +274,7 @@ export const MODELS: readonly ModelDefinition[] = [
         formats: ['png', 'jpeg', 'webp'],
         maxAmount: 4,
         edge: { multiple: 16, min: 256, max: 3840, maxPixels: 8_294_400 },
-        supportsRevisePrompt: false,
+        promptRewrite: 'never',
         // Laut Doku bis 16; am 07.10.2026 wurden sogar 17 angenommen.
         maxInputImages: 16,
         supportsSeed: false,
@@ -230,7 +293,7 @@ export const MODELS: readonly ModelDefinition[] = [
         formats: ['png', 'jpeg', 'webp'],
         maxAmount: 4,
         edge: { multiple: 16, min: 256, max: 3840, maxPixels: 8_294_400 },
-        supportsRevisePrompt: false,
+        promptRewrite: 'never',
         maxInputImages: 16,
         supportsSeed: false,
         apiKnowsXhighMax: true,
@@ -248,7 +311,7 @@ export const MODELS: readonly ModelDefinition[] = [
         formats: ['png', 'jpeg', 'webp'],
         maxAmount: 4,
         edge: { multiple: 16, min: 256, max: 3840, maxPixels: 8_294_400 },
-        supportsRevisePrompt: false,
+        promptRewrite: 'never',
         maxInputImages: 4,
         supportsSeed: false,
         cost: 'high',
@@ -265,7 +328,7 @@ export const MODELS: readonly ModelDefinition[] = [
         formats: ['png', 'jpeg', 'webp'],
         maxAmount: 4,
         fixedSizes: OPENAI_FIXED_SIZES,
-        supportsRevisePrompt: false,
+        promptRewrite: 'never',
         maxInputImages: 4,
         supportsSeed: false,
         cost: 'medium',
@@ -282,7 +345,7 @@ export const MODELS: readonly ModelDefinition[] = [
         formats: ['png', 'jpeg', 'webp'],
         maxAmount: 4,
         fixedSizes: OPENAI_FIXED_SIZES,
-        supportsRevisePrompt: false,
+        promptRewrite: 'never',
         maxInputImages: 4,
         supportsSeed: false,
         cost: 'low',

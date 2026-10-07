@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clampQuality, resolveSize } from './aspectRatio';
+import { clampQuality, nearestRatio, resolveSize } from './aspectRatio';
 import { findModel, ModelDefinition } from '../controller/modelRegistry';
 import { AspectRatio, ASPECT_RATIOS } from '../types';
 
@@ -160,5 +160,35 @@ describe('clampQuality', () => {
 
     it('nimmt medium als Standard, wenn nichts gewählt wurde', () => {
         expect(clampQuality(modell('flux-2-pro'), undefined)).toBe('medium');
+    });
+});
+
+describe('FLUX 3: Verhältnis plus Flächenstufe', () => {
+    const flux3 = modell('flux-3-image');
+
+    it('schickt Verhältnis und Stufe, die Kanten sind nur Schätzung', () => {
+        const size = resolveSize(flux3, '16:9', 'high');
+        expect(size.aspectRatio).toBe('16:9');
+        expect(size.resolution).toBe('2k');
+        expect(size.size).toBeUndefined();
+    });
+
+    it('folgt der Pixel-Leiter der anderen Modelle', () => {
+        expect(resolveSize(flux3, '1:1', 'low').resolution).toBe('1k');
+        expect(resolveSize(flux3, '1:1', 'medium').resolution).toBe('1.5k');
+        expect(resolveSize(flux3, '1:1', 'max').resolution).toBe('4k');
+    });
+
+    it('fällt bei `xhigh` auf `high` zurück — die Stufe kennt nur GPT Image 2.5', () => {
+        expect(clampQuality(flux3, 'xhigh')).toBe('high');
+    });
+});
+
+describe('nearestRatio', () => {
+    it('findet das Verhältnis zu gemessenen Kanten', () => {
+        // Gemessen am 07.10.2026: FLUX 3 liefert 3:4 bei `1k` als 880×1184.
+        expect(nearestRatio(880, 1184)).toBe('3:4');
+        expect(nearestRatio(1920, 1080)).toBe('16:9');
+        expect(nearestRatio(1000, 1000)).toBe('1:1');
     });
 });

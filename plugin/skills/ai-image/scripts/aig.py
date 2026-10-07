@@ -76,6 +76,13 @@ def download(path: str, target_dir: pathlib.Path, file_name: str) -> pathlib.Pat
     return target
 
 
+REWRITE_TEXT = {
+    "never": "Prompt bleibt wörtlich",
+    "optional": "Prompt bleibt wörtlich (--revise formuliert aus)",
+    "always": "formuliert den Prompt IMMER aus",
+}
+
+
 def cmd_models(args):
     data = request("GET", "/api/models")
     if args.json:
@@ -95,8 +102,12 @@ def cmd_models(args):
             extras.append(f"Qualität: {', '.join(model['qualities'])}")
         extras.append(f"max. {model['maxAmount']} Bilder")
         extras.append(f"Formate: {', '.join(model['formats'])}")
-        if model["supportsRevisePrompt"]:
-            extras.append("kann den Prompt umschreiben")
+        umschreiben = model.get("promptRewrite") or ("optional" if model.get("supportsRevisePrompt") else "never")
+        extras.append(REWRITE_TEXT[umschreiben])
+        if model.get("supportsLayout"):
+            extras.append("Layout (Bounding Boxes)")
+        if model.get("supportsGrounding"):
+            extras.append("Websuche (--grounding)")
         if model["supportsSeed"]:
             extras.append("Seed möglich")
         if model["maxInputImages"]:
@@ -116,8 +127,42 @@ def as_data_url(path: str) -> str:
     return f"data:{mime};base64," + base64.b64encode(file.read_bytes()).decode()
 
 
+def read_layout(source: str):
+    """Liest ein Layout aus einer Datei oder von stdin ('-'): entweder die
+    Liste der Elemente oder {"scene": ..., "elements": [...]}."""
+    try:
+        text = sys.stdin.read() if source == "-" else pathlib.Path(source).expanduser().read_text(encoding="utf-8")
+    except OSError as error:
+        die(f"Layout nicht lesbar: {error}")
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError as error:
+        die(f"Layout ist kein gültiges JSON: {error}")
+    if isinstance(data, list):
+        return None, data
+    if isinstance(data, dict) and isinstance(data.get("elements"), list):
+        return data.get("scene"), data["elements"]
+    die('Layout: erwartet [...] oder {"scene": ..., "elements": [...]}')
+
+
 def cmd_gen(args):
-    payload = {"prompt": args.prompt, "model": args.model, "ratio": args.ratio, "amount": args.amount}
+    prompt = args.prompt
+    layout = None
+    if args.layout:
+        scene, layout = read_layout(args.layout)
+        # Die Szene aus der Datei gilt, wenn kein Prompt auf der Kommandozeile steht.
+        prompt = prompt or scene
+    if not prompt:
+        die("Kein Prompt: als Argument angeben oder als \"scene\" in der Layout-Datei.")
+    # Boxen kann nur FLUX 3 — dann ist es auch ohne --model gemeint.
+    model = args.model or ("flux-3-image" if layout is not None or args.source else "flux-2-pro")
+    payload = {"prompt": prompt, "model": model, "ratio": args.ratio, "amount": args.amount}
+    if layout is not None:
+        payload["layout"] = layout
+    if args.source:
+        payload["sourceImage"] = args.source
+    if args.grounding:
+        payload["grounding"] = True
     if args.image:
         payload["inputImages"] = [as_data_url(p) for p in args.image]
     if args.quality:
@@ -142,10 +187,12 @@ def cmd_gen(args):
                 zusatz.append(format_cost(image["cost"]))
             print(f"  {image['fileName']}  {image['width']}x{image['height']}"
                   + (f"  [{', '.join(zusatz)}]" if zusatz else ""))
-            if image.get("revisedPrompt") and image["revisedPrompt"] != args.prompt:
-                print(f"    umgeschrieben: {image['revisedPrompt']}")
+            if image.get("revisedPrompt") and image["revisedPrompt"] != prompt:
+                print(f"    vom Modell ausformuliert: {image['revisedPrompt']}")
         for error in data.get("errors", []):
             print(f"  Teilfehler: {error}", file=sys.stderr)
+        for warning in data.get("warnings", []):
+            print(f"  Hinweis: {warning}", file=sys.stderr)
 
     if args.out:
         target_dir = pathlib.Path(args.out)
@@ -213,6 +260,13 @@ def cmd_get(args):
         print(f"{'cost':14} {format_cost(data['cost'])}")
     if data.get("durationMs"):
         print(f"{'duration':14} {data['durationMs'] / 1000:.1f} s")
+    if data.get("editedFrom"):
+        print(f"{'editedFrom':14} {data['editedFrom']}")
+    if data.get("layout"):
+        print(f"{'layout':14} {len(data['layout'])} Element(e) — `aig.py layout {data['filename']}`")
+        for row in data["layout"]:
+            box = row.get("bbox") or row.get("tgt_bbox")
+            print(f"{'':14}   {row['id']:16} {box}  {row['desc'][:60]}")
     if data.get("seed") is not None:
         print(f"\nNochmal mit demselben Seed:")
         print(f"  aig.py gen {json.dumps(data.get('prompt', ''), ensure_ascii=False)} "
@@ -261,6 +315,32 @@ def cmd_costs(args):
               "die Anbieter liefern sie nicht rueckwirkend.")
 
 
+def cmd_layout(args):
+    """Das Layout eines Bildes als JSON — zum Wiederverwenden oder, mit
+    --edit, als Ausgangspunkt einer Bearbeitung: jedes Element als
+    behalten-Zeile, von der man nur die zu ändernden anpasst."""
+    data = request("GET", f"/api/files/get/{args.name}")
+    rows = data.get("layout") or []
+    if not rows and not args.edit:
+        die(f"{args.name} hat kein Layout. Für eine Bearbeitung ohne Layout: aig.py layout {args.name} --edit")
+    if args.edit:
+        elements = []
+        for row in rows:
+            box = row.get("bbox") or row.get("tgt_bbox")
+            if box is None:
+                continue  # war schon entfernt
+            elements.append({"id": row["id"], "from": "ref_image_0", "src_bbox": box, "tgt_bbox": box,
+                             "desc": row["desc"]})
+        result = {"scene": "In <ref_image_0>, … Keep "
+                           + ", ".join(f"<{e['id']}>" for e in elements) + " exactly unchanged.",
+                  "elements": elements}
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+        print(f"\nWeiter mit: aig.py gen --model flux-3-image --source {args.name} --layout DATEI",
+              file=sys.stderr)
+        return
+    print(json.dumps({"scene": data.get("prompt", ""), "elements": rows}, indent=2, ensure_ascii=False))
+
+
 def cmd_download(args):
     path = download(f"/api/files/download/{args.name}", pathlib.Path(args.out), args.name)
     print(path)
@@ -291,8 +371,8 @@ def main():
     sub.add_parser("models", help="verfügbare Modelle mit ihren Möglichkeiten")
 
     gen = sub.add_parser("gen", help="Bild erzeugen")
-    gen.add_argument("prompt")
-    gen.add_argument("--model", default="flux-2-pro")
+    gen.add_argument("prompt", nargs="?", help="bei --layout mit \"scene\" entbehrlich")
+    gen.add_argument("--model", help="Standard: flux-2-pro, mit --layout/--source flux-3-image")
     gen.add_argument("--ratio", default="1:1")
     gen.add_argument("--amount", type=int, default=1)
     gen.add_argument("--quality", choices=["low", "medium", "high", "xhigh", "max"],
@@ -304,6 +384,13 @@ def main():
     gen.add_argument("--image", action="append", metavar="PFAD",
                      help="Referenzbild; mehrfach angebbar (siehe 'models' für das Maximum je Modell)")
     gen.add_argument("--out", help="Verzeichnis, in das die Bilder geladen werden")
+    gen.add_argument("--layout", metavar="DATEI",
+                     help="Bounding Boxes (nur FLUX 3) als JSON-Datei, '-' für stdin: "
+                          "[{id, bbox, desc}, …] oder {\"scene\": …, \"elements\": […]}")
+    gen.add_argument("--source", metavar="DATEINAME",
+                     help="ein schon erzeugtes Bild als ref_image_0 bearbeiten (volle Größe, Rahmen bleibt)")
+    gen.add_argument("--grounding", action="store_true",
+                     help="FLUX 3 recherchiert vorher im Web (für echte Dinge); Standard aus")
 
     listing = sub.add_parser("list", help="vorhandene Bilder, neueste zuerst")
     listing.add_argument("--limit", type=int, default=20)
@@ -314,6 +401,11 @@ def main():
 
     get = sub.add_parser("get", help="Metadaten eines Bildes")
     get.add_argument("name")
+
+    lay = sub.add_parser("layout", help="Layout (Bounding Boxes) eines Bildes als JSON")
+    lay.add_argument("name")
+    lay.add_argument("--edit", action="store_true",
+                     help="als behalten-Zeilen für eine Bearbeitung mit --source")
 
     sub.add_parser("costs", help="Guthaben und was hier bereits ausgegeben wurde")
 
@@ -329,7 +421,7 @@ def main():
     fav.add_argument("--off", action="store_true", help="Markierung aufheben")
 
     args = parser.parse_args()
-    {"models": cmd_models, "gen": cmd_gen, "list": cmd_list, "get": cmd_get,
+    {"models": cmd_models, "gen": cmd_gen, "list": cmd_list, "get": cmd_get, "layout": cmd_layout,
      "costs": cmd_costs, "download": cmd_download, "rm": cmd_rm,
      "favorite": cmd_favorite}[args.command](args)
 

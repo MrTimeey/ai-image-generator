@@ -9,7 +9,7 @@
         {
             "name": "ai-image",
             "source": "./plugin",
-            "description": "Bilder über ai.mrtimeey.com erzeugen — Modellwahl, Seitenverhältnis, Referenzbilder, Guthaben."
+            "description": "Bilder über ai.mrtimeey.com erzeugen — Modellwahl, Komposition mit Bounding Boxes (FLUX 3), Seitenverhältnis, Referenzbilder, Guthaben."
         }
     ]
 }

@@ -5,6 +5,7 @@ import { ModelDefinition } from './modelRegistry';
 import { ResolvedSize } from '../common/aspectRatio';
 import { ProviderError } from '../common/providerError';
 import { InputImage } from '../common/inputImage';
+import { composePrompt, LayoutRow } from '../common/layout';
 
 const BASE_URL = 'https://api.bfl.ai/v1';
 
@@ -72,43 +73,74 @@ const bflHeaders = () => {
     };
 };
 
+export type BflRequest = {
+    prompt: string;
+    model: ModelDefinition;
+    size: ResolvedSize;
+    format: OutputFormat;
+    amount: number;
+    revisePrompt: boolean;
+    inputImages: InputImage[];
+    seed?: number;
+    /** Nur FLUX 3: Bounding Boxes, die hinter den Prompt gehaengt werden. */
+    layout?: LayoutRow[];
+    /** Nur FLUX 3: Web- und Bildsuche vor dem Generieren. */
+    grounding?: boolean;
+    /**
+     * Nur FLUX 3: `aspect_ratio: auto` — das Ergebnis behaelt den Rahmen des
+     * ersten Referenzbildes. Fuer Bearbeitungen, bei denen jedes andere
+     * Verhaeltnis das Bild beschnitte oder verzerrte.
+     */
+    autoRatio?: boolean;
+};
+
 /**
  * Baut den Rumpf so, wie der jeweilige Endpunkt ihn wirklich auswertet.
  * Am 24.08.2026 nachgemessen: die FLUX.2-Endpunkte und `flux-pro-1.1` nehmen
  * `aspect_ratio` zwar entgegen, **ignorieren es aber** und liefern ihre
  * Standardgroesse. Nur Kontext und `flux-pro-1.1-ultra` werten es aus.
+ *
+ * FLUX 3 ist strenger: sein Schema verbietet jedes unbekannte Feld (422).
+ * Dort darf also nur hinaus, was es kennt — kein `seed`, kein
+ * `output_format`, kein `prompt_upsampling`.
  */
-const buildBody = (
-    prompt: string,
-    model: ModelDefinition,
-    size: ResolvedSize,
-    format: OutputFormat,
-    revisePrompt: boolean,
-    inputImages: InputImage[],
-    seed?: number
-): Record<string, unknown> => {
-    const body: Record<string, unknown> = {
-        prompt,
-        output_format: format === 'webp' ? 'png' : format,
-    };
-    if (model.sizeMode === 'aspect_ratio') {
+export const buildBody = (request: BflRequest, seed?: number): Record<string, unknown> => {
+    const { model, size, format, revisePrompt, inputImages } = request;
+    const body: Record<string, unknown> = { prompt: composePrompt(request.prompt, request.layout) };
+    if (model.acceptsOutputFormat !== false) {
+        body.output_format = format === 'webp' ? 'png' : format;
+    }
+    if (model.sizeMode === 'aspect_ratio_resolution') {
+        body.aspect_ratio = request.autoRatio ? 'auto' : size.aspectRatio;
+        body.resolution = size.resolution;
+    } else if (model.sizeMode === 'aspect_ratio') {
         body.aspect_ratio = size.aspectRatio;
     } else {
         body.width = size.width;
         body.height = size.height;
     }
-    if (model.supportsRevisePrompt) {
+    if (model.promptRewrite === 'optional') {
         body.prompt_upsampling = revisePrompt;
+    }
+    if (model.supportsGrounding) {
+        // Ausdruecklich mitschicken: BFLs Standard ist `true`, unserer `false`.
+        body.grounding = request.grounding ?? false;
     }
     if (model.supportsSeed && seed !== undefined) {
         body.seed = seed;
+    }
+    const bilder = inputImages.slice(0, model.maxInputImages);
+    if (model.inputImageField === 'images') {
+        // FLUX 3: eine Liste, im Prompt als <ref_image_0>, <ref_image_1>, …
+        if (bilder.length > 0) body.images = bilder.map(image => image.base64);
+        return body;
     }
     /**
      * Das erste Bild heisst `input_image`, jedes weitere `input_image_2`,
      * `input_image_3`, … — FLUX.2 rechnet sie einzeln ab (`input_mp` in der
      * Antwort waechst pro Bild). Kontext wertet nur das erste aus.
      */
-    inputImages.slice(0, model.maxInputImages).forEach((image, index) => {
+    bilder.forEach((image, index) => {
         body[index === 0 ? 'input_image' : `input_image_${index + 1}`] = image.base64;
     });
     return body;
@@ -123,6 +155,21 @@ const buildBody = (
  */
 const SUBMIT_ATTEMPTS = 4;
 const SUBMIT_BACKOFF_MS = [500, 1_500, 3_000];
+/** Bei Lastabwurf laenger warten — BFL bittet um „retry shortly", nicht sofort. */
+const SHEDDING_BACKOFF_MS = [3_000, 8_000, 15_000];
+
+/**
+ * Lastabwurf: der Endpunkt nimmt gerade nichts an und sagt das auch. Am
+ * 07.10.2026 bei FLUX 3 zweimal gesehen, als 503 mit
+ * `{"detail": "/v1/flux-3-image is over capacity and temporarily shedding
+ * requests. Please retry shortly."}`. Der zweite Versuch Sekunden spaeter lief.
+ */
+export const isLoadShedding = (error: unknown): boolean => {
+    const axiosError = error as AxiosError<{ detail?: unknown }>;
+    if (axiosError?.response?.status !== 503) return false;
+    const detail = axiosError.response.data?.detail;
+    return typeof detail === 'string' && /over capacity|shedding requests/i.test(detail);
+};
 
 /**
  * Ob ein gescheitertes Absenden wiederholt werden darf. Die Bedingung ist
@@ -137,14 +184,17 @@ const SUBMIT_BACKOFF_MS = [500, 1_500, 3_000];
  *   „bfl_submit_failed:" und nichts dahinter, was wie ein Eingabefehler aussah.
  * - **429**: der Anbieter sagt ausdruecklich, dass er nichts verarbeitet hat.
  *
- * **5xx bewusst nicht** — dort kann der Auftrag angenommen und abgerechnet
+ * - **503 mit Lastabwurf** (`isLoadShedding`): auch das sagt ausdruecklich,
+ *   dass nichts angenommen wurde.
+ *
+ * **Sonst kein 5xx** — dort kann der Auftrag angenommen und abgerechnet
  * worden sein, und ein zweiter Versuch bezahlte dasselbe Bild doppelt.
  */
 export const isRetryableSubmitError = (error: unknown): boolean => {
     if (error instanceof ProviderError) return false;
     const axiosError = error as AxiosError;
     if (!axiosError?.response) return true;
-    return axiosError.response.status === 429;
+    return axiosError.response.status === 429 || isLoadShedding(error);
 };
 
 const submit = async (
@@ -170,13 +220,22 @@ const submit = async (
             const fehler = toProviderError(error, 'bfl_submit_failed');
             if (versuch + 1 >= SUBMIT_ATTEMPTS || !isRetryableSubmitError(error)) throw fehler;
             console.warn(`Absenden an BFL, Versuch ${versuch + 1}/${SUBMIT_ATTEMPTS} fehlgeschlagen:`, fehler.message);
-            await sleep(SUBMIT_BACKOFF_MS[versuch]);
+            await sleep((isLoadShedding(error) ? SHEDDING_BACKOFF_MS : SUBMIT_BACKOFF_MS)[versuch]);
         }
     }
 };
 
-export const pollForResult = async (pollUrl: string): Promise<ProviderImage> => {
-    const deadline = Date.now() + POLL_DEADLINE_MS;
+/** Ein Endzustand aus dem Abhol-Body als Fehler — oder `undefined`, wenn es keiner ist. */
+const terminalError = (data: BflResultResponse | undefined): ProviderError | undefined => {
+    const status = data?.status ?? '';
+    const terminal = TERMINAL_STATUS[status];
+    if (!terminal) return undefined;
+    const detail = data?.details ? ` (${JSON.stringify(data.details)})` : '';
+    return new ProviderError(422, `bfl_${status.toLowerCase().replace(/\s+/g, '_')}`, kuerzeMeldung(terminal + detail));
+};
+
+export const pollForResult = async (pollUrl: string, deadlineMs: number = POLL_DEADLINE_MS): Promise<ProviderImage> => {
+    const deadline = Date.now() + deadlineMs;
     let wait = POLL_START_MS;
     let transientErrors = 0;
 
@@ -200,21 +259,23 @@ export const pollForResult = async (pollUrl: string): Promise<ProviderImage> => 
                 };
             }
 
-            const terminal = TERMINAL_STATUS[status];
-            if (terminal) {
-                const detail = response.data?.details ? ` (${JSON.stringify(response.data.details)})` : '';
-                throw new ProviderError(
-                    422,
-                    `bfl_${status.toLowerCase().replace(/\s+/g, '_')}`,
-                    kuerzeMeldung(terminal + detail)
-                );
-            }
+            const terminal = terminalError(response.data);
+            if (terminal) throw terminal;
 
-            // Alles andere ist `Pending` oder ein neuer Zustand — weiter warten.
+            // Alles andere ist `Pending`, `Reasoning` (FLUX 3 formuliert gerade
+            // aus), `Generating` oder ein neuer Zustand — weiter warten.
             transientErrors = 0;
         } catch (error) {
             if (error instanceof ProviderError) throw error;
-            const axiosError = error as AxiosError;
+            const axiosError = error as AxiosError<BflResultResponse>;
+            /**
+             * Laut FLUX-3-Doku kommt ein gescheiterter Auftrag auch als HTTP 503
+             * mit ganz normalem Body. Erst den Status lesen — sonst wuerde ein
+             * endgueltiger Fehler sechsmal wiederholt und dann als
+             * „bfl_poll_failed" gemeldet.
+             */
+            const imBody = terminalError(axiosError.response?.data);
+            if (imBody) throw imBody;
             const retryable =
                 isRetryableNetworkError(axiosError) || isRetryableHttpStatus(axiosError.response?.status);
             if (!retryable || ++transientErrors > MAX_TRANSIENT_ERRORS) {
@@ -226,28 +287,21 @@ export const pollForResult = async (pollUrl: string): Promise<ProviderImage> => 
         wait = Math.min(POLL_MAX_MS, Math.round(wait * POLL_FACTOR));
     }
 
-    throw new ProviderError(504, 'bfl_timeout', `Der Anbieter hat innerhalb von ${POLL_DEADLINE_MS / 1000} s kein Bild geliefert.`);
+    throw new ProviderError(504, 'bfl_timeout', `Der Anbieter hat innerhalb von ${deadlineMs / 1000} s kein Bild geliefert.`);
 };
 
 export const generateImages = async (
-    prompt: string,
-    model: ModelDefinition,
-    size: ResolvedSize,
-    format: OutputFormat,
-    amount: number,
-    revisePrompt: boolean,
-    inputImages: InputImage[],
-    seed?: number
+    request: BflRequest
 ): Promise<{ images: ProviderImage[]; errors: string[] }> => {
+    const { model, amount, seed } = request;
     // Bei mehreren Bildern jeweils einen eigenen Seed, sonst liefert BFL
     // viermal dasselbe Bild.
-    const body = (index: number) =>
-        buildBody(prompt, model, size, format, revisePrompt, inputImages, seed === undefined ? undefined : seed + index);
+    const body = (index: number) => buildBody(request, seed === undefined ? undefined : seed + index);
 
     const settled = await Promise.allSettled(
         Array.from({ length: amount }, (_, index) =>
             submit(model, body(index)).then(async ({ pollingUrl, cost }) => {
-                const image = await pollForResult(pollingUrl);
+                const image = await pollForResult(pollingUrl, model.pollDeadlineMs);
                 return cost === undefined ? image : { ...image, cost: { amount: cost, unit: 'credits' as const } };
             })
         )

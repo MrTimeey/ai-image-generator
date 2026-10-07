@@ -23,6 +23,7 @@
     <script src="/public/js/toast.js" defer></script>
     <script src="/public/js/nav.js" defer></script>
     <script src="/js/main.js" defer></script>
+    <script src="/public/js/layout-overlay.js" defer></script>
     <link href="/public/css/generated-tailwind.css" rel="stylesheet">
     <link href="/public/css/style.css" rel="stylesheet">
 </head>
@@ -65,7 +66,11 @@
 <main class="max-w-4xl mx-auto py-10 px-4 bg-white shadow-lg rounded-lg">
     <!-- Bildanzeige -->
     <div class="text-center mb-4">
-        <a id="anchor"><img id="image" alt="Generiertes Bild" class="w-512 mx-auto"></a>
+        <!-- inline-block, damit die Boxen genau ueber dem Bild liegen und nicht ueber der Zeile. -->
+        <a id="anchor" class="relative inline-block align-top"><img id="image" alt="Generiertes Bild" class="block w-512 max-w-full"></a>
+        <label id="layout-toggle" class="hidden mt-2 flex items-center justify-center gap-2 text-sm text-gray-600">
+            <input type="checkbox" id="layout-zeigen" checked class="rounded border-gray-300"> Boxen anzeigen
+        </label>
     </div>
 
     <!-- Bl&auml;ttern -->
@@ -78,6 +83,10 @@
     <div class="flex flex-wrap justify-center gap-3 mb-6">
         <a id="use-as-reference"
            class="bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700">Als Referenz nutzen</a>
+        <a id="compose-edit" title="Mit FLUX 3 Box für Box ändern"
+           class="bg-white border border-blue-300 text-blue-700 px-5 py-2 rounded-lg hover:bg-blue-50">In Komposition bearbeiten</a>
+        <a id="compose-from" title="Dieselben Boxen und dieselbe Szene als neue Komposition"
+           class="hidden bg-white border border-blue-300 text-blue-700 px-5 py-2 rounded-lg hover:bg-blue-50">Layout wiederverwenden</a>
         <a id="download-link" class="bg-gray-200 text-gray-800 px-5 py-2 rounded-lg hover:bg-gray-300">Herunterladen</a>
         <button id="favorite-toggle" class="bg-white border border-gray-300 px-5 py-2 rounded-lg hover:bg-gray-50">
             <span id="favorite-icon">&#9734;</span> <span id="favorite-label">Favorit</span>
@@ -100,10 +109,27 @@
             <p id="prompt">...</p>
         </div>
 
+        <!-- Bounding Boxes (FLUX 3) -->
+        <div id="layout-block" class="hidden">
+            <h3 class="font-semibold text-lg">Elemente:</h3>
+            <p class="text-sm text-gray-500 mb-2">Die Boxen, mit denen das Bild entstand — <code>[top, left, bottom, right]</code> auf 0–1000.</p>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <tbody id="layout-zeilen" class="divide-y divide-gray-200"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Bearbeitet aus -->
+        <div id="edited-from-block" class="hidden">
+            <h3 class="font-semibold text-lg">Bearbeitet aus:</h3>
+            <a id="edited-from" class="text-blue-600 hover:underline break-all"></a>
+        </div>
+
         <!-- Revised Prompt -->
         <div>
             <div class="flex items-center gap-3">
-                <h3 class="font-semibold text-lg">Revised Prompt:</h3>
+                <h3 id="revised-titel" class="font-semibold text-lg">Revised Prompt:</h3>
                 <button id="copy-revised" class="text-sm text-blue-600 hover:underline">kopieren</button>
             </div>
             <p id="revised-prompt">...</p>
@@ -218,6 +244,58 @@
      * Ohne die Vorlage ist ein Prompt wie „mach den Hintergrund tiefblau" nicht
      * zu deuten — deshalb steht sie hier daneben.
      */
+    /**
+     * FLUX 3: die Boxen über dem Bild und als Tabelle darunter. Bearbeiten
+     * geht mit jedem Bild — FLUX 3 nimmt es als Ausgangsbild, auch ohne Layout.
+     */
+    const zeigeLayout = (image) => {
+        const name = encodeURIComponent(image.filename);
+        document.getElementById('compose-edit').href = `/compose.html?edit=${name}`;
+        if (image.promptRewrite === 'always') {
+            document.getElementById('revised-titel').textContent = 'Vom Modell ausformuliert:';
+        }
+        if (image.editedFrom) {
+            const link = document.getElementById('edited-from');
+            link.textContent = image.editedFrom;
+            link.href = `/detail.html?filename=${encodeURIComponent(image.editedFrom)}`;
+            document.getElementById('edited-from-block').classList.remove('hidden');
+        }
+        if (!Array.isArray(image.layout) || image.layout.length === 0) return;
+
+        const huelle = document.getElementById('anchor');
+        zeichneLayout(huelle, image.layout);
+        document.getElementById('layout-toggle').classList.remove('hidden');
+        document.getElementById('layout-zeigen').addEventListener('change', (event) => {
+            huelle.classList.toggle('lo-aus', !event.target.checked);
+        });
+        const von = document.getElementById('compose-from');
+        von.href = `/compose.html?from=${name}`;
+        von.classList.remove('hidden');
+
+        document.getElementById('layout-zeilen').replaceChildren(...image.layout.map((row) => {
+            const rolle = layoutRolle(row);
+            const tr = document.createElement('tr');
+            const kopf = document.createElement('td');
+            kopf.className = 'py-2 pr-3 align-top whitespace-nowrap';
+            const id = document.createElement('code');
+            id.textContent = row.id;
+            id.style.color = LAYOUT_ROLLEN[rolle].farbe;
+            id.className = 'font-semibold';
+            const box = document.createElement('div');
+            box.className = 'font-mono text-xs text-gray-500';
+            box.textContent = rolle === 'gen'
+                ? `[${row.bbox.join(', ')}]`
+                : `${LAYOUT_ROLLEN[rolle].label} ${row.tgt_bbox ? `[${row.tgt_bbox.join(', ')}]` : ''}`;
+            kopf.append(id, box);
+            const desc = document.createElement('td');
+            desc.className = 'py-2 align-top';
+            desc.textContent = row.desc;
+            tr.append(kopf, desc);
+            return tr;
+        }));
+        document.getElementById('layout-block').classList.remove('hidden');
+    };
+
     const zeigeReferenzbilder = (namen) => {
         if (!Array.isArray(namen) || namen.length === 0) return;
         const behaelter = document.getElementById('reference-images');
@@ -303,6 +381,7 @@
 
             zeigeReferenzbilder(image.referenceImages);
             zeigeEinstellungen(image);
+            zeigeLayout(image);
             zeigeNachbarn(image.filename ?? filename);
 
             const kopiere = (text, name) => async () => {

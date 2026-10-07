@@ -15,7 +15,12 @@ import { ESLint } from 'eslint';
 const STATIC_DIR = 'src/static';
 // Die extern eingebundenen Skripte gehoeren dazu, sonst gilt jede ihrer
 // Funktionen als undefiniert.
-const SHARED = ['src/static/js/main.js', 'src/static/public/js/toast.js', 'src/static/public/js/nav.js']
+const SHARED = [
+    'src/static/js/main.js',
+    'src/static/public/js/toast.js',
+    'src/static/public/js/nav.js',
+    'src/static/public/js/layout-overlay.js',
+]
     .map(path => readFileSync(path, 'utf8'))
     .join('\n;\n');
 

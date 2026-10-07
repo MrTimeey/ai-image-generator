@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Komposition · AI Image Generator</title>
+    <link rel="apple-touch-icon" sizes="180x180" href="/public/favicon_io/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/public/favicon_io/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/public/favicon_io/favicon-16x16.png" />
+    <link rel="manifest" href="/public/favicon_io/site.webmanifest" />
+    <meta name="theme-color" content="#2563eb">
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').catch((error) =>
+                    console.debug('Service Worker nicht registriert', error));
+            });
+        }
+    </script>
+    <script src="/js/main.js" defer></script>
+    <script src="/public/js/toast.js" defer></script>
+    <script src="/public/js/nav.js" defer></script>
+    <script src="/public/js/layout-overlay.js" defer></script>
+    <link href="/public/css/generated-tailwind.css" rel="stylesheet">
+    <link href="/public/css/style.css" rel="stylesheet">
+    <style>
+        /* Die Werkbank: dunkel und gepunktet, damit Bild und Boxen davor stehen. */
+        .werkbank {
+            background-color: #0f1115;
+            background-image: radial-gradient(rgba(255, 255, 255, 0.09) 1px, transparent 1px);
+            background-size: 16px 16px;
+        }
+        .leinwand {
+            position: relative;
+            background: #1f2330;
+            outline: 1px solid rgba(255, 255, 255, 0.18);
+            touch-action: none;
+            user-select: none;
+            cursor: crosshair;
+        }
+        .leinwand img.quelle {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        .kb {
+            position: absolute;
+            border: 2px solid;
+            box-sizing: border-box;
+            cursor: move;
+        }
+        .kb.quelle { border-style: dashed; background: transparent !important; }
+        .leinwand.lo-aus .kb { visibility: hidden; }
+        .kb.gewaehlt { box-shadow: 0 0 0 2px #fff, 0 0 0 4px rgba(0, 0, 0, 0.4); z-index: 5; }
+        .kb .lo-label { pointer-events: none; }
+        .kb .griff {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: #fff;
+            border: 2px solid currentColor;
+            border-radius: 2px;
+        }
+        .kb .griff.nw { top: -7px; left: -7px; cursor: nwse-resize; }
+        .kb .griff.ne { top: -7px; right: -7px; cursor: nesw-resize; }
+        .kb .griff.sw { bottom: -7px; left: -7px; cursor: nesw-resize; }
+        .kb .griff.se { bottom: -7px; right: -7px; cursor: nwse-resize; }
+        .schritt-nr { font: 600 12px/1 ui-monospace, SFMono-Regular, Menlo, monospace; }
+        .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+<div id="spinner-overlay" class="hidden fixed inset-0 bg-gray-800 bg-opacity-75 flex flex-col items-center justify-center z-50 gap-4">
+    <div class="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+    <p id="spinner-text" class="text-white text-sm"></p>
+</div>
+
+<header class="bg-blue-600 text-white">
+    <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+        <div class="text-2xl font-bold">
+            <a href="/index.html">AI Image Generator</a>
+        </div>
+        <nav id="nav-desktop" class="hidden md:flex space-x-6 items-center"></nav>
+        <div class="md:hidden">
+            <button id="burger-btn" class="focus:outline-none" aria-label="Menü">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path>
+                </svg>
+            </button>
+        </div>
+    </div>
+    <nav id="mobile-menu" class="hidden bg-blue-600 md:hidden px-4 py-4">
+        <div id="nav-mobile"></div>
+    </nav>
+</header>
+
+<div id="toast" class="toast"></div>
+
+<main class="max-w-6xl mx-auto py-6 px-4">
+    <div class="flex flex-wrap items-baseline justify-between gap-2 mb-4">
+        <div>
+            <h1 class="text-2xl font-semibold text-gray-800">Komposition</h1>
+            <p id="modus-text" class="text-sm text-gray-600">Boxen ziehen, jedes Element beschreiben, die Szene in einem Satz zusammenhalten.</p>
+        </div>
+        <div class="flex gap-2">
+            <a id="neu-link" href="/compose.html" class="hidden text-sm px-3 py-1.5 rounded-lg border border-gray-300 bg-white hover:bg-gray-50">Neue Komposition</a>
+            <button id="leeren-btn" type="button" class="text-sm px-3 py-1.5 rounded-lg border border-gray-300 bg-white hover:bg-gray-50">Alle Boxen löschen</button>
+        </div>
+    </div>
+
+    <p id="kein-modell" class="hidden mb-4 p-3 rounded-lg bg-amber-50 text-amber-800 text-sm">
+        Kein Modell mit Bounding Boxes verfügbar — dafür braucht es FLUX 3 und einen BFL-Schlüssel.
+    </p>
+
+    <div class="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
+        <!-- Werkbank -->
+        <section>
+            <div id="werkbank" class="werkbank rounded-lg p-4 sm:p-8 flex items-center justify-center min-h-[320px]">
+                <div id="leinwand" class="leinwand"></div>
+            </div>
+            <div class="flex flex-wrap items-center justify-between gap-2 mt-2 text-xs text-gray-600">
+                <span><span id="verhaeltnis-anzeige" class="mono"></span> · <span id="koordinaten" class="mono">Ziehen legt eine Box an</span></span>
+                <label class="flex items-center gap-2">
+                    <input type="checkbox" id="boxen-zeigen" checked class="rounded border-gray-300"> Boxen anzeigen
+                </label>
+            </div>
+            <p id="werkbank-hilfe" class="mt-2 text-xs text-gray-500">
+                Auf der Fläche ziehen legt eine Box an. Boxen lassen sich verschieben und an den Ecken skalieren; Entf löscht die gewählte.
+            </p>
+        </section>
+
+        <!-- Schritte -->
+        <aside class="bg-white rounded-lg border border-gray-200 divide-y divide-gray-200 self-start">
+            <div class="p-4">
+                <h2 class="flex items-center gap-2 text-sm font-semibold text-gray-800"><span class="schritt-nr text-gray-400">01</span> Seitenverhältnis</h2>
+                <select id="ratio" class="mt-2 w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent"></select>
+                <p id="ratio-hinweis" class="mt-1 text-xs text-gray-500">Das Raster bleibt 0–1000 in beide Richtungen; die Boxen strecken sich mit.</p>
+            </div>
+
+            <div class="p-4">
+                <div class="flex items-center justify-between">
+                    <h2 class="flex items-center gap-2 text-sm font-semibold text-gray-800"><span class="schritt-nr text-gray-400">02</span> Elemente</h2>
+                    <span id="element-zahl" class="text-xs text-gray-500"></span>
+                </div>
+                <div id="elemente" class="mt-2 space-y-2 max-h-[420px] overflow-y-auto pr-1"></div>
+                <p id="elemente-leer" class="mt-2 text-sm text-gray-500">Noch keine Box. Zieh auf der Fläche links ein Rechteck auf.</p>
+            </div>
+
+            <div class="p-4">
+                <h2 class="flex items-center gap-2 text-sm font-semibold text-gray-800"><span class="schritt-nr text-gray-400">03</span> Szenen-Prompt</h2>
+                <textarea id="szene" rows="4" class="mt-2 w-full p-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+                          placeholder="Ein Satz für das ganze Bild, der jedes Element als <id> nennt."></textarea>
+                <div id="chips" class="mt-2 flex flex-wrap gap-1"></div>
+                <button id="satz-btn" type="button" class="hidden mt-2 text-xs text-blue-700 hover:underline">Satz aus den Rollen bauen</button>
+                <ul id="hinweise" class="mt-2 space-y-1 text-xs text-amber-700"></ul>
+            </div>
+
+            <div class="p-4">
+                <h2 class="flex items-center gap-2 text-sm font-semibold text-gray-800"><span class="schritt-nr text-gray-400">04</span> Generieren</h2>
+                <div class="mt-2 grid grid-cols-3 gap-2">
+                    <label class="text-xs text-gray-600">Qualität
+                        <select id="quality" class="mt-1 w-full p-1.5 text-sm border border-gray-300 rounded-lg"></select>
+                    </label>
+                    <label class="text-xs text-gray-600">Anzahl
+                        <select id="amount" class="mt-1 w-full p-1.5 text-sm border border-gray-300 rounded-lg"></select>
+                    </label>
+                    <label class="text-xs text-gray-600">Format
+                        <select id="format" class="mt-1 w-full p-1.5 text-sm border border-gray-300 rounded-lg"></select>
+                    </label>
+                </div>
+                <p id="quality-hinweis" class="hidden mt-1 text-xs text-amber-700"></p>
+                <label class="mt-3 flex items-start gap-2 text-sm text-gray-700">
+                    <input type="checkbox" id="grounding" class="mt-0.5 rounded border-gray-300">
+                    <span>Im Web recherchieren <span class="block text-xs text-gray-500">Für echte Dinge (Logos, Bauwerke, aktuelle Plakate). Aus: nur dein Prompt, schneller.</span></span>
+                </label>
+                <p class="mt-3 text-xs text-gray-500">
+                    FLUX 3 formuliert den Prompt vor dem Rechnen immer aus. Verbindlich sind die Boxen — was dort steht, bleibt an seinem Platz.
+                </p>
+                <button id="generate-btn" type="button" disabled
+                        class="mt-3 w-full bg-blue-600 text-white px-4 py-2.5 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed">Erzeugen</button>
+                <p id="msg" class="mt-2 text-sm text-red-600"></p>
+            </div>
+        </aside>
+    </div>
+
+    <details class="mt-4 bg-white rounded-lg border border-gray-200">
+        <summary class="cursor-pointer px-4 py-3 text-xs font-semibold tracking-wider text-gray-600 uppercase flex justify-between">
+            <span>Elementtabelle als JSON</span><span id="json-zahl" class="normal-case font-normal"></span>
+        </summary>
+        <div class="px-4 pb-4 grid gap-4 md:grid-cols-2">
+            <div>
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-xs text-gray-600">So geht es an die API (<code>prompt</code> + <code>layout</code>)</span>
+                    <button id="json-kopieren" type="button" class="text-xs text-blue-700 hover:underline">Kopieren</button>
+                </div>
+                <pre id="json-ausgabe" class="mono text-xs bg-gray-50 border border-gray-200 rounded p-2 max-h-72 overflow-auto whitespace-pre-wrap break-all"></pre>
+            </div>
+            <div>
+                <span class="text-xs text-gray-600">Übernehmen: <code>{"scene": …, "elements": […]}</code> oder nur die Liste</span>
+                <textarea id="json-eingabe" rows="8" class="mono mt-1 w-full p-2 text-xs border border-gray-300 rounded"></textarea>
+                <button id="json-uebernehmen" type="button" class="mt-1 text-sm px-3 py-1.5 rounded-lg border border-gray-300 bg-white hover:bg-gray-50">Übernehmen</button>
+            </div>
+        </div>
+    </details>
+
+    <section id="ergebnis" class="hidden mt-8">
+        <div class="flex items-center justify-between mb-3">
+            <h2 class="text-xl font-semibold text-gray-800">Ergebnis</h2>
+            <label class="flex items-center gap-2 text-sm text-gray-600">
+                <input type="checkbox" id="ergebnis-boxen" checked class="rounded border-gray-300"> Boxen anzeigen
+            </label>
+        </div>
+        <div id="ergebnis-bilder" class="grid gap-6 md:grid-cols-2"></div>
+    </section>
+</main>
+
+<script>
+    const leinwand = document.getElementById('leinwand');
+    const werkbank = document.getElementById('werkbank');
+    const ratioSelect = document.getElementById('ratio');
+    const qualitySelect = document.getElementById('quality');
+    const qualityHinweis = document.getElementById('quality-hinweis');
+    const amountSelect = document.getElementById('amount');
+    const formatSelect = document.getElementById('format');
+    const groundingBox = document.getElementById('grounding');
+    const szeneFeld = document.getElementById('szene');
+    const chips = document.getElementById('chips');
+    const hinweisListe = document.getElementById('hinweise');
+    const elementListe = document.getElementById('elemente');
+    const elementeLeer = document.getElementById('elemente-leer');
+    const elementZahl = document.getElementById('element-zahl');
+    const generateBtn = document.getElementById('generate-btn');
+    const msgFeld = document.getElementById('msg');
+    const spinner = document.getElementById('spinner-overlay');
+    const spinnerText = document.getElementById('spinner-text');
+    const koordinaten = document.getElementById('koordinaten');
+    const verhaeltnisAnzeige = document.getElementById('verhaeltnis-anzeige');
+    const satzBtn = document.getElementById('satz-btn');
+    const jsonAusgabe = document.getElementById('json-ausgabe');
+    const jsonEingabe = document.getElementById('json-eingabe');
+
+    /** Das Modell mit Layout-Unterstützung aus der Registry (FLUX 3). */
+    let modell = null;
+
+    /**
+     * Der ganze Zustand. Eine Zeile hat immer `src` und `tgt` (je Box oder
+     * `null`) und eine Rolle: `gen` beim Erzeugen, beim Bearbeiten `keep`,
+     * `move`, `new` oder `remove` — wie die Tabelle in `src/common/layout.ts`.
+     */
+    const zustand = {
+        modus: 'neu',
+        /** Beim Bearbeiten: { fileName, width, height } des Ausgangsbildes. */
+        quelle: null,
+        rows: [],
+        gewaehlt: null,
+        naechsteNr: 1,
+    };
+
+    const MIN_KANTE = 10;
+    const ENTWURF_KEY = 'aig-komposition-entwurf';
+    const ID_MUSTER = /^[a-z][a-z0-9_]*$/;
+
+    const option = (value, label) => {
+        const el = document.createElement('option');
+        el.value = value;
+        el.textContent = label;
+        return el;
+    };
+
+    const klemme = (wert) => Math.max(0, Math.min(1000, Math.round(wert)));
+    const bearbeiten = () => zustand.modus === 'bearbeiten';
+    const zeileVon = (key) => zustand.rows.find((row) => row.key === key);
+
+    // ---- Leinwand-Größe -----------------------------------------------------
+
+    const verhaeltnis = () => {
+        if (bearbeiten() && zustand.quelle) return zustand.quelle.width / zustand.quelle.height;
+        const [w, h] = ratioSelect.value.split(':').map(Number);
+        return w / h;
+    };
+
+    /** Größte Fläche im gewählten Verhältnis, die in die Werkbank passt. */
+    const groesseAnpassen = () => {
+        const r = verhaeltnis();
+        const stil = getComputedStyle(werkbank);
+        const breit = werkbank.clientWidth - parseFloat(stil.paddingLeft) - parseFloat(stil.paddingRight);
+        const hoch = Math.min(window.innerHeight * 0.7, 680);
+        const breite = Math.max(120, Math.min(breit, hoch * r));
+        leinwand.style.width = `${Math.round(breite)}px`;
+        leinwand.style.height = `${Math.round(breite / r)}px`;
+        verhaeltnisAnzeige.textContent = bearbeiten() && zustand.quelle
+            ? `${zustand.quelle.width}×${zustand.quelle.height}`
+            : ratioSelect.value;
+    };
+
+    // ---- Boxen auf der Leinwand ---------------------------------------------
+
+    const rasterPunkt = (event) => {
+        const rect = leinwand.getBoundingClientRect();
+        return {
+            y: klemme(((event.clientY - rect.top) / rect.height) * 1000),
+            x: klemme(((event.clientX - rect.left) / rect.width) * 1000),
+        };
+    };
+
+    /** Welche Box einer Zeile auf der Leinwand bedienbar ist. */
+    const hauptBox = (row) => (row.role === 'remove' ? 'src' : 'tgt');
+
+    const zeichneLeinwand = () => {
+        leinwand.querySelectorAll('.kb').forEach((el) => el.remove());
+        for (const row of zustand.rows) {
+            const farbe = LAYOUT_ROLLEN[row.role].farbe;
+            const teile = [];
+            if (row.role === 'move' && row.src) teile.push(['src', row.src, true]);
+            const haupt = hauptBox(row);
+            if (row[haupt]) teile.push([haupt, row[haupt], row.role === 'remove']);
+            for (const [welche, box, gestrichelt] of teile) {
+                const el = document.createElement('div');
+                el.className = 'kb' + (gestrichelt ? ' quelle' : '') + (row.key === zustand.gewaehlt ? ' gewaehlt' : '');
+                el.dataset.key = row.key;
+                el.dataset.welche = welche;
+                el.style.borderColor = farbe;
+                el.style.color = farbe;
+                el.style.backgroundColor = `${farbe}22`;
+                boxStil(el, box);
+                const label = document.createElement('span');
+                label.className = 'lo-label';
+                label.style.backgroundColor = farbe;
+                label.textContent = welche === 'src' && row.role === 'move'
+                    ? `${row.id} · vorher`
+                    : `${row.id} [${box.join(', ')}]`;
+                el.appendChild(label);
+                if (row.key === zustand.gewaehlt) {
+                    for (const ecke of ['nw', 'ne', 'sw', 'se']) {
+                        const griff = document.createElement('span');
+                        griff.className = `griff ${ecke}`;
+                        griff.dataset.ecke = ecke;
+                        el.appendChild(griff);
+                    }
+                }
+                leinwand.appendChild(el);
+            }
+        }
+    };
+
+    /** Laufende Geste: neue Box, Verschieben oder Ecke ziehen. */
+    let geste = null;
+
+    leinwand.addEventListener('pointerdown', (event) => {
+        if (!modell || event.button > 0) return;
+        const punkt = rasterPunkt(event);
+        const boxEl = event.target.closest('.kb');
+        leinwand.setPointerCapture(event.pointerId);
+        if (boxEl) {
+            const row = zeileVon(boxEl.dataset.key);
+            const welche = boxEl.dataset.welche;
+            zustand.gewaehlt = row.key;
+            geste = {
+                art: event.target.dataset.ecke ? 'ecke' : 'schieben',
+                ecke: event.target.dataset.ecke,
+                key: row.key,
+                welche,
+                start: punkt,
+                box: [...row[welche]],
+                rolleVorher: row.role,
+            };
+        } else {
+            // Ins Leere geklickt: Auswahl aufheben, ein Zug legt eine Box an.
+            zustand.gewaehlt = null;
+            geste = { art: 'neu', start: punkt, key: null };
+        }
+        zeichneAlles();
+        event.preventDefault();
+    });
+
+    leinwand.addEventListener('pointermove', (event) => {
+        const punkt = rasterPunkt(event);
+        koordinaten.textContent = `y ${punkt.y} · x ${punkt.x}`;
+        if (!geste) return;
+
+        if (geste.art === 'neu') {
+            const box = [
+                Math.min(geste.start.y, punkt.y), Math.min(geste.start.x, punkt.x),
+                Math.max(geste.start.y, punkt.y), Math.max(geste.start.x, punkt.x),
+            ];
+            if (!geste.key) {
+                if (box[2] - box[0] < MIN_KANTE || box[3] - box[1] < MIN_KANTE) return;
+                const row = neueZeile(box);
+                geste.key = row.key;
+            }
+            const row = zeileVon(geste.key);
+            row.tgt = box;
+            zeichneLeinwand();
+            return;
+        }
+
+        const row = zeileVon(geste.key);
+        if (!row) return;
+        const dy = punkt.y - geste.start.y;
+        const dx = punkt.x - geste.start.x;
+        let [t, l, b, r] = geste.box;
+        if (geste.art === 'schieben') {
+            const h = b - t;
+            const w = r - l;
+            t = Math.max(0, Math.min(1000 - h, t + dy));
+            l = Math.max(0, Math.min(1000 - w, l + dx));
+            b = t + h;
+            r = l + w;
+        } else {
+            if (geste.ecke.includes('n')) t = Math.min(klemme(t + dy), b - MIN_KANTE);
+            if (geste.ecke.includes('s')) b = Math.max(klemme(b + dy), t + MIN_KANTE);
+            if (geste.ecke.includes('w')) l = Math.min(klemme(l + dx), r - MIN_KANTE);
+            if (geste.ecke.includes('e')) r = Math.max(klemme(r + dx), l + MIN_KANTE);
+        }
+        const neu = [t, l, b, r];
+        /**
+         * Eine „behalten"-Box wegzuziehen heißt verschieben: die Quelle
+         * bleibt, wo das Element im Original steht, nur das Ziel wandert.
+         */
+        if (geste.rolleVorher === 'keep' && geste.welche === 'tgt') {
+            row.role = 'move';
+            row.src = [...geste.box];
+        }
+        row[geste.welche] = neu;
+        zeichneLeinwand();
+    });
+
+    const gesteEnde = () => {
+        if (!geste) return;
+        const neu = geste.art === 'neu' && geste.key;
+        geste = null;
+        zeichneAlles();
+        if (neu) {
+            // Gleich beschreiben — eine Box ohne Beschreibung hilft niemandem.
+            elementListe.querySelector(`[data-key="${zustand.gewaehlt}"] textarea`)?.focus();
+        }
+    };
+    leinwand.addEventListener('pointerup', gesteEnde);
+    leinwand.addEventListener('pointercancel', gesteEnde);
+    leinwand.addEventListener('pointerleave', () => {
+        if (!geste) koordinaten.textContent = 'Ziehen legt eine Box an';
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (!['Delete', 'Backspace'].includes(event.key)) return;
+        if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) return;
+        if (zustand.gewaehlt) {
+            loescheZeile(zustand.gewaehlt);
+            event.preventDefault();
+        }
+    });
+
+    // ---- Zeilen --------------------------------------------------------------
+
+    const freieId = () => {
+        let id;
+        do {
+            id = `element_${zustand.naechsteNr++}`;
+        } while (zustand.rows.some((row) => row.id === id));
+        return id;
+    };
+
+    const neueZeile = (box) => {
+        const row = {
+            key: `z${Date.now()}${Math.random().toString(36).slice(2, 6)}`,
+            id: freieId(),
+            desc: '',
+            // Beim Bearbeiten ist eine frisch gezogene Box etwas Neues — an
+            // einer leeren Stelle oder als Ersatz für das, was dort steht.
+            role: bearbeiten() ? 'new' : 'gen',
+            src: null,
+            tgt: box,
+        };
+        zustand.rows.push(row);
+        zustand.gewaehlt = row.key;
+        return row;
+    };
+
+    const loescheZeile = (key) => {
+        const row = zeileVon(key);
+        zustand.rows = zustand.rows.filter((r) => r.key !== key);
+        if (zustand.gewaehlt === key) zustand.gewaehlt = null;
+        if (row) showToast(`„${row.id}" gelöscht`);
+        zeichneAlles();
+    };
+
+    /** Rollenwechsel beim Bearbeiten: die Boxen so setzen, dass die Zeile gültig bleibt. */
+    const setzeRolle = (row, rolle) => {
+        const da = row.tgt ?? row.src;
+        if (rolle === 'keep') {
+            row.src = [...da];
+            row.tgt = [...da];
+        } else if (rolle === 'move') {
+            row.src = row.src ?? [...da];
+            row.tgt = row.tgt ?? [...da];
+        } else if (rolle === 'new') {
+            row.tgt = [...da];
+            row.src = null;
+        } else if (rolle === 'remove') {
+            row.src = row.src ?? [...da];
+            row.tgt = null;
+        }
+        row.role = rolle;
+    };
+
+    /** Eine id umbenennen — und im Szenen-Prompt gleich mit. */
+    const benenneUm = (row, roh) => {
+        const neu = roh.toLowerCase().replace(/[^a-z0-9_]/g, '_').replace(/^[^a-z]+/, '');
+        if (!neu || neu === row.id) return neu === row.id;
+        if (zustand.rows.some((r) => r !== row && r.id === neu)) {
+            showToast(`„${neu}" gibt es schon.`);
+            return false;
+        }
+        szeneFeld.value = szeneFeld.value.split(`<${row.id}>`).join(`<${neu}>`);
+        row.id = neu;
+        return true;
+    };
+
+    const zeichneElemente = () => {
+        elementeLeer.classList.toggle('hidden', zustand.rows.length > 0);
+        elementZahl.textContent = zustand.rows.length ? `${zustand.rows.length} Zeile(n)` : '';
+        elementListe.replaceChildren(...zustand.rows.map((row) => {
+            const karte = document.createElement('div');
+            karte.dataset.key = row.key;
+            karte.className = 'rounded-lg border p-2 ' +
+                (row.key === zustand.gewaehlt ? 'border-blue-500 bg-blue-50' : 'border-gray-200');
+            karte.addEventListener('focusin', () => {
+                if (zustand.gewaehlt !== row.key) {
+                    zustand.gewaehlt = row.key;
+                    zeichneLeinwand();
+                    elementListe.querySelectorAll('[data-key]').forEach((k) => {
+                        const an = k.dataset.key === row.key;
+                        k.classList.toggle('border-blue-500', an);
+                        k.classList.toggle('bg-blue-50', an);
+                        k.classList.toggle('border-gray-200', !an);
+                    });
+                }
+            });
+
+            const kopf = document.createElement('div');
+            kopf.className = 'flex items-center gap-2';
+            const punkt = document.createElement('span');
+            punkt.className = 'inline-block w-2.5 h-2.5 rounded-full shrink-0';
+            punkt.style.backgroundColor = LAYOUT_ROLLEN[row.role].farbe;
+
+            const id = document.createElement('input');
+            id.value = row.id;
+            id.className = 'mono text-sm flex-1 min-w-0 px-1.5 py-0.5 border border-gray-200 rounded';
+            id.title = 'id — im Szenen-Prompt als <id>';
+            id.addEventListener('change', () => {
+                benenneUm(row, id.value);
+                zeichneAlles();
+            });
+            kopf.append(punkt, id);
+
+            if (bearbeiten()) {
+                const rolle = document.createElement('select');
+                rolle.className = 'text-xs border border-gray-200 rounded px-1 py-0.5';
+                for (const r of ['keep', 'move', 'new', 'remove']) rolle.appendChild(option(r, LAYOUT_ROLLEN[r].label));
+                rolle.value = row.role;
+                rolle.addEventListener('change', () => {
+                    setzeRolle(row, rolle.value);
+                    zeichneAlles();
+                });
+                kopf.appendChild(rolle);
+            }
+
+            const weg = document.createElement('button');
+            weg.type = 'button';
+            weg.textContent = '×';
+            weg.title = 'Zeile löschen';
+            weg.className = 'w-6 h-6 rounded text-gray-500 hover:bg-red-50 hover:text-red-600';
+            weg.addEventListener('click', () => loescheZeile(row.key));
+            kopf.appendChild(weg);
+
+            const box = row[hauptBox(row)];
+            const koord = document.createElement('p');
+            koord.className = 'mono text-xs text-gray-500 mt-1';
+            koord.textContent = row.role === 'move'
+                ? `[${row.src.join(', ')}] → [${row.tgt.join(', ')}]`
+                : `[${box.join(', ')}]`;
+
+            const desc = document.createElement('textarea');
+            desc.rows = 2;
+            desc.value = row.desc;
+            desc.placeholder = row.role === 'remove'
+                ? 'Was entfernt wird, z. B. „an orange tabby cat on a blanket"'
+                : 'Wie das Element aussieht — Material, Farbe, Licht. Text in Anführungszeichen.';
+            desc.className = 'mt-1 w-full p-1.5 text-sm border border-gray-200 rounded';
+            desc.addEventListener('input', () => {
+                row.desc = desc.value;
+                zeichneHinweise();
+                zeichneJson();
+                speichereEntwurf();
+            });
+
+            karte.append(kopf, koord, desc);
+            return karte;
+        }));
+    };
+
+    // ---- Szene, Hinweise, JSON ----------------------------------------------
+
+    const fuegeEin = (text) => {
+        const start = szeneFeld.selectionStart ?? szeneFeld.value.length;
+        const ende = szeneFeld.selectionEnd ?? start;
+        const davor = szeneFeld.value.slice(0, start);
+        const luecke = davor && !/\s$/.test(davor) ? ' ' : '';
+        szeneFeld.value = davor + luecke + text + szeneFeld.value.slice(ende);
+        const pos = start + luecke.length + text.length;
+        szeneFeld.focus();
+        szeneFeld.setSelectionRange(pos, pos);
+        zeichneHinweise();
+        zeichneJson();
+        speichereEntwurf();
+    };
+
+    const zeichneChips = () => {
+        const namen = [...(bearbeiten() ? ['ref_image_0'] : []), ...zustand.rows.map((row) => row.id)];
+        chips.replaceChildren(...namen.map((name) => {
+            const chip = document.createElement('button');
+            chip.type = 'button';
+            chip.textContent = `<${name}>`;
+            chip.className = 'mono text-xs px-1.5 py-0.5 rounded bg-gray-100 hover:bg-gray-200 text-gray-700';
+            chip.addEventListener('click', () => fuegeEin(`<${name}>`));
+            return chip;
+        }));
+    };
+
+    /** Dieselben Prüfungen wie `layoutErrors`/`layoutWarnings` auf dem Server — nur früher. */
+    const pruefe = () => {
+        const fehler = [];
+        const hinweise = [];
+        const ids = new Set();
+        for (const row of zustand.rows) {
+            if (!ID_MUSTER.test(row.id)) fehler.push(`id „${row.id}": nur a–z, 0–9 und _, beginnend mit einem Buchstaben.`);
+            if (ids.has(row.id)) fehler.push(`id „${row.id}" kommt doppelt vor.`);
+            ids.add(row.id);
+            if (!row.desc.trim()) fehler.push(`„${row.id}" hat keine Beschreibung.`);
+        }
+        if (zustand.rows.length === 0) fehler.push('Mindestens eine Box ziehen.');
+        const szene = szeneFeld.value;
+        if (!szene.trim()) fehler.push('Der Szenen-Prompt fehlt.');
+        const genannt = new Set(Array.from(szene.matchAll(/<([a-z][a-z0-9_]*)>/g), (t) => t[1]));
+        for (const row of zustand.rows) {
+            if (!genannt.has(row.id)) hinweise.push(`„${row.id}" wird im Szenen-Prompt nicht als <${row.id}> genannt.`);
+        }
+        for (const name of genannt) {
+            if (!ids.has(name) && !/^ref_image_\d$/.test(name)) hinweise.push(`<${name}> hat keine Zeile.`);
+        }
+        return { fehler, hinweise };
+    };
+
+    const zeichneHinweise = () => {
+        const { fehler, hinweise } = pruefe();
+        // Fehler erst zeigen, wenn überhaupt etwas da ist — eine leere Seite
+        // mit drei roten Zeilen begrüßt niemanden gut.
+        const zeigen = zustand.rows.length > 0 || szeneFeld.value.trim();
+        hinweisListe.replaceChildren(...(zeigen ? [
+            ...fehler.map((text) => Object.assign(document.createElement('li'), { textContent: text, className: 'text-red-600' })),
+            ...hinweise.map((text) => Object.assign(document.createElement('li'), { textContent: text })),
+        ] : []));
+        generateBtn.disabled = !modell || fehler.length > 0;
+    };
+
+    /** Die Zeilen so, wie die API sie erwartet. */
+    const apiZeilen = () => zustand.rows.map((row) => {
+        if (row.role === 'gen') return { id: row.id, bbox: row.tgt, desc: row.desc.trim() };
+        const ausQuelle = row.role !== 'new';
+        return {
+            id: row.id,
+            from: ausQuelle ? 'ref_image_0' : null,
+            src_bbox: ausQuelle ? row.src : null,
+            tgt_bbox: row.role === 'remove' ? null : row.tgt,
+            desc: row.desc.trim(),
+        };
+    });
+
+    const zeichneJson = () => {
+        jsonAusgabe.textContent = JSON.stringify({ scene: szeneFeld.value.trim(), elements: apiZeilen() }, null, 2);
+        document.getElementById('json-zahl').textContent = `${zustand.rows.length} Zeilen`;
+    };
+
+    const zeichneAlles = () => {
+        zeichneLeinwand();
+        zeichneElemente();
+        zeichneChips();
+        zeichneHinweise();
+        zeichneJson();
+        speichereEntwurf();
+    };
+
+    /**
+     * Ein Satzgerüst aus den Rollen, nach dem Muster aus BFLs Beispielen:
+     * „In <ref_image_0>, … Keep … exactly unchanged."
+     */
+    satzBtn.addEventListener('click', () => {
+        const liste = (rolle) => zustand.rows.filter((row) => row.role === rolle).map((row) => `<${row.id}>`);
+        const und = (teile) => (teile.length > 1 ? `${teile.slice(0, -1).join(', ')} and ${teile.at(-1)}` : teile[0]);
+        const teile = [];
+        if (liste('new').length) teile.push(`replace ${und(liste('new'))} as described`);
+        if (liste('move').length) teile.push(`move ${und(liste('move'))} to the new position`);
+        if (liste('remove').length) teile.push(`remove ${und(liste('remove'))} and fill the area with what is behind it`);
+        let satz = `In <ref_image_0>, ${teile.length ? und(teile) : 'make the described changes'}.`;
+        if (liste('keep').length) satz += ` Keep ${und(liste('keep'))} exactly unchanged.`;
+        szeneFeld.value = satz;
+        zeichneAlles();
+    });
+
+    szeneFeld.addEventListener('input', () => {
+        zeichneHinweise();
+        zeichneJson();
+        speichereEntwurf();
+    });
+
+    document.getElementById('json-kopieren').addEventListener('click', async () => {
+        try {
+            await navigator.clipboard.writeText(jsonAusgabe.textContent);
+            showToast('JSON kopiert');
+        } catch {
+            showToast('Kopieren nicht möglich — bitte von Hand markieren.');
+        }
+    });
+
+    /** Zeilen aus API-Form in den Zustand übernehmen. */
+    const uebernimmZeilen = (zeilen, alsBehalten) => {
+        zustand.rows = [];
+        zustand.gewaehlt = null;
+        for (const z of zeilen) {
+            const rolle = layoutRolle(z);
+            const row = {
+                key: `z${Date.now()}${Math.random().toString(36).slice(2, 6)}`,
+                id: String(z.id ?? freieId()),
+                desc: String(z.desc ?? ''),
+                role: rolle,
+                src: z.src_bbox ?? null,
+                tgt: z.bbox ?? z.tgt_bbox ?? null,
+            };
+            if (alsBehalten) {
+                // Was im Ausgangsbild steht, ist jetzt der Bestand.
+                if (!row.tgt) continue;
+                row.role = 'keep';
+                row.src = [...row.tgt];
+                row.tgt = [...row.tgt];
+            } else if (!bearbeiten() && rolle !== 'gen') {
+                if (!row.tgt) continue;
+                row.role = 'gen';
+                row.src = null;
+            } else if (bearbeiten() && rolle === 'gen') {
+                row.role = 'new';
+            }
+            zustand.rows.push(row);
+        }
+    };
+
+    document.getElementById('json-uebernehmen').addEventListener('click', () => {
+        try {
+            const daten = JSON.parse(jsonEingabe.value);
+            const zeilen = Array.isArray(daten) ? daten : daten.elements;
+            if (!Array.isArray(zeilen)) throw new Error('keine Liste von Elementen');
+            uebernimmZeilen(zeilen, false);
+            if (!Array.isArray(daten) && typeof daten.scene === 'string') szeneFeld.value = daten.scene;
+            zeichneAlles();
+            showToast(`${zustand.rows.length} Zeile(n) übernommen`);
+        } catch (error) {
+            showToast(`JSON nicht lesbar: ${error.message}`);
+        }
+    });
+
+    // ---- Entwurf -------------------------------------------------------------
+
+    /** Nur der neue Entwurf — eine Bearbeitung hängt an ihrem Bild und steht in der Adresse. */
+    const speichereEntwurf = () => {
+        if (bearbeiten()) return;
+        try {
+            localStorage.setItem(ENTWURF_KEY, JSON.stringify({
+                ratio: ratioSelect.value, scene: szeneFeld.value, elements: apiZeilen(),
+            }));
+        } catch {
+            // Privates Fenster oder gesperrter Speicher: dann eben ohne Entwurf.
+        }
+    };
+
+    const ladeEntwurf = () => {
+        try {
+            const entwurf = JSON.parse(localStorage.getItem(ENTWURF_KEY) ?? 'null');
+            if (!entwurf) return;
+            if ([...ratioSelect.options].some((o) => o.value === entwurf.ratio)) ratioSelect.value = entwurf.ratio;
+            szeneFeld.value = entwurf.scene ?? '';
+            uebernimmZeilen(entwurf.elements ?? [], false);
+        } catch {
+            // Kaputter Entwurf: ignorieren.
+        }
+    };
+
+    document.getElementById('leeren-btn').addEventListener('click', () => {
+        if (zustand.rows.length === 0) return;
+        zustand.rows = [];
+        zustand.gewaehlt = null;
+        zeichneAlles();
+    });
+
+    document.getElementById('boxen-zeigen').addEventListener('change', (event) => {
+        leinwand.classList.toggle('lo-aus', !event.target.checked);
+    });
+
+    ratioSelect.addEventListener('change', () => {
+        groesseAnpassen();
+        speichereEntwurf();
+    });
+    window.addEventListener('resize', groesseAnpassen);
+
+    // ---- Modell und Generieren ----------------------------------------------
+
+    const RES_TEXT = { '768sq': '0,6 MP', '1k': '≈ 1 MP', '1.5k': '≈ 2,3 MP', '2k': '≈ 4 MP', '4k': '≈ 16 MP' };
+
+    const renderModell = () => {
+        ratioSelect.replaceChildren(...modell.ratios.map((r) => option(r, r)));
+        ratioSelect.value = modell.ratios.includes('1:1') ? '1:1' : modell.ratios[0];
+        qualitySelect.replaceChildren(...modell.qualities.map((q) => {
+            const res = modell.resolutions?.[q];
+            return option(q, res ? `${q} · ${res}` : q);
+        }));
+        qualitySelect.value = modell.qualities.includes('low') ? 'low' : modell.qualities[0];
+        amountSelect.replaceChildren(...Array.from({ length: modell.maxAmount }, (_, i) => option(String(i + 1), String(i + 1))));
+        formatSelect.replaceChildren(...modell.formats.map((f) => option(f, f)));
+        groundingBox.closest('label').classList.toggle('hidden', !modell.supportsGrounding);
+        zeigeQualitaet();
+    };
+
+    const zeigeQualitaet = () => {
+        const res = modell?.resolutions?.[qualitySelect.value];
+        const teuer = qualitySelect.value === 'max';
+        qualityHinweis.textContent = teuer
+            ? `${res}: rund 16 Megapixel, laut BFL etwa 0,61 $ je Bild — ein Vielfaches der übrigen Stufen.`
+            : (res ? `${res} ${RES_TEXT[res] ?? ''}` : '');
+        qualityHinweis.classList.toggle('hidden', !qualityHinweis.textContent);
+        qualityHinweis.classList.toggle('text-amber-700', teuer);
+        qualityHinweis.classList.toggle('text-gray-500', !teuer);
+    };
+    qualitySelect.addEventListener('change', zeigeQualitaet);
+
+    const zeigeErgebnis = async (namen, zeilen) => {
+        const ziel = document.getElementById('ergebnis-bilder');
+        ziel.replaceChildren();
+        for (const name of namen) {
+            const info = await getDetailInformation(name);
+            const karte = document.createElement('figure');
+            karte.className = 'bg-white rounded-lg border border-gray-200 p-3';
+            const huelle = document.createElement('a');
+            huelle.href = `/detail.html?filename=${encodeURIComponent(name)}`;
+            huelle.className = 'relative block';
+            const img = document.createElement('img');
+            img.src = `/big-thumbnails/${name}`;
+            img.alt = szeneFeld.value;
+            img.className = 'block w-full';
+            huelle.appendChild(img);
+            zeichneLayout(huelle, zeilen);
+            const unten = document.createElement('figcaption');
+            unten.className = 'mt-3 flex flex-wrap gap-2 text-sm';
+            const weiter = document.createElement('a');
+            weiter.href = `/compose.html?edit=${encodeURIComponent(name)}`;
+            weiter.textContent = 'Weiter bearbeiten';
+            weiter.className = 'px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700';
+            const detail = document.createElement('a');
+            detail.href = huelle.href;
+            detail.textContent = 'Details';
+            detail.className = 'px-3 py-1.5 rounded-lg border border-gray-300 hover:bg-gray-50';
+            unten.append(weiter, detail);
+            if (info.revisedPrompt && info.revisedPrompt !== 'unknown') {
+                const aus = document.createElement('details');
+                aus.className = 'w-full mt-1';
+                aus.innerHTML = '<summary class="cursor-pointer text-xs text-gray-600">Von FLUX 3 ausformuliert</summary>';
+                const text = document.createElement('p');
+                text.className = 'mono text-xs text-gray-700 mt-1 whitespace-pre-wrap break-words';
+                text.textContent = info.revisedPrompt;
+                aus.appendChild(text);
+                unten.appendChild(aus);
+            }
+            karte.append(huelle, unten);
+            ziel.appendChild(karte);
+        }
+        document.getElementById('ergebnis').classList.remove('hidden');
+        document.getElementById('ergebnis').scrollIntoView({ behavior: 'smooth' });
+    };
+
+    document.getElementById('ergebnis-boxen').addEventListener('change', (event) => {
+        document.getElementById('ergebnis-bilder').classList.toggle('lo-aus', !event.target.checked);
+    });
+
+    generateBtn.addEventListener('click', async () => {
+        const { fehler } = pruefe();
+        if (fehler.length) {
+            msgFeld.textContent = fehler[0];
+            return;
+        }
+        const zeilen = apiZeilen();
+        const request = {
+            prompt: szeneFeld.value.trim(),
+            model: modell.id,
+            ratio: ratioSelect.value,
+            quality: qualitySelect.value,
+            amount: Number(amountSelect.value),
+            outputFormat: formatSelect.value,
+            grounding: groundingBox.checked,
+            layout: zeilen,
+        };
+        // Beim Bearbeiten holt der Server das Original selbst, in voller Größe.
+        if (bearbeiten()) request.sourceImage = zustand.quelle.fileName;
+
+        spinnerText.textContent = 'FLUX 3 formuliert aus und rechnet — meist 20 bis 45 Sekunden, bei Andrang länger.';
+        spinner.classList.remove('hidden');
+        msgFeld.textContent = '';
+        try {
+            const namen = await generateImage(request);
+            if (namen.length) await zeigeErgebnis(namen, zeilen);
+        } catch (error) {
+            msgFeld.textContent = `Unerwarteter Fehler: ${error.message}`;
+        } finally {
+            spinner.classList.add('hidden');
+        }
+    });
+
+    // ---- Start ---------------------------------------------------------------
+
+    /** `?edit=<datei>`: dieses Bild Box für Box bearbeiten. */
+    const starteBearbeitung = async (fileName) => {
+        const info = await getDetailInformation(fileName);
+        if (info.errorMsg) {
+            msgFeld.textContent = `„${fileName}" ist nicht zu finden.`;
+            return;
+        }
+        const img = new Image();
+        img.className = 'quelle';
+        img.alt = 'Ausgangsbild';
+        // `load` statt `img.decode()`: decode löst in einem Tab im Hintergrund
+        // mitunter nie auf, und die Seite hing dann unter dem Spinner.
+        await new Promise((resolve) => {
+            img.onload = resolve;
+            img.onerror = resolve;
+            img.src = `/api/files/download/${encodeURIComponent(fileName)}`;
+        });
+        zustand.modus = 'bearbeiten';
+        zustand.quelle = {
+            fileName,
+            width: img.naturalWidth || info.width || 1000,
+            height: img.naturalHeight || info.height || 1000,
+        };
+        leinwand.prepend(img);
+
+        document.getElementById('modus-text').textContent =
+            'Bearbeiten: Boxen um die Elemente legen, die sich ändern sollen, und für jede die Rolle wählen. Was nicht genannt ist, bleibt weitgehend wie es ist.';
+        document.getElementById('werkbank-hilfe').textContent =
+            'Eine „behalten"-Box wegziehen macht sie zu „verschieben". Neue Boxen ersetzen, was darunter steht, oder fügen etwas hinzu.';
+        document.getElementById('neu-link').classList.remove('hidden');
+        document.getElementById('ratio-hinweis').textContent = 'Beim Bearbeiten behält FLUX 3 den Rahmen des Ausgangsbildes.';
+        // Nur zur Anzeige: geschickt wird `auto`, das Original bestimmt den Rahmen.
+        const r = zustand.quelle.width / zustand.quelle.height;
+        ratioSelect.value = [...ratioSelect.options].map((o) => o.value).reduce((best, wert) => {
+            const [w, h] = wert.split(':').map(Number);
+            const [bw, bh] = best.split(':').map(Number);
+            return Math.abs(Math.log(w / h / r)) < Math.abs(Math.log(bw / bh / r)) ? wert : best;
+        });
+        ratioSelect.disabled = true;
+        satzBtn.classList.remove('hidden');
+        szeneFeld.placeholder = 'In <ref_image_0>, … Keep … exactly unchanged.';
+
+        if (Array.isArray(info.layout) && info.layout.length) {
+            uebernimmZeilen(info.layout, true);
+            showToast(`${zustand.rows.length} Element(e) aus dem Original als „behalten" übernommen`);
+        }
+    };
+
+    /** `?from=<datei>`: Layout und Szene eines Bildes für eine neue Komposition. */
+    const uebernimmVon = async (fileName) => {
+        const info = await getDetailInformation(fileName);
+        if (info.errorMsg || !Array.isArray(info.layout)) {
+            showToast('Dieses Bild hat kein Layout.');
+            return;
+        }
+        if ([...ratioSelect.options].some((o) => o.value === info.ratio)) ratioSelect.value = info.ratio;
+        szeneFeld.value = info.prompt ?? '';
+        uebernimmZeilen(info.layout, false);
+    };
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        try {
+            const registry = await loadModels();
+            modell = registry.models.find((m) => m.supportsLayout) ?? null;
+        } catch (error) {
+            msgFeld.textContent = error.message;
+        }
+        if (!modell) {
+            document.getElementById('kein-modell').classList.remove('hidden');
+            generateBtn.disabled = true;
+            return;
+        }
+        renderModell();
+
+        const parameter = new URLSearchParams(window.location.search);
+        if (parameter.get('edit')) {
+            spinnerText.textContent = 'Lade das Ausgangsbild …';
+            spinner.classList.remove('hidden');
+            await starteBearbeitung(parameter.get('edit'));
+            spinner.classList.add('hidden');
+        } else if (parameter.get('from')) {
+            await uebernimmVon(parameter.get('from'));
+        } else {
+            ladeEntwurf();
+        }
+        groesseAnpassen();
+        zeichneAlles();
+    });
+</script>
+</body>
+</html>

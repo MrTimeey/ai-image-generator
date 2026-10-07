@@ -56,6 +56,29 @@ describe('Registry ist in sich stimmig', () => {
         expect(findModel('flux-kontext-pro')?.maxInputImages).toBe(1);
     });
 
+    it('sagt bei jedem Modell, wie es mit dem Prompt umgeht', () => {
+        for (const model of MODELS) expect(['never', 'optional', 'always']).toContain(model.promptRewrite);
+        // Laut BFL-Doku hat Klein kein Prompt-Upsampling — die Option wäre gelogen.
+        expect(findModel('flux-2-klein-9b')?.promptRewrite).toBe('never');
+        // FLUX 3 formuliert immer aus, abschalten lässt es sich nicht.
+        expect(findModel('flux-3-image')?.promptRewrite).toBe('always');
+    });
+
+    it('gibt jeder Stufe eines Flächenstufen-Modells eine `resolution`', () => {
+        for (const model of MODELS.filter(m => m.sizeMode === 'aspect_ratio_resolution')) {
+            for (const stufe of model.qualities) expect(model.resolutions?.[stufe]).toBeDefined();
+        }
+    });
+
+    it('bietet Layouts nur an, wo die Referenzbilder als `images` hinausgehen', () => {
+        // Bearbeiten-Layouts zählen `ref_image_0`, `ref_image_1`, … — das
+        // gibt es nur bei der Listenform von FLUX 3.
+        for (const model of MODELS.filter(m => m.supportsLayout)) {
+            expect(model.provider).toBe('bfl');
+            expect(model.inputImageField).toBe('images');
+        }
+    });
+
     it('schickt `xhigh` nur an Modelle, deren API es kennt', () => {
         for (const model of MODELS) {
             if (model.qualities.includes('xhigh')) expect(model.apiKnowsXhighMax).toBe(true);

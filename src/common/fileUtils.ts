@@ -6,6 +6,7 @@ import { DataImage, GeneratedImage, OutputFormat, ProviderImage } from '../types
 import { getDataStore, saveDataStore } from './dataStore';
 import appConfig from './appConfig';
 import { ModelDefinition } from '../controller/modelRegistry';
+import { LayoutRow } from './layout';
 
 /** Alles, was die App als Bild akzeptiert — Thumbnails und Aufraeumen inklusive. */
 export const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.webp'];
@@ -91,6 +92,10 @@ export type PersistOptions = {
     quality?: string;
     outputFormat?: string;
     durationMs?: number;
+    layout?: LayoutRow[];
+    grounding?: boolean;
+    revisePrompt?: boolean;
+    editedFrom?: string;
 };
 
 export const persistImage = (
@@ -121,6 +126,10 @@ export const persistImage = (
         cost: image.cost?.amount,
         costUnit: image.cost?.unit,
         durationMs: options.durationMs,
+        layout: options.layout?.length ? options.layout : undefined,
+        grounding: options.grounding,
+        revisePrompt: options.revisePrompt,
+        editedFrom: options.editedFrom,
     };
     dataStore.data.push(entry);
     dataStore.entries = dataStore.data.length;

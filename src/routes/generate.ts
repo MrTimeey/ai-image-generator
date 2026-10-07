@@ -9,6 +9,8 @@ import { clampQuality, resolveSize } from '../common/aspectRatio';
 import { getCredits } from '../controller/creditsController';
 import { spendingReport } from '../common/spending';
 import { failJob, finishJob, getJob, isValidJobId, startJob } from '../common/jobStore';
+import { layoutErrors, layoutWarnings, LayoutRow, parseLayout } from '../common/layout';
+import { safeImageName } from '../common/fileUtils';
 
 const generateRouter: express.Router = express.Router();
 
@@ -36,6 +38,19 @@ export const GenerateSchema = z.object({
      */
     inputImages: z.array(z.string().min(1)).max(MAX_INPUT_IMAGES).optional(),
     /**
+     * Ein schon erzeugtes Bild (Dateiname) als erstes Referenzbild — fuer
+     * Bearbeitungen. Kommt in voller Groesse vom Server statt aus dem Browser.
+     */
+    sourceImage: z.string().min(1).optional(),
+    /**
+     * Nur FLUX 3: Bounding Boxes. `prompt` ist dann der Szenen-Prompt, der die
+     * Elemente als `<id>` nennt. Geprueft wird in `parseLayout`, weil die
+     * Meldungen dort das falsche Feld beim Namen nennen.
+     */
+    layout: z.array(z.unknown()).optional(),
+    /** Nur FLUX 3: Web- und Bildsuche vor dem Generieren. Standard aus. */
+    grounding: z.boolean().optional(),
+    /**
      * Vom Client vergebene Kennung. Reisst die Verbindung ab — in der PWA
      * passiert das, sobald sie in den Hintergrund geht —, kann er das Ergebnis
      * damit unter `GET /api/jobs/:id` nachholen.
@@ -59,7 +74,13 @@ generateRouter.get('/models', (_req, res) => {
         qualities: model.qualities,
         formats: model.formats,
         maxAmount: model.maxAmount,
-        supportsRevisePrompt: model.supportsRevisePrompt,
+        /** `never` | `optional` | `always` — siehe `PromptRewrite`. */
+        promptRewrite: model.promptRewrite,
+        /** Fuer Clients von vor `promptRewrite`. */
+        supportsRevisePrompt: model.promptRewrite === 'optional',
+        supportsLayout: model.supportsLayout ?? false,
+        supportsGrounding: model.supportsGrounding ?? false,
+        resolutions: model.resolutions ?? null,
         supportsSeed: model.supportsSeed,
         maxInputImages: model.maxInputImages,
         /**
@@ -73,7 +94,7 @@ generateRouter.get('/models', (_req, res) => {
          * Eine einzelne Tabelle zeigte in der Oberfläche immer die Maße
          * einer Stufe, die gerade nicht gewählt war.
          */
-        sizes: model.sizeMode === 'aspect_ratio'
+        sizes: model.sizeMode === 'aspect_ratio' || model.sizeMode === 'aspect_ratio_resolution'
             ? null
             : Object.fromEntries(
                   (model.qualities.length > 0 ? model.qualities : [clampQuality(model, undefined)]).map(quality => [
@@ -107,6 +128,7 @@ const asPayload = (result: {
         cost?: { amount: number; unit: string };
     }[];
     errors: string[];
+    warnings?: string[];
 }) => ({
     createdAt: result.createdAt,
     model: result.model,
@@ -124,6 +146,8 @@ const asPayload = (result: {
         cost: image.cost,
     })),
     errors: result.errors,
+    /** Hinweise, die den Lauf nicht verhindert haben — etwa ein Element, das die Szene nicht nennt. */
+    warnings: result.warnings ?? [],
 });
 
 /**
@@ -163,7 +187,8 @@ generateRouter.post('/generate', async (req, res) => {
             message: parsed.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join('; '),
         });
     }
-    const { prompt, ratio, quality, outputFormat, amount, revisePrompt, seed, inputImages, requestId } = parsed.data;
+    const { prompt, ratio, quality, outputFormat, amount, revisePrompt, seed, inputImages, requestId, grounding } =
+        parsed.data;
 
     const model = findModel(parsed.data.model);
     if (!model) {
@@ -192,6 +217,46 @@ generateRouter.post('/generate', async (req, res) => {
     }
     const requestedAmount = Math.min(amount, model.maxAmount);
 
+    let sourceImage: string | undefined;
+    if (parsed.data.sourceImage !== undefined) {
+        sourceImage = safeImageName(parsed.data.sourceImage) ?? undefined;
+        if (!sourceImage) {
+            return res.status(400).send({ error: 'invalid_source_image', message: 'Ungültiger Bildname für sourceImage.' });
+        }
+    }
+
+    const warnings: string[] = [];
+    let layout: LayoutRow[] | undefined;
+    if (parsed.data.layout !== undefined) {
+        if (!model.supportsLayout) {
+            return res.status(400).send({
+                error: 'layout_unsupported',
+                message: `„${model.label}" kennt keine Bounding Boxes. Möglich mit: ${MODELS.filter(m => m.supportsLayout)
+                    .map(m => m.id)
+                    .join(', ')}`,
+            });
+        }
+        const gelesen = parseLayout(parsed.data.layout);
+        const fehler = gelesen.rows
+            ? layoutErrors(gelesen.rows, (inputImages?.length ?? 0) + (sourceImage ? 1 : 0))
+            : gelesen.errors;
+        if (fehler.length > 0 || !gelesen.rows) {
+            return res.status(400).send({ error: 'invalid_layout', message: fehler.join('; ') });
+        }
+        layout = gelesen.rows;
+        warnings.push(...layoutWarnings(prompt, layout));
+    }
+    if (revisePrompt && model.promptRewrite !== 'optional') {
+        warnings.push(
+            model.promptRewrite === 'always'
+                ? `„${model.label}" formuliert den Prompt ohnehin immer aus.`
+                : `„${model.label}" formuliert nicht aus — revisePrompt wurde ignoriert.`
+        );
+    }
+    if (grounding && !model.supportsGrounding) {
+        warnings.push(`„${model.label}" kennt kein Grounding — grounding wurde ignoriert.`);
+    }
+
     if (requestId) startJob(requestId);
 
     try {
@@ -205,6 +270,9 @@ generateRouter.post('/generate', async (req, res) => {
             revisePrompt,
             seed,
             inputImages,
+            sourceImage,
+            layout,
+            grounding,
         });
         if (result.images.length === 0) {
             const message = result.errors[0] ?? 'Es wurde kein Bild erzeugt.';
@@ -213,8 +281,9 @@ generateRouter.post('/generate', async (req, res) => {
         }
         // **Vor dem Senden ablegen.** Ist die Verbindung schon tot, laeuft
         // `res.send` ins Leere — der Auftrag muss trotzdem abholbar sein.
-        if (requestId) finishJob(requestId, result);
-        res.status(200).send(asPayload(result));
+        const mitHinweisen = { ...result, warnings };
+        if (requestId) finishJob(requestId, mitHinweisen);
+        res.status(200).send(asPayload(mitHinweisen));
     } catch (error) {
         const status = statusOf(error);
         const message = describeError(error);

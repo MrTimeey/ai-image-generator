@@ -1,3 +1,4 @@
+import { LayoutRow } from './common/layout';
 import { ModelId, Provider } from './controller/modelRegistry';
 
 export type ApplicationConfig = {
@@ -92,6 +93,8 @@ export type GenerationResult = {
     images: GeneratedImage[];
     /** Teilfehler bei `amount > 1`. Leer heisst: alles hat geklappt. */
     errors: string[];
+    /** Hinweise zur Anfrage, die den Lauf nicht verhindert haben. */
+    warnings?: string[];
 };
 
 export type ImageDataStore = {
@@ -125,6 +128,18 @@ export type DataImage = {
     costUnit?: string;
     /** Wie lange der Anbieter gebraucht hat, in Millisekunden. */
     durationMs?: number;
+    /**
+     * FLUX 3: die Bounding Boxes des Laufs. `description` ist dann nur der
+     * Szenen-Prompt — was tatsaechlich hinausging, ist Szene + JSON dieser
+     * Zeilen. Damit laesst sich das Bild spaeter Box fuer Box bearbeiten.
+     */
+    layout?: LayoutRow[];
+    /** FLUX 3: ob vor dem Generieren im Web gesucht wurde. */
+    grounding?: boolean;
+    /** Ob das Ausformulieren erlaubt war — nur bei Modellen, die es optional anbieten. */
+    revisePrompt?: boolean;
+    /** Dateiname des Bildes, das hier bearbeitet wurde. */
+    editedFrom?: string;
     /**
      * Der alte Feldname aus der Zeit von DALL-E. Wird nur noch **gelesen**,
      * damit vorhandene `data.json`-Eintraege ihr Modell behalten; neue

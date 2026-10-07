@@ -127,6 +127,14 @@
             <input type="checkbox" id="revise-prompt" class="rounded border-gray-300">
             <span id="revise-label">Prompt vom Anbieter ausformulieren lassen</span>
         </label>
+        <label id="grounding-block" class="hidden flex items-center gap-2 text-sm text-gray-700">
+            <input type="checkbox" id="grounding" class="rounded border-gray-300">
+            <span>Im Web recherchieren <span class="text-gray-500">(für echte Dinge; aus = nur dein Prompt)</span></span>
+        </label>
+        <p id="rewrite-note" class="hidden w-full text-sm text-amber-700">
+            Dieses Modell formuliert jeden Prompt aus — abschalten lässt sich das nicht.
+            Für exakte Vorgaben die Elemente in der <a href="/compose.html" class="underline">Komposition</a> per Box festlegen.
+        </p>
     </div>
 
     <div class="text-center">
@@ -241,7 +249,9 @@
         } else {
             qualitySelect.disabled = false;
             qualitySelect.replaceChildren(
-                ...model.qualities.map(q => option(q, QUALITY_LABEL[q] ?? q))
+                ...model.qualities.map(q => option(q, model.resolutions?.[q]
+                    ? `${q} · ${model.resolutions[q]}`
+                    : (QUALITY_LABEL[q] ?? q)))
             );
             qualitySelect.value = model.qualities.includes(previousQuality)
                 ? previousQuality
@@ -259,12 +269,26 @@
         formatSelect.replaceChildren(...model.formats.map(f => option(f, f)));
         formatSelect.value = model.formats.includes(previousFormat) ? previousFormat : model.formats[0];
 
-        reviseCheckbox.disabled = !model.supportsRevisePrompt;
-        reviseLabel.classList.toggle('text-gray-400', !model.supportsRevisePrompt);
-        reviseLabel.textContent = model.supportsRevisePrompt
-            ? 'Prompt vom Anbieter ausformulieren lassen'
-            : 'Dieses Modell formuliert den Prompt nicht um';
-        if (!model.supportsRevisePrompt) reviseCheckbox.checked = false;
+        /**
+         * Drei Fälle statt zwei: `optional` heißt auf Wunsch (Standard aus),
+         * `never` gar nicht, `always` immer — FLUX 3 formuliert jeden Prompt
+         * aus, da wäre eine abwählbare Checkbox gelogen.
+         */
+        const umschreiben = model.promptRewrite ?? (model.supportsRevisePrompt ? 'optional' : 'never');
+        reviseCheckbox.disabled = umschreiben !== 'optional';
+        // Das erzwungene Häkchen von `always` darf beim Wechsel nicht als
+        // Wunsch an einem `optional`-Modell hängen bleiben — Standard ist aus.
+        const warErzwungen = reviseCheckbox.dataset.erzwungen === '1';
+        reviseCheckbox.checked = umschreiben === 'always' || (umschreiben === 'optional' && reviseCheckbox.checked && !warErzwungen);
+        reviseCheckbox.dataset.erzwungen = umschreiben === 'always' ? '1' : '';
+        reviseLabel.classList.toggle('text-gray-400', umschreiben !== 'optional');
+        reviseLabel.textContent = {
+            optional: 'Prompt vom Anbieter ausformulieren lassen',
+            never: 'Dieses Modell formuliert den Prompt nicht um',
+            always: 'Dieses Modell formuliert den Prompt immer aus',
+        }[umschreiben];
+        document.getElementById('rewrite-note').classList.toggle('hidden', umschreiben !== 'always');
+        document.getElementById('grounding-block').classList.toggle('hidden', !model.supportsGrounding);
 
         renderReferences();
     };
@@ -304,8 +328,10 @@
     const zeigeQualitaetsHinweis = () => {
         const maximal = qualitySelect.value === 'max';
         // Die Maße stehen schon im Verhältnis-Feld — hier zählt der Preis.
+        // FLUX 3 rechnet `max` in 4K (16 MP), laut BFL rund 0,61 $.
+        const preis = selectedModel()?.resolutions ? '0,61 $' : '0,40 $';
         qualityHint.textContent = maximal
-            ? 'Deutlich teurer: ein Bild in dieser Größe kostet rund 0,40 $ statt weniger Cent.'
+            ? `Deutlich teurer: ein Bild in dieser Größe kostet rund ${preis} statt weniger Cent.`
             : '';
         qualityHint.classList.toggle('hidden', !maximal);
     };
@@ -549,8 +575,10 @@
             ratio: ratioSelect.value,
             amount: Number(amountSelect.value),
             outputFormat: formatSelect.value,
-            revisePrompt: reviseCheckbox.checked,
+            // Bei `always` nichts behaupten, was der Server ohnehin ignoriert.
+            revisePrompt: !reviseCheckbox.disabled && reviseCheckbox.checked,
         };
+        if (model.supportsGrounding) request.grounding = document.getElementById('grounding').checked;
         if (qualitySelect.value) request.quality = qualitySelect.value;
         if (references.length) request.inputImages = references.map(r => r.dataUrl);
 

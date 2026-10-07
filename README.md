@@ -15,6 +15,7 @@ eine eigene zu führen.
 
 | Modell | Anbieter | Wofür |
 |---|---|---|
+| `flux-3-image` | BFL | Bounding Boxes: Elemente platzieren, Box für Box bearbeiten, bis 10 Referenzen, bis 4K |
 | `flux-2-pro` | BFL | Standardwahl |
 | `flux-2-flex` | BFL | mehr Kontrolle, langsamer |
 | `flux-2-max` | BFL | stärkstes FLUX-Modell |
@@ -26,6 +27,77 @@ eine eigene zu führen.
 | `gpt-image-2.5-sunburst` | OpenAI | höchste Bildqualität, stabil über Bearbeitungen, langsam |
 | `gpt-image-2` | OpenAI | Vorgänger von 2.5, langsamer und je Stufe teurer |
 | `gpt-image-1.5` / `gpt-image-1-mini` | OpenAI | günstiger, drei feste Größen |
+
+### Prompt-Umschreiben
+
+Jedes Modell trägt `promptRewrite` (auch in `GET /api/models`):
+
+| Wert | Bedeutung | Modelle |
+|---|---|---|
+| `never` | Prompt kommt wörtlich an | OpenAI, `flux-2-klein-9b`, `flux-pro-1.1-ultra` |
+| `optional` | nur mit `revisePrompt: true` (`prompt_upsampling`), **Standard aus** | übrige FLUX.2/FLUX.1 |
+| `always` | nicht abschaltbar | `flux-3-image` |
+
+Der Standard ist bewusst „wörtlich": Agenten schicken ausgearbeitete Prompts
+und wollen sie nicht umgeschrieben sehen. Klein stand früher auf „kann
+umschreiben", obwohl BFL dort kein Upsampling anbietet. FLUX 3 formuliert
+jeden Prompt aus (Status `Reasoning`); verbindlich sind dort nur die Boxen.
+Wer `revisePrompt` an ein Modell schickt, das es nicht anbietet, bekommt einen
+Eintrag in `warnings`. GPT Image 2.5 liefert kein `revised_prompt` (am
+07.10.2026 geprüft).
+
+### FLUX 3 und Bounding Boxes
+
+`POST /v1/flux-3-image` hat ein strenges Schema (`additionalProperties:
+false`): `prompt`, `images` (1–10), `aspect_ratio`, `resolution`,
+`safety_tolerance`, `grounding`. **Kein** `seed`, `width`/`height`,
+`output_format` oder `prompt_upsampling` — jedes davon gibt 422. Das Bild kommt
+als PNG und wird bei Bedarf in das gewählte Format umgerechnet.
+
+Boxen sind kein eigener Parameter: Der Prompt ist der Szenen-Prompt, ein
+Leerzeichen, dann das JSON-Array der Elemente. Die App nimmt beides getrennt
+an (`prompt` + `layout`), prüft es (`src/common/layout.ts`) und setzt es erst
+beim Absenden zusammen. In `data.json` steht deshalb die lesbare Szene als
+`description` und das Layout als eigenes Feld.
+
+| Feld | Erzeugen | Bearbeiten |
+|---|---|---|
+| `id` | `[a-z][a-z0-9_]*`, im Prompt als `<id>` | ebenso |
+| `bbox` | `[top, left, bottom, right]`, 0–1000 | — |
+| `from` | — | `"ref_image_0"` oder `null` (neu/ersetzen) |
+| `src_bbox` | — | Box im Ausgangsbild oder `null` |
+| `tgt_bbox` | — | Box im Ergebnis oder `null` (entfernen) |
+| `desc` | wie das Element aussieht | wie es danach aussieht |
+
+`sourceImage` (Dateiname) nimmt ein vorhandenes Bild als `ref_image_0` — in
+voller Größe vom Server, bis 16 MP, und mit `aspect_ratio: auto`, damit der
+Rahmen bleibt. `grounding` (Websuche vor dem Generieren) ist bei BFL
+standardmäßig an, hier aus.
+
+Die Qualitätsstufen werden zu Flächenstufen: `low`/`medium`/`high`/`max` =
+`1k`/`1.5k`/`2k`/`4k`. Gemessen am 07.10.2026 (`3:4`):
+
+| Stufe | Größe | Kosten | Dauer |
+|---|---|---|---|
+| `1k` | 880×1184 | 2,4 Credits | ≈ 21 s |
+| `1.5k` | 1328×1760 | 3,5 Credits | ≈ 21 s |
+
+BFLs Preisliste nennt für `1k` 0,048 $ — gemeldet wurde die Hälfte.
+Bearbeitungen dauerten 41 s bzw. 147 s, Letzteres mit Lastabwurf: BFL meldet
+dann `503 "… over capacity and temporarily shedding requests"`. Nur dieses
+503 wird beim Absenden wiederholt (3/8/15 s Pause), jedes andere nicht, weil
+der Auftrag schon abgerechnet sein könnte. Beim Pollen liefert BFL einen
+gescheiterten Auftrag ebenfalls als 503 mit normalem Body; dort zählt der
+`status` im Body.
+
+FLUX 3 hält die Boxen exakt ein, formuliert die Beschreibungen aber aus und
+benennt Textelemente intern um (`title_1` → `En_Text_1`). Bearbeitungen
+lassen alles an seinem Platz, sind aber **nicht pixelgleich**: außerhalb der
+geänderten Box wichen Farbton und Korn leicht ab.
+
+Die Oberfläche dafür ist `/compose.html`: Boxen ziehen, beschreiben,
+Szenen-Prompt mit `<id>`-Chips; `?edit=<datei>` bearbeitet ein Bild (sein
+Layout wird zu behalten-Zeilen), `?from=<datei>` übernimmt ein Layout.
 
 DALL·E ist am 12. Mai 2026 abgeschaltet worden; `dall-e-2` und `dall-e-3`
 antworten mit 400 und sind entsprechend entfernt.
@@ -39,9 +111,11 @@ hergibt — angeboten wird sie nur, wo das spürbar mehr ist als `high`:
 |---|---|---|---|
 | `gpt-image-2`, GPT Image 2.5 | 2672×1504 | **3840×2160** | 8.294.400 Pixel, Kante ≤ 3840 |
 | FLUX.2 (alle) | 2672×1504 | — | 4.194.304 Pixel |
+| `flux-3-image` | `2k` ≈ 4 MP | `4k` ≈ 16 MP | Kanten vom Anbieter, laut BFL ≈ 0,61 $ bei `4k` |
 | `flux-pro-1.1-ultra` | — | — | 4 MP, Kanten vom Anbieter |
 
-**Für Wallpaper in 4K führt kein Weg an den OpenAI-Modellen mit freier Größe vorbei.** FLUX.2 endet
+**Für Wallpaper in 4K:** die OpenAI-Modelle mit freier Größe (exakt 3840×2160) oder `flux-3-image` mit `max`
+(Kanten bestimmt BFL). FLUX.2 endet
 bei 4 Megapixeln; dort wäre eine `max`-Stufe nur fünf Prozent über `high` und
 damit ein Versprechen, das sie nicht hält.
 
@@ -82,6 +156,7 @@ Vergrößern.
 
 | Modell | Referenzbilder | Weg |
 |---|---|---|
+| `flux-3-image` | 10 | `images: [...]`, im Prompt `<ref_image_0>` … |
 | FLUX.2 (alle) | 4 | `input_image`, `input_image_2`, … |
 | `flux-kontext-pro` / `-max` | 1 | `input_image` |
 | GPT Image 2.5 | 16 | `POST /v1/images/edits` statt `/generations` |
@@ -101,6 +176,8 @@ pro Modell übersetzt:
 
 - **`aspect_ratio`** — nur `flux-kontext-*` und `flux-pro-1.1-ultra`. Die
   Kantenlängen bestimmt dort der Anbieter.
+- **`aspect_ratio` + `resolution`** — `flux-3-image`. Bei `sourceImage` geht
+  `auto` hinaus, eingetragen wird das tatsächlich gelieferte Verhältnis.
 - **`width`/`height`** — FLUX.2 (Vielfache von 16) und `flux-pro-1.1` (32). Die
   FLUX.2-Endpunkte nehmen `aspect_ratio` zwar an, **ignorieren es aber** und
   liefern 1024×1024.
@@ -152,6 +229,17 @@ curl -s https://ai.mrtimeey.com/api/generate \
           ratio:"1:1", inputImages:[$img]}')"
 ```
 
+Mit Bounding Boxes (nur `flux-3-image`); `prompt` ist der Szenen-Prompt:
+
+```bash
+curl -s https://ai.mrtimeey.com/api/generate \
+  -H "Authorization: Bearer $AIG_TOKEN" -H 'Content-Type: application/json' \
+  -d '{"prompt":"A poster: the headline <title_1> above a runner <runner_1>.",
+       "model":"flux-3-image","ratio":"3:4","quality":"low","grounding":false,
+       "layout":[{"id":"title_1","bbox":[50,89,202,907],"desc":"Bold black text reading \"RUN FAST\"."},
+                 {"id":"runner_1","bbox":[317,278,944,717],"desc":"A black runner silhouette."}]}'
+```
+
 Antwort:
 
 ```jsonc
@@ -159,7 +247,7 @@ Antwort:
   "width": 1888, "height": 1056,
   "images": [{ "id": "…", "fileName": "…png", "width": 1888, "height": 1056,
                "url": "/api/files/download/…png", "revisedPrompt": "…", "seed": 42 }],
-  "errors": [] }
+  "errors": [], "warnings": [] }
 ```
 
 ### Abgerissene Verbindungen

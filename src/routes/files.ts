@@ -7,6 +7,7 @@ import sharp from 'sharp';
 import path from 'path';
 import { fromFormated, READ_FORMAT } from '../common/timeUtils';
 import { modelNameOf, referencePath, safeImageName } from '../common/fileUtils';
+import { findModel } from '../controller/modelRegistry';
 
 const files: express.Router = express.Router();
 
@@ -92,6 +93,12 @@ files.get('/get/:imageName', async (req, res) => {
         outputFormat: entry?.outputFormat,
         cost: entry?.cost !== undefined ? { amount: entry.cost, unit: entry.costUnit ?? '' } : null,
         durationMs: entry?.durationMs,
+        layout: entry?.layout ?? null,
+        grounding: entry?.grounding,
+        revisePrompt: entry?.revisePrompt,
+        editedFrom: entry?.editedFrom,
+        /** Wie das Modell mit dem Prompt umgeht — fuer die Beschriftung von `revisedPrompt`. */
+        promptRewrite: findModel(modelNameOf(entry))?.promptRewrite ?? null,
         // Der alte Feldname, damit bestehende Skripte weiterlesen koennen.
         languageModel: modelNameOf(entry),
     });

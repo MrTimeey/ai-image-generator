@@ -1,6 +1,6 @@
 ---
 name: ai-image
-description: Bilder mit dem eigenen AI Image Generator auf ai.mrtimeey.com erzeugen und verwalten - Modellwahl (FLUX.2, FLUX.1 Kontext, OpenAI gpt-image), Seitenverhältnis, Referenzbilder, Varianten, Download, Metadaten. Auslösen bei - Bild generieren, Bild erzeugen, Bild bearbeiten, Referenzbild, Vorlage, Illustration, Titelbild, Header-Bild, Poster, Icon-Motiv, KI-Bild, FLUX, gpt-image, ai.mrtimeey.com, aig.
+description: Bilder mit dem eigenen AI Image Generator auf ai.mrtimeey.com erzeugen und verwalten - Modellwahl (FLUX 3, FLUX.2, FLUX.1 Kontext, OpenAI gpt-image), Komposition mit Bounding Boxes (Elemente gezielt platzieren, ein Bild Element für Element bearbeiten - ersetzen, verschieben, entfernen), Seitenverhältnis, Referenzbilder, Varianten, Download, Metadaten; Prompts bleiben standardmäßig wörtlich. Auslösen bei - Bild generieren, Bild erzeugen, Bild bearbeiten, Referenzbild, Vorlage, Illustration, Titelbild, Header-Bild, Poster, Cover, Layout, Komposition, Bounding Box, Element platzieren, Icon-Motiv, KI-Bild, FLUX, FLUX 3, gpt-image, ai.mrtimeey.com, aig.
 ---
 
 # AI Image Generator
@@ -34,10 +34,34 @@ alias aig="python3 $(find ~/.claude -path '*ai-image*/scripts/aig.py' | head -1)
 | `gen "<prompt>"` | Bild erzeugen |
 | `list` | Bestand durchsuchen und filtern |
 | `get <datei>` | Metadaten eines Bildes |
+| `layout <datei> [--edit]` | Bounding Boxes eines Bildes als JSON — zum Wiederverwenden oder Bearbeiten |
 | `download <datei>` | Bild herunterladen |
 | **`rm <datei> [...]`** | **Bild(er) löschen — auch mehrere auf einmal** |
 | `favorite <datei>` | markieren (`--off` hebt auf) |
 | `costs` | Guthaben und bisherige Ausgaben |
+
+## Prompt bleibt wörtlich
+
+**Standardmäßig kommt dein Prompt wörtlich beim Modell an.** Kein Modell
+formuliert ihn um, solange du nicht `--revise` setzt — und das solltest du bei
+ausgearbeiteten Prompts nicht tun: es hilft nur bei kurzen, vagen Ideen und
+verwässert präzise Vorgaben.
+
+`aig.py models` sagt je Modell, wie es damit umgeht:
+
+| Angabe | Bedeutung |
+|---|---|
+| Prompt bleibt wörtlich | Gar kein Umschreiben (OpenAI, `flux-2-klein-9b`, `flux-pro-1.1-ultra`) |
+| Prompt bleibt wörtlich (--revise formuliert aus) | Nur mit `--revise` (übrige FLUX.2/FLUX.1-Modelle) |
+| **formuliert den Prompt IMMER aus** | **FLUX 3** — nicht abschaltbar |
+
+**FLUX 3 ist die Ausnahme.** Es denkt vor jedem Bild nach und schreibt
+Szene und Element-Beschreibungen aus; das Ergebnis steht danach als
+`revisedPrompt` in den Metadaten. Verbindlich bleiben dort nur die **Boxen**:
+Lage und Größe jedes Elements übernimmt FLUX 3 exakt (siehe
+[Komposition mit FLUX 3](#komposition-mit-flux-3)). Wer also genaue
+Vorstellungen von Anordnung und Bildaufbau hat, legt sie bei FLUX 3 als Layout
+fest — und wer jedes Wort durchsetzen will, nimmt ein anderes Modell.
 
 ## Ersteinrichtung (einmalig)
 
@@ -74,19 +98,29 @@ Formate. Was hier steht, ist die Entscheidungshilfe dahinter:
 | Viele Entwürfe, Varianten durchprobieren | `flux-2-klein-9b` (am günstigsten) |
 | `[pro]` trifft das Motiv nicht | `flux-2-max` |
 | Sehr detailreiche oder ungewöhnliche Szene | `flux-2-flex` (langsamer) |
+| **Bildaufbau steht fest**: was wo im Bild sitzt, wie groß | `flux-3-image` mit `--layout` |
+| Poster, Cover, Plakat mit **mehreren Textblöcken an festen Stellen** | `flux-3-image` mit `--layout`, eine Box je Textzeile |
+| Vorhandenes Bild gezielt ändern: ein Element ersetzen, verschieben, entfernen — der Rest bleibt | `flux-3-image` mit `--source` und `--layout` |
 | **Text im Bild**, Schrift, Beschriftung, Logo | `gpt-image-2.5-flare` |
 | Präzise Vorgaben, die eingehalten werden müssen | `gpt-image-2.5-flare` |
 | Fertiges Bild bei OpenAI, Person oder Produkt über mehrere Bearbeitungen gleich halten | `gpt-image-2.5-sunburst` (langsam) |
 | Druck, großes Format, 4 Megapixel | `flux-pro-1.1-ultra` |
 | Vorhandenes Bild verändern | `flux-kontext-pro` / `flux-kontext-max` |
-| Mehrere Vorlagen kombinieren | `flux-2-pro` (bis 4), GPT Image 2.5 (bis 16) |
+| Mehrere Vorlagen kombinieren | `flux-2-pro` (bis 4), `flux-3-image` (bis 10), GPT Image 2.5 (bis 16) |
 | Billig und schnell bei OpenAI | `gpt-image-1-mini` |
 
 FLUX ist stärker bei Bildwirkung und Stil, GPT Image bei Instruktionstreue
 und allem, was lesbar sein muss. Wenn Schrift im Bild vorkommt, ist die Wahl
 nicht offen — dann `gpt-image-2.5-flare`. Flare ist schneller als
 `gpt-image-2` und je Stufe deutlich günstiger; `gpt-image-2` braucht es nur
-noch zum Vergleich.
+noch zum Vergleich. Einzige Alternative bei Schrift: `flux-3-image`, wenn
+mehrere Textblöcke **an bestimmten Stellen** stehen müssen — dort bekommt jede
+Zeile ihre eigene Box (am 07.10.2026 sauber gesetzt: „RUN FAST" exakt in der
+Titelbox).
+
+FLUX 3 ist die neueste FLUX-Generation, aber nicht der neue Standard: es
+formuliert jeden Prompt aus und kennt keinen Seed. Ohne Layout ist
+`flux-2-pro` meist die bessere Wahl.
 
 ## Seitenverhältnis
 
@@ -103,8 +137,10 @@ Ein einziges Feld für alle Anbieter; die App rechnet es pro Modell um.
 
 `gpt-image-1.5` und `gpt-image-1-mini` können **nur** `3:2`, `1:1`, `2:3` — bei
 allem anderen lehnt die API mit einer klaren Meldung ab. Bei den
-Kontext-Modellen und `flux-pro-1.1-ultra` bestimmt der Anbieter die genauen
-Kantenlängen selbst; das Verhältnis stimmt, die Pixelzahl ist nicht vorhersagbar.
+Kontext-Modellen, `flux-pro-1.1-ultra` und `flux-3-image` bestimmt der Anbieter
+die genauen Kantenlängen selbst; das Verhältnis stimmt, die Pixelzahl ist nicht
+vorhersagbar. Bearbeitet FLUX 3 ein Bild (`--source`), behält es dessen Rahmen —
+`--ratio` spielt dann keine Rolle.
 
 ## Qualität
 
@@ -113,6 +149,11 @@ Kantenlängen selbst; das Verhältnis stimmt, die Pixelzahl ist nicht vorhersagb
 - **FLUX**: die Auflösung (rund 1, 2 bzw. 4 Megapixel). Die API kennt dort kein
   Qualitätsfeld.
 - **OpenAI**: den Rechenaufwand **und** die Auflösung.
+- **FLUX 3**: die Flächenstufe `low` = `1k` (≈ 1 MP), `medium` = `1.5k`
+  (≈ 2,3 MP), `high` = `2k` (≈ 4 MP), `max` = `4k` (≈ 16 MP). Gemessen am
+  07.10.2026: `1k` kostet 2,4 Credits, `1.5k` 3,5 Credits — BFLs Preisliste
+  nennt für `1k` das Doppelte, maßgeblich ist, was `cost` meldet. `4k` laut
+  BFL rund **0,61 $**, also nur fürs fertige Bild.
 - **GPT Image 2.5** hat zusätzlich `xhigh`: gleiche Größe wie `high`, aber mehr
   Rechenaufwand (rund doppelt so teuer). Für das fertige Bild, wenn `high`
   noch nicht reicht.
@@ -135,8 +176,9 @@ Einen Upscale gibt es nicht; wer größer will, erzeugt gleich größer.
   „Ölgemälde". Ohne Stilangabe entscheidet das Modell.
 - `--revise` lässt **BFL** den Prompt ausformulieren (`prompt_upsampling`). Das
   hilft bei kurzen, vagen Prompts und **schadet bei präzisen Vorgaben** — der
-  umgeschriebene Prompt steht danach in den Metadaten. Standardmäßig aus.
-  OpenAI-Modelle können das nicht.
+  umgeschriebene Prompt steht danach in den Metadaten. Standardmäßig aus, und
+  so soll es bleiben (siehe [Prompt bleibt wörtlich](#prompt-bleibt-wörtlich)).
+  OpenAI-Modelle und `flux-2-klein-9b` können das nicht, FLUX 3 tut es immer.
 - Gleicher `--seed` plus gleicher Prompt ergibt bei FLUX **praktisch** dasselbe
   Bild — sichtbar identisch, aber nicht bitgenau. Nützlich, um eine Variante
   gezielt zu wiederholen und dann nur eine Kleinigkeit am Prompt zu ändern.
@@ -149,6 +191,7 @@ Einen Upscale gibt es nicht; wer größer will, erzeugt gleich größer.
 
 | Modell | Referenzbilder |
 |---|---|
+| `flux-3-image` | bis 10 (ein `--source`-Bild zählt mit) |
 | `flux-2-pro` / `-flex` / `-max` / `-klein-9b` | bis 4 |
 | `gpt-image-2.5-flare` / `-sunburst` | bis 16 |
 | `gpt-image-2`, `gpt-image-1.5`, `gpt-image-1-mini` | bis 4 |
@@ -170,6 +213,82 @@ dort nur Modelle zur Wahl, die Vorlagen auswerten.
 aig.py gen "mach den Hintergrund tiefblau" \
   --model flux-2-pro --image ./vorlage.png --out .
 ```
+
+## Komposition mit FLUX 3
+
+FLUX 3 nimmt zum Prompt ein **Layout**: je Element eine Box und eine
+Beschreibung. Der Prompt ist dann der **Szenen-Prompt** — ein Satz für das ganze
+Bild, der jedes Element als `<id>` nennt. In der Weboberfläche ist das die Seite
+**Komposition** (Boxen ziehen statt Zahlen tippen); das CLI nimmt eine JSON-Datei.
+
+```json
+{
+  "scene": "Minimalist risograph poster on a flat chartreuse background: the headline <title_1> above a running figure <runner_1>.",
+  "elements": [
+    {"id": "title_1",  "bbox": [50, 89, 202, 907],  "desc": "Bold black sans-serif text reading \"RUN FAST\"."},
+    {"id": "runner_1", "bbox": [317, 278, 944, 717], "desc": "A black silhouette of a runner mid-stride, facing left."}
+  ]
+}
+```
+
+```bash
+aig.py gen --ratio 3:4 --layout poster.json --out .   # --layout wählt flux-3-image
+```
+
+Regeln, die FLUX 3 braucht:
+
+- **`bbox` ist `[top, left, bottom, right]`** — erst die Senkrechte! Ganze Zahlen
+  von 0 bis 1000, von oben links, unabhängig von Größe und Seitenverhältnis.
+  `[0, 0, 500, 500]` ist das linke obere Viertel.
+- **ids** klein mit Nummer (`dome_1`, `crowd_2`) und im Szenen-Prompt als
+  `<id>` genannt. Fehlt eine Nennung, meldet `gen` einen Hinweis — ernst nehmen.
+- **Jede Textzeile eine eigene Box**, der Wortlaut in Anführungszeichen im
+  `desc`: `text reading "Sauna"`.
+- **Boxen sind keine Maske**: Lage und Größe stimmen, ein Element darf leicht
+  überstehen.
+- **Seitenverhältnis passend zu den Boxen** wählen — das Raster dehnt sich mit.
+- `--grounding` schaltet eine Websuche vor dem Generieren ein (für echte Logos,
+  Bauwerke, aktuelle Plakate). Standard aus: nur dein Prompt zählt, und es geht
+  schneller.
+
+Was FLUX 3 daraus macht (gemessen am 07.10.2026): die **Boxen bleiben exakt**,
+die Beschreibungen formuliert es aus, Textelemente benennt es intern um
+(`title_1` → `En_Text_1`) und ergänzt mitunter eigene Zeilen, etwa einen
+Hintergrund. Das alles steht in `revisedPrompt`; das gespeicherte Layout bleibt
+deins.
+
+### Ein Bild Element für Element bearbeiten
+
+`--source <dateiname>` nimmt ein schon erzeugtes Bild als `<ref_image_0>` — in
+voller Größe vom Server, der Rahmen bleibt. Jede Zeile sagt dann, woher ein
+Element kommt und wohin es soll:
+
+| Zeile | `from` | `src_bbox` | `tgt_bbox` |
+|---|---|---|---|
+| behalten | `"ref_image_0"` | wo es steht | dieselbe Box |
+| verschieben | `"ref_image_0"` | wo es steht | neue Box |
+| ersetzen / neu | `null` | `null` | Zielbox; `desc` = wie es danach aussieht |
+| entfernen | `"ref_image_0"` | wo es steht | `null` |
+
+Ist das Bild selbst mit Layout entstanden, liefert `layout --edit` alle Elemente
+schon als behalten-Zeilen; man ändert nur die, die sich ändern sollen:
+
+```bash
+aig.py layout <dateiname> --edit > edit.json     # behalten-Zeilen + Satzgerüst
+# edit.json anpassen: Zeile auf ersetzen/verschieben/entfernen, "scene" ausformulieren
+aig.py gen --model flux-3-image --source <dateiname> --layout edit.json --out .
+```
+
+Der Szenen-Prompt ist eine Anweisung: „In <ref_image_0>, replace <title_1> with
+…, move <runner_1> to the left. Keep <background_1> exactly unchanged."
+Hat das Bild kein Layout, legt man die Boxen um die zu ändernden Elemente
+selbst fest (Koordinaten am besten in der Weboberfläche ablesen: Detailansicht →
+**„In Komposition bearbeiten"**).
+
+Erwartung richtig setzen: Am 07.10.2026 blieb bei einer Bearbeitung alles an
+seinem Platz, aber **nicht pixelgleich** — außerhalb der geänderten Box
+wichen Farbton und Korn leicht ab (im Mittel 19 von 765, bei 7 % der Pixel
+deutlich). Für Retusche, bei der jedes Pixel bleiben muss, taugt es nicht.
 
 ## Rezepte
 
@@ -193,7 +312,7 @@ Titelbild mit Schrift:
 ```bash
 aig.py gen \
   "Blog-Header, Schriftzug 'Release Notes' in klarer Groteske, minimalistisch" \
-  --model gpt-image-2 --ratio 16:9 --quality high --out .
+  --model gpt-image-2.5-flare --ratio 16:9 --quality high --out .
 ```
 
 Nachsehen, was zuletzt erzeugt wurde, und eins davon holen. `list` zeigt zu
@@ -242,6 +361,18 @@ Das CLI ist nur eine Hülle um die API:
 curl -s https://ai.mrtimeey.com/api/generate \
   -H "Authorization: Bearer $AIG_TOKEN" -H 'Content-Type: application/json' \
   -d '{"prompt":"…","model":"flux-2-pro","ratio":"16:9","quality":"medium"}'
+```
+
+Mit Layout (nur FLUX 3) kommen `layout` und optional `grounding` und
+`sourceImage` (Dateiname eines vorhandenen Bildes) dazu; `prompt` ist dann der
+Szenen-Prompt. Die Antwort führt `warnings` mit — Hinweise, die den Lauf nicht
+verhindert haben:
+
+```bash
+curl -s https://ai.mrtimeey.com/api/generate \
+  -H "Authorization: Bearer $AIG_TOKEN" -H 'Content-Type: application/json' \
+  -d '{"prompt":"A dome <dome_1> rises from a twilight bay.","model":"flux-3-image","ratio":"3:4",
+       "layout":[{"id":"dome_1","bbox":[250,150,650,850],"desc":"a parabolic dome of pale concrete"}]}'
 ```
 
 Aufräumen geht genauso über die API — ein Tool kann seine eigenen Werke also
@@ -304,7 +435,9 @@ curl -s "$AIG_URL/api/jobs/$ID" -H "Authorization: Bearer $AIG_TOKEN"
 ```
 
 Das CLI wartet einfach ab (`gen` blockiert bis zum Ergebnis) — dort ist das
-nur bei sehr wackligen Verbindungen ein Thema.
+nur bei sehr wackligen Verbindungen ein Thema. FLUX 3 braucht meist 20–45 s,
+bei Andrang bei BFL auch über zwei Minuten: der Server wiederholt das Absenden
+dann selbst, solange BFL ausdrücklich „over capacity" meldet.
 
 ## Beim Entwickeln
 
@@ -322,7 +455,8 @@ npm run lint       # TS-Dateien und die Inline-Skripte der Seiten
 - **`rm` ist endgültig** — Bild und Metadaten sind weg, es gibt keinen
   Papierkorb. Eigene Zwischenergebnisse aufzuräumen ist erwünscht; alles, was
   vorher schon da war, nur auf ausdrückliche Anweisung.
-- Bildbearbeitung mit Maske (Inpaint, Outpaint, Erase) gibt es nicht — nur
-  ganze Referenzbilder. Die mitgegebenen Vorlagen sind später in der
+- Bildbearbeitung mit Maske (Inpaint, Outpaint, Erase) gibt es nicht. Am
+  nächsten kommt FLUX 3 mit Boxen (`--source` + `--layout`) — gezielt, aber
+  nicht pixelgleich. Die mitgegebenen Vorlagen sind später in der
   Detailansicht des Bildes zu sehen.
 - Einen Upscale gibt es nicht; wer größer will, erzeugt gleich größer.
