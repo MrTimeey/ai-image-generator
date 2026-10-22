@@ -56,10 +56,11 @@ docker image prune -f
 # als einer, der meckert. `/api/health` ist bewusst ohne Anmeldung erreichbar,
 # genau dafuer.
 #
-# **Wiederholt pruefen, nicht einmal nach fester Wartezeit.** Gestartet wird
-# ueber ts-node, das den Quellcode beim Start uebersetzt und dafuer je nach
-# Last des Servers deutlich laenger als fuenf Sekunden braucht — ein einzelner
-# Versuch meldet dann einen Fehlschlag, obwohl der Deploy in Ordnung ist.
+# **Wiederholt pruefen, nicht einmal nach fester Wartezeit.** Frueher startete
+# das Image ueber ts-node und brauchte zum Uebersetzen je nach Last deutlich
+# laenger als fuenf Sekunden. Heute laeuft fertiges JavaScript und der Start
+# ist schnell, aber ein einzelner Versuch direkt nach `up` kann trotzdem zu
+# frueh kommen und einen Fehlschlag melden, obwohl der Deploy in Ordnung ist.
 HEALTH_OK=0
 for _ in $(seq 1 20); do
   if docker exec aiImageGenerator node -e "fetch('http://127.0.0.1:3000/api/health').then(r=>r.json()).then(j=>{console.log('health:',JSON.stringify(j));process.exit(j.status==='ok'?0:1)}).catch(()=>process.exit(1))" 2>/dev/null; then

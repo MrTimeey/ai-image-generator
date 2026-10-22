@@ -580,6 +580,8 @@ schiebt die `.env` kurz beiseite und lässt `npm test` laufen.
 
 Für den Betrieb im Container zieht `docker compose up -d` das Image aus der
 GitHub Registry. Lokal bauen geht mit `docker build -t ai-image-generator .`.
+Das Image übersetzt den TypeScript-Code beim Bauen mit `tsc` und startet ihn
+mit `node src/main.js` — ohne ts-node, ohne devDependencies und ohne npm.
 
 ### Deployment
 
@@ -587,7 +589,9 @@ Ein Push auf `main` startet `.github/workflows/deploy.yml`: `tsc --noEmit` und
 `npm run lint`, dann Build und Push nach
 `ghcr.io/mrtimeey/ai-image-generator:latest`, dann ein Aufruf von
 `https://webhook.mrtimeey.com/hooks/ai-image-generator` mit dem Token aus dem
-Repository-Secret `WEBHOOK_SECRET`.
+Repository-Secret `WEBHOOK_SECRET`. Derselbe Ablauf läuft zusätzlich jeden
+Montag um 04:20 UTC, damit das Basisabbild seine Sicherheitskorrekturen auch
+ohne Commit bekommt.
 
 Der Server **baut nicht selbst** — auf dem Altserver hatte er knapp 5 GB frei.
 (Seit dem Umzug am 04./05.09.2026 ist der Platz kein Argument mehr: 18 GB RAM

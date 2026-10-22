@@ -12,6 +12,12 @@ on:
     paths-ignore:
       - 'doc/**'
       - 'README.md'
+  # Woechentlich, montags 04:20 UTC: neu bauen, auch ohne Commit, damit die
+  # Sicherheitskorrekturen von node:24-alpine (und ffmpeg aus apk) ankommen.
+  # Geplante Laeufe gehen auf main und laufen wie ein Push durch check,
+  # build und deploy.
+  schedule:
+    - cron: '20 4 * * 1'
   # Notausgang: erzwingt einen Build ohne Code-Aenderung.
   workflow_dispatch:
 
@@ -25,7 +31,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
         with:
-          node-version: '22'
+          node-version: '24'
           cache: npm
       - run: npm ci
       - run: npx tsc --noEmit
